@@ -45,7 +45,8 @@ class _SettingsSearchPageState
     ),
     NormalModel(
       title: 'Source Helper',
-      subtitle: '/pythonTest /catJsTest /nodeJsTest /jarTest /goProxyTest',
+      subtitle:
+          '/pythonTest /catJsTest /nodeJsTest /jarTest /goProxyTest /t4ActiveConfigTest',
       onTap: (context, setState) => Get.toNamed('/sourceHelperSetting'),
     ),
   ];

@@ -6,6 +6,7 @@ import 'package:PiliPlus/services/source_runtime/jar_loader_service.dart';
 import 'package:PiliPlus/services/source_runtime/source_engine.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_models.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
+import 'package:PiliPlus/services/source_runtime/t4_active_config_service.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -54,6 +55,12 @@ class SourceHelperSettingPage extends StatelessWidget {
             subtitle: '/goProxyTest',
             route: '/goProxyTest',
             icon: Icons.hub_outlined,
+          ),
+          _HelperRouteTile(
+            title: 'T4 Active Config',
+            subtitle: '/t4ActiveConfigTest',
+            route: '/t4ActiveConfigTest',
+            icon: Icons.dataset_linked_outlined,
           ),
         ],
       ),
@@ -842,5 +849,164 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
     if (needToast) {
       SmartDialog.showToast('GoProxy preset saved');
     }
+  }
+}
+
+class T4ActiveConfigTestPage extends StatefulWidget {
+  const T4ActiveConfigTestPage({super.key});
+
+  @override
+  State<T4ActiveConfigTestPage> createState() => _T4ActiveConfigTestPageState();
+}
+
+class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
+  late final T4ActiveConfigService _service;
+
+  T4ActiveConfigState? _state;
+  bool _loading = false;
+  bool _forceRemote = false;
+  bool _persistRemoteSnapshot = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _service = Get.find<T4ActiveConfigService>();
+    _resolve();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = _state;
+    return Scaffold(
+      appBar: AppBar(title: const Text('T4 Active Config')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Force remote fetch'),
+            subtitle: const Text(
+              'Ignore local-mode switch and always try source config URL first.',
+            ),
+            value: _forceRemote,
+            onChanged: (value) => setState(() => _forceRemote = value),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Persist remote snapshot'),
+            subtitle: const Text(
+              'When remote resolves successfully, save configs to local storage.',
+            ),
+            value: _persistRemoteSnapshot,
+            onChanged: (value) =>
+                setState(() => _persistRemoteSnapshot = value),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.icon(
+                onPressed: _loading ? null : _resolve,
+                icon: _loading
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync),
+                label: const Text('Resolve Active'),
+              ),
+              OutlinedButton.icon(
+                onPressed: state == null
+                    ? null
+                    : () => Utils.copyText(
+                        _debugSummary(state),
+                        toastText: 'Summary copied',
+                      ),
+                icon: const Icon(Icons.copy_all_outlined),
+                label: const Text('Copy Summary'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (state != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(label: Text(state.success ? 'SUCCESS' : 'FAILED')),
+                        Chip(label: Text('source=${state.source.name}')),
+                        Chip(label: Text('count=${state.configs.length}')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('message: ${state.message}'),
+                    if (state.hasError) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${state.error}'),
+                    ],
+                    const SizedBox(height: 4),
+                    SelectableText('sourceUrl: ${state.sourceUrl}'),
+                    const SizedBox(height: 4),
+                    SelectableText('usedLocalMode: ${state.usedLocalMode}'),
+                    const Divider(height: 16),
+                    SelectableText(
+                      'currentId: ${state.currentId.isEmpty ? '(none)' : state.currentId}',
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'currentName: ${state.currentConfig?.name ?? '(none)'}',
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'currentApiUrl: ${state.currentConfig?.apiUrl ?? '(none)'}',
+                    ),
+                    if (state.currentConfig?.description case final desc?) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('description: $desc'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resolve() async {
+    setState(() => _loading = true);
+    final state = await _service.resolve(
+      forceRemote: _forceRemote,
+      persistRemoteSnapshot: _persistRemoteSnapshot,
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _state = state;
+    });
+  }
+
+  String _debugSummary(T4ActiveConfigState state) {
+    final currentName = state.currentConfig?.name ?? '(none)';
+    final currentUrl = state.currentConfig?.apiUrl ?? '(none)';
+    return [
+      'success=${state.success}',
+      'source=${state.source.name}',
+      'count=${state.configs.length}',
+      'currentId=${state.currentId}',
+      'currentName=$currentName',
+      'currentApiUrl=$currentUrl',
+      'sourceUrl=${state.sourceUrl}',
+      'usedLocalMode=${state.usedLocalMode}',
+      'message=${state.message}',
+      if (state.hasError) 'error=${state.error}',
+    ].join('\n');
   }
 }

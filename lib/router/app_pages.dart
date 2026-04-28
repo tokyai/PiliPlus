@@ -210,6 +210,10 @@ class Routes {
     ),
     GetPage(name: '/jarTest', page: () => const JarTestPage()),
     GetPage(name: '/goProxyTest', page: () => const GoProxyTestPage()),
+    GetPage(
+      name: '/t4ActiveConfigTest',
+      page: () => const T4ActiveConfigTestPage(),
+    ),
     GetPage(name: '/webdavSetting', page: () => const WebDavSettingPage()),
     GetPage(name: '/searchTrending', page: () => const SearchTrendingPage()),
     GetPage(name: '/dynTopic', page: () => const DynTopicPage()),
