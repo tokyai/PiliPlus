@@ -162,9 +162,12 @@ CI artifact snapshots:
 - Android workflow uploads `android-reverse-completion-report-json`.
 - Windows workflow uploads `windows-runtime-smoke-summary`.
 - Android workflow uploads `android-runtime-smoke-summary`.
+- Windows workflow uploads `windows-environment-readiness-status` and `windows-environment-readiness-report`.
+- Android workflow uploads `android-environment-readiness-status` and `android-environment-readiness-report`.
 - Both workflows support `fail_on_pending=true` to fail run when blockers remain.
 - Both workflows support `fail_on_runtime_validation_pending=true` to fail only on runtime-validation blockers.
 - Both workflows support `fail_if_environment_not_ready=true` to fail on environment blockers.
+- Both workflows support `environment_profile` (`strict|android|ios`) for readiness requirements.
 - Both workflows support threshold inputs `min_windows_smoke_reports` and `min_android_smoke_logs`.
 - Gate failure is deferred to final step so closure/report artifacts remain available for troubleshooting.
 - Workflow job summary also shows reverse completion `overallReady`, blocker category counts, pending blockers, and next actions.

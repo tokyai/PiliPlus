@@ -1178,6 +1178,25 @@ This document records the practical migration increments after the initial rever
   - Profile + strict gate command passed:
     - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1 -SkipIosRequirement -SkipAndroidDeviceRequirement -FailIfNotReady`.
 
+## Step 113
+- Integrated environment readiness script into runtime-smoke workflows:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - both now run `runtime_environment_readiness.ps1` and publish:
+    - readiness status JSON,
+    - readiness report JSON.
+- Gate behavior enhancement:
+  - `fail_if_environment_not_ready=true` now evaluates dedicated readiness report (`ready/failedChecks`) instead of inferred blocker count only.
+  - new workflow input `environment_profile` (`strict|android|ios`) controls readiness requirement profile.
+- Workflow summary enhancement:
+  - run summaries now include environment readiness section (`ready`, requirements, failed checks).
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1285,3 +1304,4 @@ This document records the practical migration increments after the initial rever
 - Environment readiness now has a dedicated quick-check script for pre-flight validation.
 - Runtime-smoke workflows now support an explicit environment-readiness gate option.
 - Environment readiness checks now support profile-based requirements and machine-readable readiness reports.
+- Runtime-smoke workflows now execute and publish dedicated environment readiness evidence with profile-aware gate enforcement.
