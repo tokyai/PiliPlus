@@ -2449,25 +2449,23 @@ class MainActivity : AudioServiceActivity() {
         val input = raw.trim()
         if (input.isEmpty()) return null
 
-        if (input.startsWith("thunder://", ignoreCase = true)) {
+        if (
+            input.startsWith("thunder://", ignoreCase = true) ||
+            input.startsWith("qqdl://", ignoreCase = true) ||
+            input.startsWith("flashget://", ignoreCase = true)
+        ) {
+            val scheme = input.substringBefore("://").lowercase()
             val encoded = input.substringAfter("://", "")
             if (encoded.isEmpty()) return null
-            return try {
-                val decoded = String(Base64.decode(encoded, Base64.DEFAULT), Charsets.UTF_8)
-                val unwrapped = decoded
-                    .removePrefix("AA")
-                    .removeSuffix("ZZ")
-                    .trim()
-                val nested = parseThunderLikeUrl(unwrapped) ?: ThunderParsedResult(
-                    protocol = "thunder",
-                    originalUrl = input,
-                    normalizedUrl = unwrapped,
-                    infoHash = ""
-                )
-                nested.copy(originalUrl = input)
-            } catch (_: Exception) {
-                null
-            }
+            val decoded = decodeThunderFamilyPayload(encoded) ?: return null
+            val unwrapped = unwrapThunderFamilyPayload(decoded, scheme).trim()
+            val nested = parseThunderLikeUrl(unwrapped) ?: ThunderParsedResult(
+                protocol = scheme,
+                originalUrl = input,
+                normalizedUrl = unwrapped,
+                infoHash = ""
+            )
+            return nested.copy(originalUrl = input)
         }
 
         if (
@@ -2491,6 +2489,38 @@ class MainActivity : AudioServiceActivity() {
             )
         }
         return null
+    }
+
+    private fun decodeThunderFamilyPayload(encoded: String): String? {
+        val normalized = encoded.trim().replace(" ", "+")
+        val padded = normalized.padEnd(((normalized.length + 3) / 4) * 4, '=')
+        val flags = listOf(
+            Base64.DEFAULT,
+            Base64.NO_WRAP,
+            Base64.URL_SAFE or Base64.NO_WRAP
+        )
+        for (flag in flags) {
+            try {
+                return String(Base64.decode(padded, flag), Charsets.UTF_8)
+            } catch (_: Exception) {
+            }
+        }
+        return null
+    }
+
+    private fun unwrapThunderFamilyPayload(decoded: String, scheme: String): String {
+        val trimmed = decoded.trim()
+        return when (scheme) {
+            "flashget" -> trimmed
+                .removePrefix("[FLASHGET]")
+                .removeSuffix("[FLASHGET]")
+                .trim()
+
+            else -> trimmed
+                .removePrefix("AA")
+                .removeSuffix("ZZ")
+                .trim()
+        }
     }
 
     private fun extractMagnetInfoHash(url: String): String {

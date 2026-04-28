@@ -383,35 +383,33 @@ class ThunderService {
     final input = raw.trim();
     if (input.isEmpty) return null;
 
-    if (input.toLowerCase().startsWith('thunder://')) {
+    final lowerInput = input.toLowerCase();
+    if (lowerInput.startsWith('thunder://') ||
+        lowerInput.startsWith('qqdl://') ||
+        lowerInput.startsWith('flashget://')) {
+      final scheme = lowerInput.substring(0, lowerInput.indexOf('://'));
       final encoded = input.substring(input.indexOf('://') + 3);
       if (encoded.isEmpty) return null;
-      try {
-        final decoded = utf8.decode(base64.decode(encoded)).trim();
-        final unwrapped = decoded
-            .replaceFirst(RegExp(r'^AA', caseSensitive: false), '')
-            .replaceFirst(RegExp(r'ZZ$', caseSensitive: false), '')
-            .trim();
-        final nested =
-            _parseThunderLikeUrl(unwrapped) ??
-            _ParsedThunderUrl(
-              protocol: 'thunder',
-              originalUrl: input,
-              normalizedUrl: unwrapped,
-              infoHash: '',
-            );
-        return _ParsedThunderUrl(
-          protocol: nested.protocol,
-          originalUrl: input,
-          normalizedUrl: nested.normalizedUrl,
-          infoHash: nested.infoHash,
-        );
-      } catch (_) {
-        return null;
-      }
+      final decoded = _decodeThunderFamilyPayload(encoded);
+      if (decoded == null) return null;
+      final unwrapped = _unwrapThunderFamilyPayload(decoded, scheme);
+      final nested =
+          _parseThunderLikeUrl(unwrapped) ??
+          _ParsedThunderUrl(
+            protocol: scheme,
+            originalUrl: input,
+            normalizedUrl: unwrapped,
+            infoHash: '',
+          );
+      return _ParsedThunderUrl(
+        protocol: nested.protocol,
+        originalUrl: input,
+        normalizedUrl: nested.normalizedUrl,
+        infoHash: nested.infoHash,
+      );
     }
 
-    final lower = input.toLowerCase();
+    final lower = lowerInput;
     final supportedSchemes = <String>[
       'magnet:',
       'ed2k://',
@@ -436,6 +434,36 @@ class ThunderService {
       normalizedUrl: input,
       infoHash: infoHash,
     );
+  }
+
+  String? _decodeThunderFamilyPayload(String encoded) {
+    final normalized = encoded.trim().replaceAll(' ', '+');
+    final padding = (4 - normalized.length % 4) % 4;
+    final padded = '$normalized${'=' * padding}';
+    final candidates = <String>[padded, normalized];
+    for (final candidate in candidates) {
+      try {
+        return utf8.decode(base64.decode(candidate));
+      } catch (_) {}
+      try {
+        return utf8.decode(base64Url.decode(candidate));
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  String _unwrapThunderFamilyPayload(String decoded, String scheme) {
+    final text = decoded.trim();
+    if (scheme == 'flashget') {
+      return text
+          .replaceFirst(RegExp(r'^\[FLASHGET\]', caseSensitive: false), '')
+          .replaceFirst(RegExp(r'\[FLASHGET\]$', caseSensitive: false), '')
+          .trim();
+    }
+    return text
+        .replaceFirst(RegExp(r'^AA', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'ZZ$', caseSensitive: false), '')
+        .trim();
   }
 }
 

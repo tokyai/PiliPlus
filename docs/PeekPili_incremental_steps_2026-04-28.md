@@ -261,6 +261,16 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 32
+- Expanded Thunder fallback protocol parsing coverage on Android + Dart fallback:
+  - added support for `qqdl://` and `flashget://` decode paths in addition to `thunder://`,
+  - improved base64 decode compatibility for payload variants (padding/URL-safe tolerance),
+  - added per-scheme unwrap rules (`AA...ZZ` / `[FLASHGET]... [FLASHGET]`) before nested URL parse.
+- This improves reverse migration tolerance for real-world thunder-family links and reduces parser mismatch across platforms.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/thunder_service.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -288,3 +298,4 @@ This document records the practical migration increments after the initial rever
 - PHP plugin-equivalent baseline bridge and debug UI are now available for migration validation on Android.
 - Android PHP bridge now includes baseline download/extract install orchestration, runtime env wiring, and scripts/bootstrap behavior closer to reverse plugin path.
 - Android generic source runtime path for PHP now shares bridge-aligned env/working-directory defaults, reducing behavior drift between debug entry routes.
+- Thunder fallback parser now accepts `thunder/qqdl/flashget` family links with normalized decode behavior on Android and non-Android fallback path.

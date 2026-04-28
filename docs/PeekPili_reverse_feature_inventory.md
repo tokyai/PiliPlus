@@ -270,7 +270,7 @@ Conclusion: documentation and binaries are not aligned for Android; migration sh
   - Android `sourceRuntimeProbe/sourceRuntimeExecute` now includes PHP bridge-aligned runtime env and working-directory defaults, but still remains a generic command bridge (not full reverse plugin lifecycle parity for all engines).
   - Android `loadJar` + Jar lifecycle + spider business method surface (`home/search/detail/player/action/setRecent`) now have baseline reflective bridge support with per-spider context reuse, but still lack reverse package `JarLoader`-equivalent guarantees for all plugin side-effects and full compatibility validation across real source jars.
   - Android PHP bridge now has baseline method surface plus download/extract install orchestration and runtime-env/scripts bootstrap path; remaining gap is full runtime equivalence validation (archive variants, long-running multi-instance stability, and real plugin-side effects under production source sets).
-  - Thunder bridge now includes baseline task lifecycle tracking (`taskId`/stop/release) on Android and fallback platforms, but Thunder SDK-equivalent download/playback/streaming engine behavior is still not closed.
+  - Thunder bridge now includes baseline task lifecycle tracking and broader thunder-family link parsing (`thunder/qqdl/flashget` decode paths), but Thunder SDK-equivalent download/playback/streaming engine behavior is still not closed.
 
 Checkpoint conclusion: reverse work is **not fully complete** for migration-grade certainty yet; static reverse is largely complete, but runtime confirmation and implementation closure are still required.
 
