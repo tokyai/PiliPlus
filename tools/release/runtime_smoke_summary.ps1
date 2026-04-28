@@ -79,13 +79,15 @@ if (Test-Path $resolvedArtifactsDir) {
                 $lines.Add(("- generatedAtUtc: {0}" -f $manifest.generatedAtUtc))
                 $lines.Add(("- mode: {0}" -f $manifest.mode))
                 $lines.Add(("- targets: {0}" -f ($manifest.targets -join ", ")))
-                if ($manifest.artifactDetails) {
+                $hasArtifactDetails = $null -ne $manifest.PSObject.Properties["artifactDetails"]
+                $hasArtifacts = $null -ne $manifest.PSObject.Properties["artifacts"]
+                if ($hasArtifactDetails -and $manifest.artifactDetails) {
                     foreach ($item in $manifest.artifactDetails) {
                         $lines.Add(("- artifact: {0}" -f $item.path))
                         $lines.Add(("  - sizeBytes: {0}" -f $item.sizeBytes))
                         $lines.Add(("  - sha256: {0}" -f $item.sha256))
                     }
-                } elseif ($manifest.artifacts) {
+                } elseif ($hasArtifacts -and $manifest.artifacts) {
                     foreach ($path in $manifest.artifacts) {
                         $lines.Add(("- artifact: {0}" -f $path))
                     }
