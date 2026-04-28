@@ -341,6 +341,14 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/thunder_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 40
+- Fixed PHP install diagnostics semantics for download/extract separation:
+  - `downloaded` is now marked immediately after successful archive download,
+  - `extracted` continues to reflect actual unpack/install success.
+- This preserves failure visibility for cases where network download succeeds but archive extraction fails.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -376,3 +384,4 @@ This document records the practical migration increments after the initial rever
 - Jar crash markers now auto-synchronize with business invoke success/failure and reload lifecycle.
 - Thunder runtime snapshot diagnostics are now available in bridge and `/thunderTest` for active-task state checks.
 - Thunder stop flow now supports empty-id latest-task stop semantics for better reverse parity.
+- PHP install diagnostics now separate `downloaded` vs `extracted` states for clearer failure triage.

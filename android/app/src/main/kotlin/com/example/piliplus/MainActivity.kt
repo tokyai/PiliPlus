@@ -1464,12 +1464,12 @@ class MainActivity : AudioServiceActivity() {
                     "php_runtime_${System.currentTimeMillis()}${downloadArchiveExtension(downloadUrl)}"
                 )
                 downloadToFile(downloadUrl, archiveFile)
+                downloaded = true
                 archivePath = archiveFile.absolutePath
                 val extractResult = extractPhpRuntimeArchive(archiveFile, runtimeDir, downloadUrl)
                 extracted = extractResult.success
                 archiveFormat = extractResult.archiveFormat
                 extractMethod = extractResult.extractMethod
-                downloaded = extractResult.success
                 if (!extractResult.success) {
                     val suffix = extractResult.error.takeIf { it.isNotEmpty() }?.let { " ($it)" } ?: ""
                     errors.add(
