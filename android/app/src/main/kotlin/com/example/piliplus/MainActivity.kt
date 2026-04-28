@@ -1968,11 +1968,22 @@ class MainActivity : AudioServiceActivity() {
         val loadedIds: List<String>
         val crashedIds: List<String>
         val contextIds: List<String>
+        val contextItems: List<Map<String, Any?>>
         val recentItems: List<Map<String, String>>
         synchronized(jarRuntimeLock) {
             loadedIds = loadedJarSpiders.keys.toList()
             crashedIds = crashedJarSpiders.toList()
             contextIds = jarSpiderContexts.keys.toList()
+            contextItems = jarSpiderContexts.values.map { item ->
+                mapOf(
+                    "runtimeId" to item.runtimeId,
+                    "hasInstance" to (item.instance != null),
+                    "initAttempted" to item.initAttempted,
+                    "initialized" to item.initialized,
+                    "initMethod" to item.initMethod,
+                    "initError" to item.initError
+                )
+            }
             recentItems = recentJarSpiders.entries.map { entry ->
                 mapOf(
                     "jarPath" to entry.key,
@@ -1980,19 +1991,111 @@ class MainActivity : AudioServiceActivity() {
                 )
             }
         }
+        val initializedContextCount = contextItems.count { it["initialized"] == true }
         return mapOf(
             "success" to true,
             "loadedCount" to loadedIds.size,
             "crashedCount" to crashedIds.size,
             "contextCount" to contextIds.size,
+            "initializedContextCount" to initializedContextCount,
             "recentCount" to recentItems.size,
             "loadedIds" to loadedIds,
             "crashedIds" to crashedIds,
             "contextIds" to contextIds,
+            "contextItems" to contextItems,
             "recentItems" to recentItems,
             "message" to "Jar runtime state snapshot loaded.",
             "error" to ""
         )
+    }
+
+    private fun ensureJarSpiderInitialized(
+        context: JarSpiderExecutionContext,
+        instance: Any
+    ): JarSpiderLifecycleInvoke {
+        synchronized(jarRuntimeLock) {
+            if (context.initAttempted) {
+                return JarSpiderLifecycleInvoke(
+                    called = context.initialized,
+                    methodName = context.initMethod,
+                    error = context.initError
+                )
+            }
+            context.initAttempted = true
+        }
+
+        val methods = (context.clazz.methods + context.clazz.declaredMethods).distinctBy { item ->
+            "${item.declaringClass.name}#${item.name}(${item.parameterTypes.joinToString(",") { type -> type.name }})"
+        }
+        val candidateNames = listOf("init", "initialize", "setContext")
+        var lastError = ""
+
+        for (name in candidateNames) {
+            for (method in methods) {
+                if (method.name != name || method.parameterCount != 1) {
+                    continue
+                }
+                val argument = resolveJarSpiderInitArgument(method.parameterTypes[0]) ?: continue
+                val target = if (Modifier.isStatic(method.modifiers)) null else instance
+                try {
+                    method.isAccessible = true
+                    method.invoke(target, argument)
+                    synchronized(jarRuntimeLock) {
+                        context.initialized = true
+                        context.initMethod = "$name(${method.parameterTypes[0].simpleName})"
+                        context.initError = ""
+                    }
+                    return JarSpiderLifecycleInvoke(
+                        called = true,
+                        methodName = context.initMethod,
+                        error = ""
+                    )
+                } catch (e: Exception) {
+                    lastError = e.message ?: e.toString()
+                }
+            }
+            val zeroArgMethod = methods.firstOrNull { item ->
+                item.name == name && item.parameterCount == 0
+            } ?: continue
+            val target = if (Modifier.isStatic(zeroArgMethod.modifiers)) null else instance
+            try {
+                zeroArgMethod.isAccessible = true
+                zeroArgMethod.invoke(target)
+                synchronized(jarRuntimeLock) {
+                    context.initialized = true
+                    context.initMethod = "$name()"
+                    context.initError = ""
+                }
+                return JarSpiderLifecycleInvoke(
+                    called = true,
+                    methodName = context.initMethod,
+                    error = ""
+                )
+            } catch (e: Exception) {
+                lastError = e.message ?: e.toString()
+            }
+        }
+
+        synchronized(jarRuntimeLock) {
+            context.initialized = false
+            context.initMethod = ""
+            context.initError = lastError
+        }
+        return JarSpiderLifecycleInvoke(
+            called = false,
+            methodName = "",
+            error = lastError
+        )
+    }
+
+    private fun resolveJarSpiderInitArgument(parameterType: Class<*>): Any? {
+        if (parameterType.isAssignableFrom(this::class.java)) {
+            return this
+        }
+        if (parameterType.isAssignableFrom(applicationContext::class.java)) {
+            return applicationContext
+        }
+        return null
     }
 
     private fun invokeJarSpiderLifecycle(
@@ -2263,6 +2366,12 @@ class MainActivity : AudioServiceActivity() {
                                     }
                                     instance
                                 }
+                            }
+                        }
+                        if (target != null) {
+                            val init = ensureJarSpiderInitialized(context, target)
+                            if (init.error.isNotEmpty()) {
+                                lastError = "init_failed:${init.error}"
                             }
                         }
                         method.isAccessible = true
@@ -2663,7 +2772,11 @@ class MainActivity : AudioServiceActivity() {
         val runtimeId: String,
         val loader: DexClassLoader,
         val clazz: Class<*>,
-        var instance: Any?
+        var instance: Any?,
+        var initAttempted: Boolean = false,
+        var initialized: Boolean = false,
+        var initMethod: String = "",
+        var initError: String = ""
     )
 
     private data class JarSpiderLifecycleInvoke(

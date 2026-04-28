@@ -359,6 +359,20 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/php_bridge_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 42
+- Improved Android Jar spider side-effect compatibility with init lifecycle baseline:
+  - when creating non-static spider instances, bridge now attempts one-time reflective init hooks:
+    - `init(Context|Activity|Application|...)`
+    - `initialize(...)`
+    - `setContext(...)`
+    - and zero-arg `init()/initialize()/setContext()`
+  - init attempt/result is cached per spider context to avoid repeated side effects.
+- Extended `getJarRuntimeState` diagnostics:
+  - adds per-context init snapshot (`initAttempted/initialized/initMethod/initError`) and initialized context count.
+- This reduces a key migration gap where reverse jars rely on implicit init/context side effects.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -396,3 +410,4 @@ This document records the practical migration increments after the initial rever
 - Thunder stop flow now supports empty-id latest-task stop semantics for better reverse parity.
 - PHP install diagnostics now separate `downloaded` vs `extracted` states for clearer failure triage.
 - PHP runtime snapshot diagnostics are now available in bridge and `/phpBridgeTest` for install/server/process state checks.
+- Jar runtime context now includes one-time init hook attempts (`init/initialize/setContext`) with runtime-state diagnostics.
