@@ -1038,6 +1038,23 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 104
+- Enhanced runtime smoke summary with reverse completion snapshot section:
+  - updated `tools/release/runtime_smoke_summary.ps1`,
+  - summary now reads `build/runtime-smoke/reverse-completion-report.json` when present,
+  - outputs:
+    - `overallReady`,
+    - blocker category counts,
+    - pending blocker list.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/runtime_smoke_summary.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1 -MaxItems 5` passed.
+  - `build\\runtime-smoke\\summary.md` contains `Reverse Completion Snapshot` section.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1136,3 +1153,4 @@ This document records the practical migration increments after the initial rever
 - Runtime-smoke workflow summaries now also display blocker category counts for quicker diagnosis.
 - Reverse completion strict mode now supports runtime-validation-only gating to avoid environment-only false failures.
 - Runtime-smoke CI workflows now support runtime-validation-only gate input for practical non-macOS/non-device runners.
+- Runtime smoke summary now directly surfaces reverse completion snapshot for human audit.

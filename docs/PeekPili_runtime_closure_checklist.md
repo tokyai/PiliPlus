@@ -108,6 +108,8 @@ Optional smoke summary:
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1
 ```
 
+Summary output now includes reverse completion snapshot when `reverse-completion-report.json` is available.
+
 Current closure status snapshot:
 
 ```powershell

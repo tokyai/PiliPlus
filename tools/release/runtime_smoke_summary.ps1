@@ -65,6 +65,32 @@ if (Test-Path $resolvedRuntimeSmokeDir) {
 }
 $lines.Add("")
 
+$lines.Add("## Reverse Completion Snapshot")
+$reverseCompletionJsonPath = Join-Path $resolvedRuntimeSmokeDir "reverse-completion-report.json"
+if (Test-Path $reverseCompletionJsonPath) {
+    try {
+        $reversePayload = Get-Content -Raw $reverseCompletionJsonPath | ConvertFrom-Json -ErrorAction Stop
+        $lines.Add(("- overallReady: {0}" -f $reversePayload.overallReady))
+        if ($reversePayload.blockerCounts) {
+            $lines.Add(("- blockerCounts.environment: {0}" -f $reversePayload.blockerCounts.environment))
+            $lines.Add(("- blockerCounts.runtimeValidation: {0}" -f $reversePayload.blockerCounts.runtimeValidation))
+        }
+        if ($reversePayload.pending -and $reversePayload.pending.Count -gt 0) {
+            $lines.Add("- pending blockers:")
+            foreach ($item in $reversePayload.pending) {
+                $lines.Add(("  - {0}" -f $item))
+            }
+        } else {
+            $lines.Add("- pending blockers: none")
+        }
+    } catch {
+        $lines.Add(("- parseError: {0}" -f $_.Exception.Message))
+    }
+} else {
+    $lines.Add("- reverse-completion-report.json not found.")
+}
+$lines.Add("")
+
 $lines.Add("## Artifact Manifests")
 if (Test-Path $resolvedArtifactsDir) {
     $manifestFiles = @(Get-ChildItem -Path $resolvedArtifactsDir -Filter *.json -File | Sort-Object LastWriteTime -Descending | Select-Object -First $MaxItems)
