@@ -47,12 +47,25 @@ jobs:
           -RuntimeSmokeWaitSeconds ${{ github.event.inputs.smoke_wait_seconds || '3' }}
           -ArtifactManifestPath build/artifacts/windows-runtime-smoke-manifest.json
 
+      - name: Emit runtime closure status snapshot
+        shell: pwsh
+        run: >
+          powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1
+          -OutputPath build/runtime-smoke/windows-closure-status.json
+
       - name: Upload runtime smoke reports
         uses: actions/upload-artifact@v7
         with:
           archive: false
           name: windows-runtime-smoke-reports
           path: build/runtime-smoke/*.json
+
+      - name: Upload closure status snapshot
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: windows-runtime-closure-status
+          path: build/runtime-smoke/windows-closure-status.json
 
       - name: Upload build artifact manifest
         uses: actions/upload-artifact@v7

@@ -89,3 +89,7 @@ Current closure status snapshot:
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1
 ```
+
+CI artifact snapshots:
+- Windows workflow uploads `windows-runtime-closure-status`.
+- Android workflow uploads `android-runtime-closure-status`.

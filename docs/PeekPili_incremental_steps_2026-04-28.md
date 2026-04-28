@@ -738,6 +738,18 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1` passed.
   - status generated: `build\\runtime-smoke\\closure-status.json`.
 
+## Step 83
+- Integrated closure status snapshot into CI runtime-smoke workflows:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - both now run `tools/release/runtime_closure_status.ps1` and upload dedicated closure-status artifacts.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -815,3 +827,4 @@ This document records the practical migration increments after the initial rever
 - Runtime smoke outputs now support one-command summary aggregation for audit and handoff.
 - Runtime smoke summary output now handles both schema-v1 and schema-v2 artifact manifests.
 - Closure progress now has a machine-readable status snapshot with explicit pending blockers.
+- Runtime smoke CI workflows now publish per-run closure-status artifacts for audit traceability.
