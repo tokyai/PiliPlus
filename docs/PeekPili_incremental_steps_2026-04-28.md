@@ -635,6 +635,15 @@ This document records the practical migration increments after the initial rever
   - PowerShell script syntax parse passed.
   - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -SkipPubGet -InstallAndroidApk -LaunchAndroidAfterInstall` passed (no online device -> install/launch skipped explicitly).
 
+## Step 73
+- Added artifact-manifest export in unified build script:
+  - new flag: `-ArtifactManifestPath`,
+  - script now outputs JSON metadata (`generatedAtUtc/mode/targets/host`) and generated artifact paths.
+- Verified by checks:
+  - PowerShell script syntax parse passed.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -SkipPubGet -ArtifactManifestPath build/artifacts/windows-debug-manifest.json` passed.
+  - manifest generated: `build\\artifacts\\windows-debug-manifest.json`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -702,3 +711,4 @@ This document records the practical migration increments after the initial rever
 - Toolchain is ready (`flutter doctor` clean), but mobile runtime closure still depends on Android device/emulator and macOS iOS runtime validation environment.
 - Unified build flow now supports optional Android auto-install with robust adb discovery and graceful no-device skip.
 - Unified build flow now also supports optional Android app auto-launch after install.
+- Unified build flow now can emit machine-readable artifact manifests for release tracking/CI integration.

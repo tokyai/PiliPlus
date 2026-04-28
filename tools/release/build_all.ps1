@@ -7,7 +7,8 @@ param(
     [switch]$NoCodesign,
     [switch]$InstallAndroidApk,
     [switch]$LaunchAndroidAfterInstall,
-    [string]$AndroidApplicationId = "com.example.piliplus"
+    [string]$AndroidApplicationId = "com.example.piliplus",
+    [string]$ArtifactManifestPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,6 +24,7 @@ $isMacOsHost = if (Get-Variable IsMacOS -ErrorAction SilentlyContinue) {
 } else {
     $false
 }
+$script:BuildArtifacts = [System.Collections.Generic.List[string]]::new()
 
 function Write-Step {
     param([string]$Message)
@@ -62,9 +64,17 @@ function Build-Android {
     )
     Write-Step "Building Android APK..."
     Invoke-CommandChecked -Command ($FlutterCommand + @("build", "apk", "--$BuildMode"))
+    $apkPath = Get-AndroidApkPath -RepositoryRoot $RepositoryRoot -BuildMode $BuildMode
+    if (Test-Path $apkPath) {
+        $script:BuildArtifacts.Add($apkPath)
+    }
     if ($NeedAab) {
         Write-Step "Building Android App Bundle..."
         Invoke-CommandChecked -Command ($FlutterCommand + @("build", "appbundle", "--$BuildMode"))
+        $aabPath = Join-Path $RepositoryRoot "build\app\outputs\bundle\release\app-release.aab"
+        if (Test-Path $aabPath) {
+            $script:BuildArtifacts.Add($aabPath)
+        }
     }
     $installedDevices = @()
     if ($NeedInstall) {
@@ -97,6 +107,10 @@ function Build-Ios {
     }
     Write-Step "Building iOS..."
     Invoke-CommandChecked -Command ($FlutterCommand + $args)
+    $iosAppPath = Join-Path $root "build\ios\iphoneos\Runner.app"
+    if (Test-Path $iosAppPath) {
+        $script:BuildArtifacts.Add($iosAppPath)
+    }
 }
 
 function Build-Windows {
@@ -110,6 +124,15 @@ function Build-Windows {
     }
     Write-Step "Building Windows..."
     Invoke-CommandChecked -Command ($FlutterCommand + @("build", "windows", "--$BuildMode"))
+    $windowsDirName = switch ($BuildMode) {
+        "debug" { "Debug" }
+        "profile" { "Profile" }
+        default { "Release" }
+    }
+    $windowsExePath = Join-Path $root ("build\windows\x64\runner\" + $windowsDirName + "\piliplus.exe")
+    if (Test-Path $windowsExePath) {
+        $script:BuildArtifacts.Add($windowsExePath)
+    }
 }
 
 function Ensure-NuGetCli {
@@ -286,6 +309,34 @@ foreach ($target in $normalizedTargets) {
             throw "Unhandled target: $target"
         }
     }
+}
+
+if ($ArtifactManifestPath.Trim()) {
+    $manifestFile = if ([System.IO.Path]::IsPathRooted($ArtifactManifestPath)) {
+        $ArtifactManifestPath
+    } else {
+        Join-Path $root $ArtifactManifestPath
+    }
+    $manifestDir = Split-Path -Parent $manifestFile
+    if ($manifestDir -and -not (Test-Path $manifestDir)) {
+        New-Item -ItemType Directory -Path $manifestDir -Force | Out-Null
+    }
+    $manifestPayload = [ordered]@{
+        generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+        mode = $Mode
+        targets = $normalizedTargets
+        installAndroidApk = [bool]$InstallAndroidApk
+        launchAndroidAfterInstall = [bool]$LaunchAndroidAfterInstall
+        androidApplicationId = $AndroidApplicationId
+        artifacts = @($script:BuildArtifacts | Select-Object -Unique)
+        host = [ordered]@{
+            isWindows = $isWindowsHost
+            isMacOs = $isMacOsHost
+            os = [System.Environment]::OSVersion.VersionString
+        }
+    }
+    ($manifestPayload | ConvertTo-Json -Depth 6) | Set-Content -Encoding UTF8 $manifestFile
+    Write-Step ("Artifact manifest generated: " + $manifestFile)
 }
 
 Write-Step "Build flow finished."

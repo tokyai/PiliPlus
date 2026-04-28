@@ -56,6 +56,12 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets io
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -SkipPubGet
 ```
 
+### Emit artifact manifest (JSON)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -ArtifactManifestPath build/artifacts/windows-debug-manifest.json
+```
+
 ## Notes
 
 - On non-macOS hosts, iOS build is skipped with a clear message.
@@ -65,3 +71,4 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -SkipPubGet
 - `-InstallAndroidApk` is best-effort: if `adb` or online devices are not available, script logs skip and still succeeds.
 - `adb` discovery sources: `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `local.properties`, `android/local.properties`, then PATH.
 - Default launch package is `com.example.piliplus`; override by `-AndroidApplicationId`.
+- Set `-ArtifactManifestPath` to export build metadata and artifact file paths in JSON.
