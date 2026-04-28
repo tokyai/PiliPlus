@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:PiliPlus/models/peekpili/t4_api_config.dart';
 import 'package:PiliPlus/services/source_runtime/source_config_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_config_runtime_service.dart';
+import 'package:PiliPlus/services/source_runtime/t4_home_tab_config_service.dart';
+import 'package:PiliPlus/services/source_runtime/t4_navigation_config_service.dart';
 import 'package:PiliPlus/utils/peekpili_config_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -27,6 +29,8 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
 
   final _sourceConfigService = SourceConfigService();
   final _t4RuntimeService = const T4ConfigRuntimeService();
+  final _homeTabConfigService = T4HomeTabConfigService();
+  final _navigationConfigService = T4NavigationConfigService();
 
   List<T4ApiConfig> _configs = const <T4ApiConfig>[];
   String? _configParseError;
@@ -270,9 +274,30 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
       apiConfigs: runtimeState.configs,
       navAutoApply: _navAutoApply,
     );
+    var saveMessage = 'Source config saved';
+    if (_navAutoApply) {
+      final navApplyResult = await _navigationConfigService.applyFromActive(
+        allowRemoteFetch: false,
+      );
+      final homeApplyResult = await _homeTabConfigService.applyFromActive(
+        allowRemoteFetch: false,
+      );
+      final applied = <String>[
+        if (homeApplyResult.success) 'home tabs',
+        if (navApplyResult.success) 'bottom nav',
+      ];
+      if (applied.isNotEmpty) {
+        saveMessage =
+            'Source config saved. Auto applied: ${applied.join(' + ')}';
+      } else {
+        saveMessage =
+            'Source config saved. Auto apply skipped: '
+            '${homeApplyResult.error} | ${navApplyResult.error}';
+      }
+    }
     _currentApiConfigIdCtr.text = runtimeState.currentId;
     setState(_syncResolvedConfigs);
-    SmartDialog.showToast('Source config saved');
+    SmartDialog.showToast(saveMessage);
   }
 
   void _syncResolvedConfigs() {
