@@ -16,7 +16,8 @@ param(
     [switch]$RunReverseCompletionCheck,
     [string]$ReverseCompletionReportPath = "build/runtime-smoke/reverse-completion-report.md",
     [string]$ReverseCompletionJsonReportPath = "build/runtime-smoke/reverse-completion-report.json",
-    [switch]$StrictReverseCompletion
+    [switch]$StrictReverseCompletion,
+    [switch]$StrictReverseCompletionRuntimeOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -356,7 +357,8 @@ function Invoke-ReverseCompletionReport {
         [string]$ReportPath,
         [string]$JsonReportPath,
         [switch]$SkipStatusRefresh,
-        [switch]$StrictCheck
+        [switch]$StrictCheck,
+        [switch]$StrictRuntimeValidationOnly
     )
     $scriptPath = Join-Path $RepositoryRoot "tools/release/reverse_completion_check.ps1"
     if (-not (Test-Path $scriptPath)) {
@@ -372,6 +374,9 @@ function Invoke-ReverseCompletionReport {
     }
     if ($StrictCheck) {
         $command += "-Strict"
+    }
+    if ($StrictRuntimeValidationOnly) {
+        $command += "-StrictRuntimeValidationOnly"
     }
     Invoke-CommandChecked -Command $command
 }
@@ -445,7 +450,7 @@ if ($EmitRuntimeClosureStatus -or $RunRuntimeSmoke) {
 
 if ($RunReverseCompletionCheck) {
     Write-Step "Generating reverse completion check report..."
-    Invoke-ReverseCompletionReport -RepositoryRoot $root -ReportPath $ReverseCompletionReportPath -JsonReportPath $ReverseCompletionJsonReportPath -SkipStatusRefresh:$closureStatusGenerated -StrictCheck:$StrictReverseCompletion
+    Invoke-ReverseCompletionReport -RepositoryRoot $root -ReportPath $ReverseCompletionReportPath -JsonReportPath $ReverseCompletionJsonReportPath -SkipStatusRefresh:$closureStatusGenerated -StrictCheck:$StrictReverseCompletion -StrictRuntimeValidationOnly:$StrictReverseCompletionRuntimeOnly
     $resolvedReverseCompletionReportPath = Resolve-PathRelativeToRoot -RepositoryRoot $root -PathInput $ReverseCompletionReportPath
     if (Test-Path $resolvedReverseCompletionReportPath) {
         $script:BuildArtifacts.Add($resolvedReverseCompletionReportPath)

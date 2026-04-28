@@ -8,7 +8,8 @@ param(
     [int]$MinAndroidSmokeLogs = 1,
     [switch]$SkipSummary,
     [switch]$SkipStatus,
-    [switch]$Strict
+    [switch]$Strict,
+    [switch]$StrictRuntimeValidationOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -157,6 +158,10 @@ $jsonPayload = [ordered]@{
         environment = $environmentPendingCount
         runtimeValidation = $runtimeValidationPendingCount
     }
+    strictEvaluation = [ordered]@{
+        strict = [bool]$Strict
+        strictRuntimeValidationOnly = [bool]$StrictRuntimeValidationOnly
+    }
     nextActions = @($nextActions)
 }
 ($jsonPayload | ConvertTo-Json -Depth 6) | Set-Content -Encoding UTF8 $resolvedJsonReportPath
@@ -174,4 +179,8 @@ if ($overallReady) {
 
 if ($Strict -and -not $overallReady) {
     exit 2
+}
+
+if ($StrictRuntimeValidationOnly -and $runtimeValidationPendingCount -gt 0) {
+    exit 3
 }

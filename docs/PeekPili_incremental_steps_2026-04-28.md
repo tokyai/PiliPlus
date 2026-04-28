@@ -1004,6 +1004,27 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 102
+- Added runtime-validation-only strict gate mode for reverse completion checks:
+  - updated `tools/release/reverse_completion_check.ps1`,
+  - new option: `-StrictRuntimeValidationOnly`,
+  - strict-mode evaluation now supports:
+    - full strict (`-Strict`) by overall closure,
+    - runtime-only strict by `runtime_validation` blocker count.
+- Wired through unified build flow:
+  - updated `tools/release/build_all.ps1`,
+  - new option: `-StrictReverseCompletionRuntimeOnly`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/reverse_completion_check.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - Runtime-only strict fails when runtime blockers exist:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1 -StrictRuntimeValidationOnly` returned non-zero in current environment.
+  - Runtime-only strict passes when only environment blockers remain:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1 -MinAndroidSmokeLogs 0 -MinWindowsSmokeReports 0 -StrictRuntimeValidationOnly` returned zero in current environment.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1100,3 +1121,4 @@ This document records the practical migration increments after the initial rever
 - Unified build manifest now includes closure/report artifacts for end-to-end auditability.
 - Closure reports now separate environment blockers from runtime-validation blockers for clearer triage.
 - Runtime-smoke workflow summaries now also display blocker category counts for quicker diagnosis.
+- Reverse completion strict mode now supports runtime-validation-only gating to avoid environment-only false failures.
