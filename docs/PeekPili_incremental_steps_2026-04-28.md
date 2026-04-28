@@ -610,6 +610,14 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode release -SkipPubGet` passed,
   - artifact produced: `build\\app\\outputs\\flutter-apk\\app-release.apk`.
 
+## Step 70
+- Environment readiness checkpoint:
+  - `flutter doctor -v` passed with no issues,
+  - Android SDK/Windows Build Tools are available and healthy.
+- Runtime closure blocker snapshot:
+  - current connected devices are desktop/web only (`windows/chrome/edge`),
+  - no Android physical/emulator target and no macOS host in current environment, so iOS/Android runtime-equivalence closure items remain pending.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -674,3 +682,4 @@ This document records the practical migration increments after the initial rever
 - Android local packaging flow has been smoke-validated via the unified build script.
 - iOS non-macOS skip path has been validated to be explicit and non-failing.
 - Windows and Android release-mode packaging flows have been smoke-validated.
+- Toolchain is ready (`flutter doctor` clean), but mobile runtime closure still depends on Android device/emulator and macOS iOS runtime validation environment.
