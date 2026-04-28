@@ -39,6 +39,16 @@ This document records the practical migration increments after the initial rever
 - Source Config `Save` flow now immediately attempts local layout apply when auto-apply switch is enabled.
 - Save toast now reports applied/skipped status with reason.
 
+## Step 14
+- Re-validated reverse evidence for iOS/Windows with focused low-noise checks:
+  - iOS frameworks/plugins confirm Node/JS path signals.
+  - iOS unpacked payload has no python/php runtime files by keyword path scan.
+  - Windows release includes bundled `nodejs/python/php` runtimes, but no thunder/jar/goproxy-named plugin DLL evidence.
+- Updated `PeekPili_reverse_feature_inventory.md` with:
+  - focused iOS payload check subsection,
+  - refined cross-platform matrix,
+  - reverse completion checklist with explicit pending runtime/migration items.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -46,3 +56,6 @@ This document records the practical migration increments after the initial rever
 - Android/iOS/Windows compatibility strategy remains:
   - shared Dart runtime parser + per-platform adapter execution
   - fallback-safe behavior when target capability is not available
+- Reverse status is now explicit:
+  - static reverse inventory is mostly complete,
+  - runtime confirmation + implementation closure are still pending.

@@ -139,6 +139,19 @@ Confidence tags:
   - `/pythonTest`, `/catJsTest`, `/nodeJsTest`, `/webdavSetting`, `/t4Detail`.
   Evidence: `Frameworks/App.framework/App` strings `FACT`
 
+### 3.2.4 iOS local runtime payload check (focused)
+
+- Recursive file-name scan under `Payload/PeekPili.app`:
+  - matched `NodeMobile` / `flutter_node` framework names,
+  - matched only thunder UI image assets (`ic_thunder_*.png`) for thunder keyword.
+  Evidence: package file inventory scan `FACT`
+- No file or directory names matched local runtime binaries for Python/PHP:
+  - no `python*` runtime payload,
+  - no `php*` runtime payload.
+  Evidence: recursive path scan by keyword on unpacked IPA `FACT`
+- No iOS plugin registration signal equivalent to Android jar/php/thunder channels was found in app/plugin names.
+  Evidence: plugin-name extraction from `PeekPili` binary (`FlutterNodePlugin`, `FlutterJsPlugin`, etc.) `FACT`
+
 ## 3.3 Windows package evidence
 
 ### 3.3.1 Runtime layout
@@ -158,6 +171,8 @@ Confidence tags:
   - `portable_config/mpv.conf`,
   - `portable_config/script-opts/peekpili_danmaku.conf`.
   Evidence: `Release/portable_config/*` `FACT`
+- No dedicated thunder/jar/goproxy plugin DLL name was found in `Release/*.dll`.
+  Evidence: plugin DLL name inventory `FACT`
 
 ### 3.3.3 Business assets and routes
 
@@ -218,11 +233,11 @@ All above are `FACT` unless explicitly noted.
 | T4 source flow | Yes | Yes | Yes | Shared `app.so` markers and routes |
 | CatJS/Drpy2 | Yes | Yes | Yes | Shared assets and runtime markers |
 | Local Node service | Yes | Yes | Yes | Android `libnode.so`, iOS `NodeMobile.framework`, Windows `data/nodejs` |
-| Local Python runtime | Yes | Unknown | Yes | Clear on Android/Windows; unclear on iOS |
+| Local Python runtime | Yes | No payload evidence | Yes | iOS unpacked IPA has no python runtime files by name scan |
 | Jar spider engine | Yes | No evidence | No evidence | Android `com.peekpili/jar_loader` + `loadJar` |
 | GoProxy local proxy | Yes | No evidence | No evidence | Android `startGoProxy/stopGoProxy` code path |
-| Thunder/magnet plugin | Yes | No equivalent evidence | No equivalent evidence | Android `ThunderPlugin` + `libxl_thunder_sdk.so` |
-| PHP local runtime | Yes | No clear binary payload | Yes | Android plugin, Windows bundled runtime |
+| Thunder/magnet plugin | Yes | No plugin evidence | No plugin evidence | iOS/Windows have thunder UI markers but no equivalent plugin proof |
+| PHP local runtime | Yes | No payload evidence | Yes | Android plugin, Windows bundled runtime, iOS has no php runtime files by name scan |
 | Music notification + desktop lyrics | Yes | No evidence | No evidence | Android service/channel implementation |
 | T4 foreground proxy service | Yes | No evidence | No evidence | Android `T4ProxyForegroundService` |
 | WebDAV module | Yes | Yes | Yes | Shared keys/routes |
@@ -242,12 +257,20 @@ But Android binary evidence shows:
 
 Conclusion: documentation and binaries are not aligned for Android; migration should prioritize package evidence over README claims. `FACT`
 
-## 7. Runtime Validation Items Before Full Migration
+## 7. Reverse Completion Checklist
 
-- Verify whether iOS can truly execute Python source locally (current static evidence is insufficient).
-- Verify whether iOS PHP-related UI paths are placeholder-only (no clear php binary payload found).
-- Verify whether thunder flow has any iOS/Windows alternative implementation.
-- Validate config-driven home/bottom-tab switching behavior dynamically with real source config payloads.
+- `DONE (static)` Android native capability anchors for jar/php/thunder/goproxy are complete with channel-level and method-level evidence.
+- `DONE (static)` iOS/Windows package inventory and plugin/runtime inventory are complete enough to classify capability asymmetry.
+- `DONE (static)` iOS local runtime payload re-check:
+  - no python/php payload files by keyword path scan,
+  - only Node/JS related plugin/runtime signals are explicit.
+- `PENDING (runtime)` confirm whether iOS `/pythonTest` and related routes are strictly remote/proxy fallbacks at runtime.
+- `PENDING (runtime)` confirm whether thunder markers on iOS/Windows are UI-only with no hidden runtime bridge path.
+- `PENDING (migration)` current project still contains stub placeholders in:
+  - Android `sourceRuntimeProbe/sourceRuntimeExecute`,
+  - Desktop execute pipeline for source engines.
+
+Checkpoint conclusion: reverse work is **not fully complete** for migration-grade certainty yet; static reverse is largely complete, but runtime confirmation and implementation closure are still required.
 
 ## 8. Tools Installed During This Pass
 
