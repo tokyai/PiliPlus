@@ -2880,15 +2880,75 @@ class MainActivity : AudioServiceActivity() {
                 "error" to "unsupported_protocol"
             )
 
+        val medias = buildThunderParsedMedias(parsed.normalizedUrl, parsed.infoHash)
         return mapOf(
             "success" to true,
             "protocol" to parsed.protocol,
             "originalUrl" to parsed.originalUrl,
             "normalizedUrl" to parsed.normalizedUrl,
             "infoHash" to parsed.infoHash,
+            "mediaCount" to medias.size,
+            "medias" to medias,
             "message" to "Parsed successfully.",
             "error" to ""
         )
+    }
+
+    private fun buildThunderParsedMedias(
+        normalizedUrl: String,
+        infoHash: String
+    ): List<Map<String, Any?>> {
+        if (!normalizedUrl.startsWith("magnet:", ignoreCase = true)) {
+            return emptyList()
+        }
+        return try {
+            val uri = Uri.parse(normalizedUrl)
+            val displayName = uri.getQueryParameter("dn")?.trim().orEmpty()
+            val size = uri.getQueryParameter("xl")?.trim()?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+            val name = when {
+                displayName.isNotEmpty() -> displayName
+                infoHash.isNotEmpty() -> infoHash
+                else -> "magnet_item"
+            }
+            val ext = run {
+                val index = name.lastIndexOf('.')
+                if (index >= 0 && index < name.lastIndex) {
+                    name.substring(index + 1)
+                } else {
+                    ""
+                }
+            }
+            listOf(
+                mapOf(
+                    "name" to name,
+                    "size" to size,
+                    "index" to 0,
+                    "ext" to ext,
+                    "sizeText" to if (size > 0L) formatThunderByteSize(size) else ""
+                )
+            )
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun formatThunderByteSize(size: Long): String {
+        if (size <= 0L) {
+            return ""
+        }
+        val units = listOf("B", "KB", "MB", "GB", "TB")
+        var value = size.toDouble()
+        var index = 0
+        while (value >= 1024.0 && index < units.lastIndex) {
+            value /= 1024.0
+            index += 1
+        }
+        val text = if (index == 0) {
+            value.toLong().toString()
+        } else {
+            String.format("%.2f", value)
+        }
+        return "$text ${units[index]}"
     }
 
     private fun thunderGetPlayUrl(call: MethodCall): Map<String, Any?> {

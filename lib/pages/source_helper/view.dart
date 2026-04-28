@@ -2172,12 +2172,27 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
               children: [
                 Chip(label: Text(result.success ? 'PARSE OK' : 'PARSE FAIL')),
                 Chip(label: Text('protocol=${result.protocol}')),
+                Chip(label: Text('media=${result.mediaCount}')),
               ],
             ),
             const SizedBox(height: 8),
             SelectableText('normalized: ${result.normalizedUrl}'),
             const SizedBox(height: 4),
             SelectableText('infoHash: ${result.infoHash}'),
+            if (result.medias.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              SelectableText(
+                result.medias
+                    .map(
+                      (item) =>
+                          '${item.index}: ${item.name} [${item.ext}] size=${item.size} ${item.sizeText}',
+                    )
+                    .join('\n'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
             const SizedBox(height: 4),
             SelectableText('message: ${result.message}'),
             if (result.error.isNotEmpty) ...[

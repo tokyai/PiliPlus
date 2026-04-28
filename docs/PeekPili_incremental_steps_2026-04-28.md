@@ -405,6 +405,16 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 46
+- Improved Thunder parse output parity for migration diagnostics:
+  - Android `thunderParseMagnet` now returns `mediaCount` and `medias` snapshot list (`name/size/index/ext/sizeText`) for magnet links,
+  - Flutter `ThunderParseResult` now parses typed media snapshot fields,
+  - `/thunderTest` parse card now displays media count and media detail lines.
+- This closes a key schema gap versus reverse plugin parse results and improves downstream debug readability.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/thunder_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -446,3 +456,4 @@ This document records the practical migration increments after the initial rever
 - Jar init-lifecycle diagnostics are now parsed and displayed in `/jarTest` runtime-state UI.
 - Jar business API now supports broader method-signature fallback combinations to improve cross-jar compatibility.
 - Jar runtime resolution now uses recent-key/recent-jar fallback semantics when business call arguments are incomplete.
+- Thunder parse output now includes media snapshot structure (`mediaCount/medias`) for magnet diagnostics.

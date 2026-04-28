@@ -11,6 +11,8 @@ class ThunderParseResult {
     required this.originalUrl,
     required this.normalizedUrl,
     required this.infoHash,
+    required this.mediaCount,
+    required this.medias,
     required this.message,
     required this.error,
   });
@@ -20,6 +22,8 @@ class ThunderParseResult {
   final String originalUrl;
   final String normalizedUrl;
   final String infoHash;
+  final int mediaCount;
+  final List<ThunderMediaSnapshot> medias;
   final String message;
   final String error;
 
@@ -31,18 +35,89 @@ class ThunderParseResult {
         originalUrl: '',
         normalizedUrl: '',
         infoHash: '',
+        mediaCount: 0,
+        medias: <ThunderMediaSnapshot>[],
         message: 'Empty platform response.',
         error: 'empty_response',
       );
     }
+    int parseInt(Object? value) => switch (value) {
+      int item => item,
+      num item => item.toInt(),
+      String item => int.tryParse(item) ?? 0,
+      _ => 0,
+    };
+    final rawMedias = map['medias'];
+    final medias = rawMedias is List
+        ? rawMedias.map((item) {
+            if (item is Map<Object?, Object?>) {
+              return ThunderMediaSnapshot.fromMap(item);
+            }
+            if (item is Map) {
+              return ThunderMediaSnapshot.fromMap(
+                item.map(MapEntry.new),
+              );
+            }
+            return const ThunderMediaSnapshot(
+              name: '',
+              size: 0,
+              index: 0,
+              ext: '',
+              sizeText: '',
+            );
+          }).toList()
+        : const <ThunderMediaSnapshot>[];
     return ThunderParseResult(
       success: map['success'] == true,
       protocol: (map['protocol'] ?? '').toString(),
       originalUrl: (map['originalUrl'] ?? '').toString(),
       normalizedUrl: (map['normalizedUrl'] ?? '').toString(),
       infoHash: (map['infoHash'] ?? '').toString(),
+      mediaCount: parseInt(map['mediaCount']),
+      medias: medias,
       message: (map['message'] ?? '').toString(),
       error: (map['error'] ?? '').toString(),
+    );
+  }
+}
+
+class ThunderMediaSnapshot {
+  const ThunderMediaSnapshot({
+    required this.name,
+    required this.size,
+    required this.index,
+    required this.ext,
+    required this.sizeText,
+  });
+
+  final String name;
+  final int size;
+  final int index;
+  final String ext;
+  final String sizeText;
+
+  static ThunderMediaSnapshot fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const ThunderMediaSnapshot(
+        name: '',
+        size: 0,
+        index: 0,
+        ext: '',
+        sizeText: '',
+      );
+    }
+    int parseInt(Object? value) => switch (value) {
+      int item => item,
+      num item => item.toInt(),
+      String item => int.tryParse(item) ?? 0,
+      _ => 0,
+    };
+    return ThunderMediaSnapshot(
+      name: (map['name'] ?? '').toString(),
+      size: parseInt(map['size']),
+      index: parseInt(map['index']),
+      ext: (map['ext'] ?? '').toString(),
+      sizeText: (map['sizeText'] ?? '').toString(),
     );
   }
 }
@@ -303,6 +378,8 @@ class ThunderService {
         originalUrl: url,
         normalizedUrl: '',
         infoHash: '',
+        mediaCount: 0,
+        medias: const <ThunderMediaSnapshot>[],
         message: 'thunderParseMagnet platform error',
         error: error.message ?? error.code,
       );
@@ -313,6 +390,8 @@ class ThunderService {
         originalUrl: url,
         normalizedUrl: '',
         infoHash: '',
+        mediaCount: 0,
+        medias: const <ThunderMediaSnapshot>[],
         message: 'thunderParseMagnet not implemented',
         error: error.toString(),
       );
@@ -548,6 +627,8 @@ class ThunderService {
         originalUrl: '',
         normalizedUrl: '',
         infoHash: '',
+        mediaCount: 0,
+        medias: <ThunderMediaSnapshot>[],
         message: 'url is required.',
         error: 'empty_url',
       );
@@ -561,19 +642,72 @@ class ThunderService {
         originalUrl: '',
         normalizedUrl: '',
         infoHash: '',
+        mediaCount: 0,
+        medias: <ThunderMediaSnapshot>[],
         message: 'Unsupported url protocol.',
         error: 'unsupported_protocol',
       );
     }
+    final medias = _buildMagnetMedias(
+      normalizedUrl: parsed.normalizedUrl,
+      infoHash: parsed.infoHash,
+    );
     return ThunderParseResult(
       success: true,
       protocol: parsed.protocol,
       originalUrl: parsed.originalUrl,
       normalizedUrl: parsed.normalizedUrl,
       infoHash: parsed.infoHash,
+      mediaCount: medias.length,
+      medias: medias,
       message: 'Parsed successfully (fallback).',
       error: '',
     );
+  }
+
+  List<ThunderMediaSnapshot> _buildMagnetMedias({
+    required String normalizedUrl,
+    required String infoHash,
+  }) {
+    if (!normalizedUrl.toLowerCase().startsWith('magnet:')) {
+      return const <ThunderMediaSnapshot>[];
+    }
+    final uri = Uri.tryParse(normalizedUrl);
+    if (uri == null) {
+      return const <ThunderMediaSnapshot>[];
+    }
+    final name = (uri.queryParameters['dn'] ?? '').trim().isNotEmpty
+        ? (uri.queryParameters['dn'] ?? '').trim()
+        : (infoHash.isNotEmpty ? infoHash : 'magnet_item');
+    final size = int.tryParse((uri.queryParameters['xl'] ?? '').trim()) ?? 0;
+    final dotIndex = name.lastIndexOf('.');
+    final ext = dotIndex > 0 && dotIndex < name.length - 1
+        ? name.substring(dotIndex + 1)
+        : '';
+    return <ThunderMediaSnapshot>[
+      ThunderMediaSnapshot(
+        name: name,
+        size: size < 0 ? 0 : size,
+        index: 0,
+        ext: ext,
+        sizeText: _formatThunderSizeText(size),
+      ),
+    ];
+  }
+
+  String _formatThunderSizeText(int size) {
+    if (size <= 0) return '';
+    final units = <String>['B', 'KB', 'MB', 'GB', 'TB'];
+    var value = size.toDouble();
+    var unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+    final numberText = unitIndex == 0
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(2);
+    return '$numberText ${units[unitIndex]}';
   }
 
   _ParsedThunderUrl? _parseThunderLikeUrl(String raw) {
