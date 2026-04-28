@@ -1622,15 +1622,27 @@ class MainActivity : AudioServiceActivity() {
             message = "key and jar/jarPath are required for destroySpider.",
             error = "missing_key_or_jar"
         )
+        var lifecycleMethod = ""
+        var lifecycleError = ""
         synchronized(jarRuntimeLock) {
+            val runtime = loadedJarSpiders[identity.id]
+            val context = jarSpiderContexts[identity.id]
+            val lifecycle = invokeJarSpiderLifecycle(runtime, context)
+            lifecycleMethod = lifecycle.methodName
+            lifecycleError = lifecycle.error
             loadedJarSpiders.remove(identity.id)
             crashedJarSpiders.remove(identity.id)
             jarSpiderContexts.remove(identity.id)
         }
         return mapOf(
             "success" to true,
-            "message" to "Spider destroyed",
-            "error" to ""
+            "message" to if (lifecycleMethod.isNotEmpty()) {
+                "Spider destroyed with lifecycle method: $lifecycleMethod"
+            } else {
+                "Spider destroyed"
+            },
+            "error" to lifecycleError,
+            "lifecycleMethod" to lifecycleMethod
         )
     }
 
@@ -1689,7 +1701,18 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun clearAllJarSpiders(): Map<String, Any?> {
+        var lifecycleCount = 0
+        val lifecycleErrors = mutableListOf<String>()
         synchronized(jarRuntimeLock) {
+            for ((id, context) in jarSpiderContexts) {
+                val runtime = loadedJarSpiders[id]
+                val lifecycle = invokeJarSpiderLifecycle(runtime, context)
+                if (lifecycle.called) {
+                    lifecycleCount += 1
+                } else if (lifecycle.error.isNotEmpty()) {
+                    lifecycleErrors.add("$id: ${lifecycle.error}")
+                }
+            }
             crashedJarSpiders.clear()
             loadedJarSpiders.clear()
             recentJarSpiders.clear()
@@ -1697,8 +1720,61 @@ class MainActivity : AudioServiceActivity() {
         }
         return mapOf(
             "success" to true,
-            "message" to "All spiders cleared",
-            "error" to ""
+            "message" to "All spiders cleared (lifecycle invoked: $lifecycleCount)",
+            "error" to lifecycleErrors.joinToString(" | "),
+            "lifecycleInvoked" to lifecycleCount
+        )
+    }
+
+    private fun invokeJarSpiderLifecycle(
+        runtime: JarSpiderRuntime?,
+        context: JarSpiderExecutionContext?
+    ): JarSpiderLifecycleInvoke {
+        if (runtime == null || context == null) {
+            return JarSpiderLifecycleInvoke(
+                called = false,
+                methodName = "",
+                error = ""
+            )
+        }
+        val candidates = listOf("destroy", "release", "close")
+        for (name in candidates) {
+            val method = context.clazz.methods.firstOrNull { item ->
+                item.name == name && item.parameterCount == 0
+            } ?: context.clazz.declaredMethods.firstOrNull { item ->
+                item.name == name && item.parameterCount == 0
+            }
+            if (method == null) {
+                continue
+            }
+            val target = if (Modifier.isStatic(method.modifiers)) {
+                null
+            } else {
+                context.instance
+            }
+            if (!Modifier.isStatic(method.modifiers) && target == null) {
+                continue
+            }
+            return try {
+                method.isAccessible = true
+                method.invoke(target)
+                JarSpiderLifecycleInvoke(
+                    called = true,
+                    methodName = name,
+                    error = ""
+                )
+            } catch (e: Exception) {
+                JarSpiderLifecycleInvoke(
+                    called = false,
+                    methodName = name,
+                    error = e.message ?: e.toString()
+                )
+            }
+        }
+        return JarSpiderLifecycleInvoke(
+            called = false,
+            methodName = "",
+            error = ""
         )
     }
 
@@ -2312,6 +2388,12 @@ class MainActivity : AudioServiceActivity() {
         val loader: DexClassLoader,
         val clazz: Class<*>,
         var instance: Any?
+    )
+
+    private data class JarSpiderLifecycleInvoke(
+        val called: Boolean,
+        val methodName: String,
+        val error: String
     )
 
     private fun thunderParseMagnet(call: MethodCall): Map<String, Any?> {

@@ -271,6 +271,15 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/thunder_service.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 33
+- Improved Android Jar lifecycle parity by adding reflective lifecycle callback handling:
+  - `destroySpider` now attempts zero-arg lifecycle calls in order: `destroy` -> `release` -> `close` when runtime context exists,
+  - `clearAll` now attempts the same lifecycle callbacks for all cached spider contexts before state cleanup,
+  - lifecycle invoke result metadata is returned (`lifecycleMethod`, `lifecycleInvoked`) for migration diagnostics.
+- This reduces migration drift where reverse package plugins rely on explicit lifecycle side effects.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -299,3 +308,4 @@ This document records the practical migration increments after the initial rever
 - Android PHP bridge now includes baseline download/extract install orchestration, runtime env wiring, and scripts/bootstrap behavior closer to reverse plugin path.
 - Android generic source runtime path for PHP now shares bridge-aligned env/working-directory defaults, reducing behavior drift between debug entry routes.
 - Thunder fallback parser now accepts `thunder/qqdl/flashget` family links with normalized decode behavior on Android and non-Android fallback path.
+- Android Jar lifecycle bridge now triggers common plugin lifecycle methods (`destroy/release/close`) during destroy/clear flows when available.
