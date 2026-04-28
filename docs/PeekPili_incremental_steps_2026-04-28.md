@@ -787,6 +787,19 @@ This document records the practical migration increments after the initial rever
   - Gate mode verified (pending expected in current environment):
     - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1 -FailOnPending` returned non-zero as designed.
 
+## Step 86
+- Added optional closure gate control to runtime smoke workflows:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - both now expose `workflow_dispatch` input `fail_on_pending` (`false/true`),
+  - closure snapshot step appends `-FailOnPending` when `fail_on_pending=true`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -867,3 +880,4 @@ This document records the practical migration increments after the initial rever
 - Runtime smoke CI workflows now publish per-run closure-status artifacts for audit traceability.
 - Unified build flow now can auto-generate closure status snapshots and supports explicit status output path.
 - Closure status script now supports threshold policies and optional CI gate failure on pending blockers.
+- Runtime smoke workflows now support optional `fail_on_pending` gate for strict closure enforcement.

@@ -105,3 +105,4 @@ powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps
 CI artifact snapshots:
 - Windows workflow uploads `windows-runtime-closure-status`.
 - Android workflow uploads `android-runtime-closure-status`.
+- Both workflows support `fail_on_pending=true` to fail run when blockers remain.

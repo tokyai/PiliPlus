@@ -17,6 +17,14 @@ on:
         required: false
         default: "3"
         type: string
+      fail_on_pending:
+        description: Fail workflow if closure pending blockers exist
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   runtime-smoke-windows:
@@ -49,9 +57,18 @@ jobs:
 
       - name: Emit runtime closure status snapshot
         shell: pwsh
-        run: >
-          powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1
-          -OutputPath build/runtime-smoke/windows-closure-status.json
+        run: |
+          $command = @(
+            "powershell", "-ExecutionPolicy", "Bypass", "-File", "tools/release/runtime_closure_status.ps1",
+            "-OutputPath", "build/runtime-smoke/windows-closure-status.json"
+          )
+          if ("${{ github.event.inputs.fail_on_pending || 'false' }}" -eq "true") {
+            $command += "-FailOnPending"
+          }
+          & $command[0] @($command[1..($command.Length - 1)])
+          if ($LASTEXITCODE -ne 0) {
+            throw "runtime_closure_status failed with exit code $LASTEXITCODE"
+          }
 
       - name: Upload runtime smoke reports
         uses: actions/upload-artifact@v7
