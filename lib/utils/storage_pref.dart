@@ -595,6 +595,35 @@ abstract final class Pref {
   static String get tmdbImageProxy =>
       _setting.get(SettingBoxKey.tmdbImageProxy, defaultValue: '');
 
+  static String get goProxyCommand =>
+      _setting.get(SettingBoxKey.goProxyCommand, defaultValue: '');
+
+  static String get goProxyArgs =>
+      _setting.get(SettingBoxKey.goProxyArgs, defaultValue: '');
+
+  static int get goProxyPort =>
+      _setting.get(SettingBoxKey.goProxyPort, defaultValue: 9978);
+
+  static String get goProxyProxyUrl =>
+      _setting.get(SettingBoxKey.goProxyProxyUrl, defaultValue: '');
+
+  static String get goProxyAssetCandidates => _setting.get(
+    SettingBoxKey.goProxyAssetCandidates,
+    defaultValue: 'assets/runtime/goproxy,assets/goproxy,goproxy',
+  );
+
+  static String get jarTestPath =>
+      _setting.get(SettingBoxKey.jarTestPath, defaultValue: '');
+
+  static String get jarTestEntryClass =>
+      _setting.get(SettingBoxKey.jarTestEntryClass, defaultValue: '');
+
+  static String get jarTestMethod =>
+      _setting.get(SettingBoxKey.jarTestMethod, defaultValue: '');
+
+  static String get jarTestArgs =>
+      _setting.get(SettingBoxKey.jarTestArgs, defaultValue: '');
+
   static String get webdavUri =>
       _setting.get(SettingBoxKey.webdavUri, defaultValue: '');
 

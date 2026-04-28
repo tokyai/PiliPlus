@@ -180,6 +180,15 @@ abstract final class SettingBoxKey {
       tmdbIntegrationEnabled = 'tmdbIntegrationEnabled',
       tmdbImageProxy = 'tmdbImageProxy',
       tmdbSavedMatches = 'tmdb_saved_matches',
+      goProxyCommand = 'goProxyCommand',
+      goProxyArgs = 'goProxyArgs',
+      goProxyPort = 'goProxyPort',
+      goProxyProxyUrl = 'goProxyProxyUrl',
+      goProxyAssetCandidates = 'goProxyAssetCandidates',
+      jarTestPath = 'jarTestPath',
+      jarTestEntryClass = 'jarTestEntryClass',
+      jarTestMethod = 'jarTestMethod',
+      jarTestArgs = 'jarTestArgs',
       webdavSetting = 'webdavSetting';
 
   static const String webdavUri = 'webdavUri',

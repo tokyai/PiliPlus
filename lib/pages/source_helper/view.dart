@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:PiliPlus/services/source_runtime/go_proxy_service.dart';
 import 'package:PiliPlus/services/source_runtime/jar_loader_service.dart';
 import 'package:PiliPlus/services/source_runtime/source_engine.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_models.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
+import 'package:PiliPlus/utils/storage.dart';
+import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/utils.dart';
 
 class SourceHelperSettingPage extends StatelessWidget {
@@ -274,10 +278,10 @@ class _JarTestPageState extends State<JarTestPage> {
   void initState() {
     super.initState();
     _jarLoaderService = Get.find<JarLoaderService>();
-    _jarPathCtr = TextEditingController();
-    _entryClassCtr = TextEditingController();
-    _methodCtr = TextEditingController();
-    _argsCtr = TextEditingController();
+    _jarPathCtr = TextEditingController(text: Pref.jarTestPath);
+    _entryClassCtr = TextEditingController(text: Pref.jarTestEntryClass);
+    _methodCtr = TextEditingController(text: Pref.jarTestMethod);
+    _argsCtr = TextEditingController(text: Pref.jarTestArgs);
   }
 
   @override
@@ -350,6 +354,11 @@ class _JarTestPageState extends State<JarTestPage> {
                 onPressed: _loading ? null : _invoke,
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('Load Jar'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _saveJarPreset,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Save Preset'),
               ),
               OutlinedButton.icon(
                 onPressed: _invokeResult == null
@@ -443,6 +452,7 @@ class _JarTestPageState extends State<JarTestPage> {
 
   Future<void> _probe() async {
     setState(() => _loading = true);
+    _saveJarPreset(needToast: false);
     final result = await _jarLoaderService.probeJarFile(
       _jarPathCtr.text.trim(),
     );
@@ -455,6 +465,7 @@ class _JarTestPageState extends State<JarTestPage> {
 
   Future<void> _invoke() async {
     setState(() => _loading = true);
+    _saveJarPreset(needToast: false);
     final result = await _jarLoaderService.loadJar(
       jarPath: _jarPathCtr.text.trim(),
       entryClass: _entryClassCtr.text.trim(),
@@ -476,6 +487,18 @@ class _JarTestPageState extends State<JarTestPage> {
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
         .toList();
+  }
+
+  void _saveJarPreset({bool needToast = true}) {
+    GStorage.setting.putAll(<String, dynamic>{
+      SettingBoxKey.jarTestPath: _jarPathCtr.text.trim(),
+      SettingBoxKey.jarTestEntryClass: _entryClassCtr.text.trim(),
+      SettingBoxKey.jarTestMethod: _methodCtr.text.trim(),
+      SettingBoxKey.jarTestArgs: _argsCtr.text.trim(),
+    });
+    if (needToast) {
+      SmartDialog.showToast('Jar preset saved');
+    }
   }
 }
 
@@ -502,12 +525,20 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
   void initState() {
     super.initState();
     _goProxyService = Get.find<GoProxyService>();
-    _commandCtr = TextEditingController();
-    _argsCtr = TextEditingController(text: '--listen 127.0.0.1:9978');
-    _portCtr = TextEditingController(text: '9978');
-    _proxyUrlCtr = TextEditingController(text: 'http://127.0.0.1:9978');
+    _commandCtr = TextEditingController(text: Pref.goProxyCommand);
+    _argsCtr = TextEditingController(
+      text: Pref.goProxyArgs.isEmpty
+          ? '--listen 127.0.0.1:9978'
+          : Pref.goProxyArgs,
+    );
+    _portCtr = TextEditingController(text: Pref.goProxyPort.toString());
+    _proxyUrlCtr = TextEditingController(
+      text: Pref.goProxyProxyUrl.isEmpty
+          ? 'http://127.0.0.1:9978'
+          : Pref.goProxyProxyUrl,
+    );
     _assetCandidatesCtr = TextEditingController(
-      text: 'assets/runtime/goproxy,assets/goproxy,goproxy',
+      text: Pref.goProxyAssetCandidates,
     );
     _refreshStatus();
     _detectCommand();
@@ -613,6 +644,11 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                 icon: const Icon(Icons.inventory_2_outlined),
                 label: const Text('Prepare Asset'),
               ),
+              OutlinedButton.icon(
+                onPressed: _saveGoProxyPreset,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Save Preset'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -706,6 +742,7 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
 
   Future<void> _detectCommand() async {
     setState(() => _loading = true);
+    _saveGoProxyPreset(needToast: false);
     final result = await _goProxyService.detectCommand(
       candidates: _parseCsv(_assetCandidatesCtr.text),
     );
@@ -721,6 +758,7 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
 
   Future<void> _prepareBinary() async {
     setState(() => _loading = true);
+    _saveGoProxyPreset(needToast: false);
     final result = await _goProxyService.prepareBinary(
       assetCandidates: _parseCsv(_assetCandidatesCtr.text),
     );
@@ -736,6 +774,7 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
 
   Future<void> _start() async {
     setState(() => _loading = true);
+    _saveGoProxyPreset(needToast: false);
     final args = _parseArgs(_argsCtr.text);
     final port = int.tryParse(_portCtr.text.trim()) ?? 9978;
     final status = await _goProxyService.start(
@@ -777,5 +816,18 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
         .toList();
+  }
+
+  void _saveGoProxyPreset({bool needToast = true}) {
+    GStorage.setting.putAll(<String, dynamic>{
+      SettingBoxKey.goProxyCommand: _commandCtr.text.trim(),
+      SettingBoxKey.goProxyArgs: _argsCtr.text.trim(),
+      SettingBoxKey.goProxyPort: int.tryParse(_portCtr.text.trim()) ?? 9978,
+      SettingBoxKey.goProxyProxyUrl: _proxyUrlCtr.text.trim(),
+      SettingBoxKey.goProxyAssetCandidates: _assetCandidatesCtr.text.trim(),
+    });
+    if (needToast) {
+      SmartDialog.showToast('GoProxy preset saved');
+    }
   }
 }

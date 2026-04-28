@@ -51,6 +51,7 @@
 - 进行中：已落地 GoProxy 首条桥接链路（`startGoProxy` / `stopGoProxy` / `isGoProxyRunning` / `getProxyUrl`）以及 `/goProxyTest` 联调页。
 - 进行中：已新增 GoProxy 自动命令探测与资源下发（`detectGoProxyCommand` / `prepareGoProxyBinary`），`/goProxyTest` 可一键 Detect/Prepare。
 - 进行中：已新增 Jar 桥接骨架（`probeJarFile` / `loadJar`）与 `/jarTest` 联调页，当前为“文件校验 + 执行占位”模式。
+- 进行中：`/goProxyTest` 与 `/jarTest` 调试参数已接入本地持久化预设，支持重启后自动回填。
 - 未完成：配置驱动首页/底栏映射、真实业务脚本执行链路。
 
 ### Phase 3（P1）Android 平台能力迁移
