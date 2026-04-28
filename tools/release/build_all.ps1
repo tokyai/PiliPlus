@@ -15,6 +15,7 @@ param(
     [string]$RuntimeClosureStatusPath = "build/runtime-smoke/closure-status.json",
     [switch]$RunReverseCompletionCheck,
     [string]$ReverseCompletionReportPath = "build/runtime-smoke/reverse-completion-report.md",
+    [string]$ReverseCompletionJsonReportPath = "build/runtime-smoke/reverse-completion-report.json",
     [switch]$StrictReverseCompletion
 )
 
@@ -342,6 +343,7 @@ function Invoke-ReverseCompletionReport {
     param(
         [string]$RepositoryRoot,
         [string]$ReportPath,
+        [string]$JsonReportPath,
         [switch]$SkipStatusRefresh,
         [switch]$StrictCheck
     )
@@ -351,7 +353,8 @@ function Invoke-ReverseCompletionReport {
     }
     $command = @(
         "powershell", "-ExecutionPolicy", "Bypass", "-File", $scriptPath,
-        "-ReportPath", $ReportPath
+        "-ReportPath", $ReportPath,
+        "-JsonReportPath", $JsonReportPath
     )
     if ($SkipStatusRefresh) {
         $command += "-SkipStatus"
@@ -461,7 +464,7 @@ if ($EmitRuntimeClosureStatus -or $RunRuntimeSmoke) {
 
 if ($RunReverseCompletionCheck) {
     Write-Step "Generating reverse completion check report..."
-    Invoke-ReverseCompletionReport -RepositoryRoot $root -ReportPath $ReverseCompletionReportPath -SkipStatusRefresh:$closureStatusGenerated -StrictCheck:$StrictReverseCompletion
+    Invoke-ReverseCompletionReport -RepositoryRoot $root -ReportPath $ReverseCompletionReportPath -JsonReportPath $ReverseCompletionJsonReportPath -SkipStatusRefresh:$closureStatusGenerated -StrictCheck:$StrictReverseCompletion
 }
 
 Write-Step "Build flow finished."

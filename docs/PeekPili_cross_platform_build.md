@@ -119,6 +119,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - Override closure status path with `-RuntimeClosureStatusPath`.
 - `-RunReverseCompletionCheck` invokes `tools/release/reverse_completion_check.ps1` and writes report markdown.
 - Use `-ReverseCompletionReportPath` to override report path.
+- Use `-ReverseCompletionJsonReportPath` to override JSON report path.
 - Use `-StrictReverseCompletion` to fail build flow when closure is still incomplete.
 
 ## Runtime Smoke

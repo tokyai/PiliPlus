@@ -68,6 +68,12 @@ Unified flow can also emit reverse completion report directly:
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RunReverseCompletionCheck
 ```
 
+Optional custom JSON output path:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RunReverseCompletionCheck -ReverseCompletionJsonReportPath build/runtime-smoke/windows-reverse-completion.json
+```
+
 - Confirm thunder markers are UI-only and not backed by hidden local runtime bridge.
 - Confirm current migration behavior is consistent with packaged app expectations.
 

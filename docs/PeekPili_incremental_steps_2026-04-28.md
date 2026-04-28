@@ -923,6 +923,20 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 96
+- Extended unified build orchestrator with configurable reverse-completion JSON path:
+  - updated `tools/release/build_all.ps1`,
+  - new option: `-ReverseCompletionJsonReportPath`,
+  - build flow now passes both markdown and JSON output paths to `reverse_completion_check.ps1`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/build_all.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - Dry execution passed:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -EmitRuntimeClosureStatus -RunReverseCompletionCheck -ReverseCompletionJsonReportPath build/runtime-smoke/custom-reverse-completion.json`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1013,3 +1027,4 @@ This document records the practical migration increments after the initial rever
 - Runtime smoke CI workflows now publish summary/report/status artifacts as a full closure evidence set.
 - Reverse completion check now also emits a machine-readable JSON report for automation integration.
 - Runtime smoke CI workflows now also publish reverse completion JSON artifacts for machine consumers.
+- Unified build flow now supports custom reverse completion JSON report path.
