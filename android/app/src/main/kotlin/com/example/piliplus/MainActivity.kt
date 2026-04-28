@@ -47,6 +47,8 @@ class MainActivity : AudioServiceActivity() {
     private var goProxyLastArgs: List<String> = emptyList()
     private var goProxyLastWorkingDirectory: String = ""
     private var goProxyStartedAtMs: Long = 0L
+    private var goProxyLastPort: Int = 9978
+    private var goProxyLastDanmuDir: String = ""
     private val phpServerProcesses = mutableListOf<Process>()
     private val phpServerPorts = mutableListOf<Int>()
     private var phpServerRunning: Boolean = false
@@ -707,10 +709,11 @@ class MainActivity : AudioServiceActivity() {
             )
         }
 
-        val args = call.argument<List<String>>("args") ?: emptyList()
+        val rawArgs = call.argument<List<String>>("args") ?: emptyList()
         val port = call.argument<Int>("port") ?: 9978
         val proxyUrl = call.argument<String>("proxyUrl")?.trim()
         val workingDirectory = call.argument<String>("workingDirectory")?.trim()
+        val danmuDirInput = call.argument<String>("danmuDir")?.trim().orEmpty()
         val environment = (call.argument<Map<*, *>>("environment") ?: emptyMap<Any?, Any?>())
             .mapNotNull { (key, value) ->
                 if (key is String && value is String) {
@@ -719,9 +722,14 @@ class MainActivity : AudioServiceActivity() {
                     null
                 }
             }.toMap()
+        val fallbackDanmuDir = resolveGoProxyDanmuDir(danmuDirInput)
+        val argResolution = normalizeGoProxyArgs(rawArgs, port, fallbackDanmuDir)
+        val args = argResolution.args
         goProxyLastCommand = command
         goProxyLastArgs = args.toList()
         goProxyLastWorkingDirectory = workingDirectory.orEmpty()
+        goProxyLastPort = argResolution.port
+        goProxyLastDanmuDir = argResolution.danmuDir
 
         return try {
             val commandLine = mutableListOf(command).apply { addAll(args) }
@@ -735,7 +743,11 @@ class MainActivity : AudioServiceActivity() {
                 redirectErrorStream(false)
             }
             goProxyProcess = processBuilder.start()
-            goProxyUrl = if (!proxyUrl.isNullOrEmpty()) proxyUrl else "http://127.0.0.1:$port"
+            goProxyUrl = if (!proxyUrl.isNullOrEmpty()) {
+                proxyUrl
+            } else {
+                "http://127.0.0.1:${argResolution.port}"
+            }
             goProxyLastError = ""
             goProxyStartedAtMs = System.currentTimeMillis()
             mapOf(
@@ -818,12 +830,94 @@ class MainActivity : AudioServiceActivity() {
             "lastCommand" to goProxyLastCommand,
             "lastArgs" to goProxyLastArgs,
             "lastWorkingDirectory" to goProxyLastWorkingDirectory,
+            "port" to goProxyLastPort,
+            "danmuDir" to goProxyLastDanmuDir,
             "startedAtMs" to startedAt,
             "uptimeMs" to uptimeMs,
             "pid" to if (running) getProcessPidCompat(process) else null,
             "message" to "GoProxy runtime state snapshot loaded.",
             "error" to ""
         )
+    }
+
+    private data class GoProxyArgResolution(
+        val args: List<String>,
+        val port: Int,
+        val danmuDir: String
+    )
+
+    private fun normalizeGoProxyArgs(
+        sourceArgs: List<String>,
+        fallbackPort: Int,
+        fallbackDanmuDir: String
+    ): GoProxyArgResolution {
+        val args = sourceArgs.mapNotNull { item ->
+            item.trim().takeIf { it.isNotEmpty() }
+        }.toMutableList()
+        val resolvedPort = upsertGoProxyArgValue(
+            args = args,
+            aliases = listOf("-port", "--port"),
+            fallbackValue = fallbackPort.toString(),
+            normalize = { it.toIntOrNull()?.takeIf { value -> value > 0 }?.toString() }
+        ).toIntOrNull() ?: fallbackPort
+        val resolvedDanmuDir = upsertGoProxyArgValue(
+            args = args,
+            aliases = listOf("-danmu-dir", "--danmu-dir"),
+            fallbackValue = fallbackDanmuDir,
+            normalize = { value -> resolveGoProxyDanmuDir(value.trim()) }
+        )
+        return GoProxyArgResolution(
+            args = args.toList(),
+            port = resolvedPort,
+            danmuDir = resolvedDanmuDir
+        )
+    }
+
+    private fun upsertGoProxyArgValue(
+        args: MutableList<String>,
+        aliases: List<String>,
+        fallbackValue: String,
+        normalize: (String) -> String?
+    ): String {
+        val index = args.indexOfFirst { aliases.contains(it) }
+        if (index < 0) {
+            args.add(aliases.first())
+            args.add(fallbackValue)
+            return fallbackValue
+        }
+        val valueIndex = index + 1
+        val rawValue = args.getOrNull(valueIndex)?.takeIf { !it.startsWith("-") }
+        val resolvedValue = rawValue?.let(normalize)
+        if (!resolvedValue.isNullOrEmpty()) {
+            if (rawValue != resolvedValue && valueIndex < args.size) {
+                args[valueIndex] = resolvedValue
+            }
+            return resolvedValue
+        }
+        if (valueIndex < args.size) {
+            args[valueIndex] = fallbackValue
+        } else {
+            args.add(fallbackValue)
+        }
+        return fallbackValue
+    }
+
+    private fun resolveGoProxyDanmuDir(input: String): String {
+        val fallback = File(filesDir, "goproxy_danmu")
+        val target = if (input.isNotEmpty()) File(input) else fallback
+        return runCatching {
+            val candidate = target.canonicalFile
+            if (!candidate.exists()) {
+                candidate.mkdirs()
+            }
+            if (!candidate.exists() || !candidate.isDirectory) {
+                throw IOException("GoProxy danmu dir unavailable: ${candidate.absolutePath}")
+            }
+            candidate.absolutePath
+        }.getOrElse {
+            fallback.mkdirs()
+            fallback.absolutePath
+        }
     }
 
     private fun getProcessPidCompat(process: Process?): Long? {

@@ -91,6 +91,8 @@ class GoProxyRuntimeStateResult {
     required this.lastCommand,
     required this.lastArgs,
     required this.lastWorkingDirectory,
+    required this.port,
+    required this.danmuDir,
     required this.startedAtMs,
     required this.uptimeMs,
     required this.pid,
@@ -105,6 +107,8 @@ class GoProxyRuntimeStateResult {
   final String lastCommand;
   final List<String> lastArgs;
   final String lastWorkingDirectory;
+  final int port;
+  final String danmuDir;
   final int startedAtMs;
   final int uptimeMs;
   final int? pid;
@@ -121,6 +125,8 @@ class GoProxyRuntimeStateResult {
         lastCommand: '',
         lastArgs: <String>[],
         lastWorkingDirectory: '',
+        port: 0,
+        danmuDir: '',
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
@@ -146,6 +152,8 @@ class GoProxyRuntimeStateResult {
           ? rawArgs.map((item) => item.toString()).toList()
           : const <String>[],
       lastWorkingDirectory: (map['lastWorkingDirectory'] ?? '').toString(),
+      port: parseInt(map['port']),
+      danmuDir: (map['danmuDir'] ?? '').toString(),
       startedAtMs: parseInt(map['startedAtMs']),
       uptimeMs: parseInt(map['uptimeMs']),
       pid: switch (rawPid) {
@@ -171,6 +179,7 @@ class GoProxyService {
     required String command,
     List<String> args = const <String>[],
     int port = 9978,
+    String? danmuDir,
     String? workingDirectory,
     String? proxyUrl,
     Map<String, String> environment = const <String, String>{},
@@ -191,6 +200,7 @@ class GoProxyService {
           'command': command.trim(),
           'args': args,
           'port': port,
+          'danmuDir': danmuDir,
           'workingDirectory': workingDirectory,
           'proxyUrl': proxyUrl,
           'environment': environment,
@@ -358,6 +368,8 @@ class GoProxyService {
         lastCommand: '',
         lastArgs: <String>[],
         lastWorkingDirectory: '',
+        port: 0,
+        danmuDir: '',
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
@@ -379,6 +391,8 @@ class GoProxyService {
         lastCommand: '',
         lastArgs: const <String>[],
         lastWorkingDirectory: '',
+        port: 0,
+        danmuDir: '',
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
@@ -394,6 +408,8 @@ class GoProxyService {
         lastCommand: '',
         lastArgs: const <String>[],
         lastWorkingDirectory: '',
+        port: 0,
+        danmuDir: '',
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,

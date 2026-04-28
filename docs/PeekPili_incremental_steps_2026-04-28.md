@@ -425,6 +425,16 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 48
+- Improved GoProxy startup argument parity with reverse package behavior:
+  - Android bridge now normalizes effective process args by auto-upserting `-port` and `-danmu-dir`,
+  - runtime state now exposes resolved `port` and `danmuDir`,
+  - Flutter `GoProxyRuntimeStateResult` and `/goProxyTest` runtime card now display those fields.
+- This reduces behavior drift where configured GoProxy URL/port could mismatch the real process args and where danmu cache path was implicit.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -468,3 +478,4 @@ This document records the practical migration increments after the initial rever
 - Jar runtime resolution now uses recent-key/recent-jar fallback semantics when business call arguments are incomplete.
 - Thunder parse output now includes media snapshot structure (`mediaCount/medias`) for magnet diagnostics.
 - GoProxy runtime snapshot diagnostics are now available in bridge and `/goProxyTest`.
+- GoProxy startup args now auto-align on `-port`/`-danmu-dir`, and runtime state exposes resolved values.

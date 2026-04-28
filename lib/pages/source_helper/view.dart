@@ -1969,6 +1969,10 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                       'args: ${_runtimeStateResult!.lastArgs.join(' ')}',
                     ),
                     const SizedBox(height: 4),
+                    SelectableText('port: ${_runtimeStateResult!.port}'),
+                    const SizedBox(height: 4),
+                    SelectableText('danmuDir: ${_runtimeStateResult!.danmuDir}'),
+                    const SizedBox(height: 4),
                     SelectableText(
                       'workingDirectory: ${_runtimeStateResult!.lastWorkingDirectory}',
                     ),
