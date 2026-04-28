@@ -547,6 +547,17 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 61
+- Added cross-platform packaging orchestration baseline:
+  - introduced unified build script `tools/release/build_all.ps1`,
+  - script supports `android/ios/windows` target selection, `release/profile/debug` mode, optional Android `appbundle`, and iOS `--no-codesign`,
+  - script auto-detects `fvm flutter` or plain `flutter`, and skips unsupported host-target combinations with explicit logs.
+- Added build usage doc:
+  - `docs/PeekPili_cross_platform_build.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -603,3 +614,4 @@ This document records the practical migration increments after the initial rever
 - Source Runtime generic bridge now supports PHP runtime `status/start/stop` actions with runtime snapshot probe output.
 - Source Runtime generic bridge now supports Thunder runtime `status/parse/play/stop/release` actions with runtime snapshot probe output.
 - Source Runtime generic bridge now supports Jar runtime `status/crash_count/clear_marks/clear_all` actions with runtime snapshot probe output.
+- Cross-platform packaging baseline now has a unified PowerShell build orchestrator for Android/iOS/Windows.
