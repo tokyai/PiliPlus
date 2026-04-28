@@ -20,6 +20,7 @@ import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_active_config_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_home_tab_config_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_navigation_config_service.dart';
+import 'package:PiliPlus/services/source_runtime/thunder_service.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/calc_window_position.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
@@ -140,6 +141,7 @@ void main() async {
     ..lazyPut(DownloadService.new)
     ..lazyPut(GoProxyService.new)
     ..lazyPut(JarLoaderService.new)
+    ..lazyPut(ThunderService.new)
     ..lazyPut(SourceRuntimeService.new)
     ..lazyPut(T4ActiveConfigService.new)
     ..lazyPut(T4HomeTabConfigService.new)

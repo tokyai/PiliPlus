@@ -3,6 +3,7 @@ package com.example.piliplus
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.SearchManager
+import android.net.Uri
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -209,6 +210,34 @@ class MainActivity : AudioServiceActivity() {
                 }
                 "loadJar" -> {
                     result.success(loadJar(call))
+                }
+                "thunderIsSupported" -> {
+                    result.success(
+                        mapOf(
+                            "success" to true,
+                            "supported" to true,
+                            "message" to "Thunder bridge fallback is available.",
+                            "error" to ""
+                        )
+                    )
+                }
+                "thunderParseMagnet" -> {
+                    result.success(thunderParseMagnet(call))
+                }
+                "thunderGetPlayUrl" -> {
+                    result.success(thunderGetPlayUrl(call))
+                }
+                "thunderStopTask" -> {
+                    result.success(thunderStopTask(call))
+                }
+                "thunderRelease" -> {
+                    result.success(
+                        mapOf(
+                            "success" to true,
+                            "message" to "Thunder bridge released.",
+                            "error" to ""
+                        )
+                    )
                 }
 
                 else -> result.notImplemented()
@@ -1042,6 +1071,139 @@ class MainActivity : AudioServiceActivity() {
         val exitCode: Int,
         val message: String,
         val error: String
+    )
+
+    private fun thunderParseMagnet(call: MethodCall): Map<String, Any?> {
+        val url = call.argument<String>("url")?.trim().orEmpty()
+        if (url.isEmpty()) {
+            return mapOf(
+                "success" to false,
+                "message" to "url is required.",
+                "error" to "empty_url"
+            )
+        }
+        val parsed = parseThunderLikeUrl(url)
+            ?: return mapOf(
+                "success" to false,
+                "message" to "Unsupported url protocol.",
+                "error" to "unsupported_protocol"
+            )
+
+        return mapOf(
+            "success" to true,
+            "protocol" to parsed.protocol,
+            "originalUrl" to parsed.originalUrl,
+            "normalizedUrl" to parsed.normalizedUrl,
+            "infoHash" to parsed.infoHash,
+            "message" to "Parsed successfully.",
+            "error" to ""
+        )
+    }
+
+    private fun thunderGetPlayUrl(call: MethodCall): Map<String, Any?> {
+        val url = call.argument<String>("url")?.trim().orEmpty()
+        if (url.isEmpty()) {
+            return mapOf(
+                "success" to false,
+                "playUrl" to "",
+                "message" to "url is required.",
+                "error" to "empty_url"
+            )
+        }
+        val parsed = parseThunderLikeUrl(url)
+            ?: return mapOf(
+                "success" to false,
+                "playUrl" to "",
+                "message" to "Unsupported url protocol.",
+                "error" to "unsupported_protocol"
+            )
+        return mapOf(
+            "success" to true,
+            "playUrl" to parsed.normalizedUrl,
+            "protocol" to parsed.protocol,
+            "infoHash" to parsed.infoHash,
+            "message" to "Play url resolved.",
+            "error" to ""
+        )
+    }
+
+    private fun thunderStopTask(call: MethodCall): Map<String, Any?> {
+        val taskId = call.argument<String>("taskId")?.trim().orEmpty()
+        return mapOf(
+            "success" to true,
+            "taskId" to taskId,
+            "message" to "No active thunder task in fallback bridge.",
+            "error" to ""
+        )
+    }
+
+    private fun parseThunderLikeUrl(raw: String): ThunderParsedResult? {
+        val input = raw.trim()
+        if (input.isEmpty()) return null
+
+        if (input.startsWith("thunder://", ignoreCase = true)) {
+            val encoded = input.substringAfter("://", "")
+            if (encoded.isEmpty()) return null
+            return try {
+                val decoded = String(Base64.decode(encoded, Base64.DEFAULT), Charsets.UTF_8)
+                val unwrapped = decoded
+                    .removePrefix("AA")
+                    .removeSuffix("ZZ")
+                    .trim()
+                val nested = parseThunderLikeUrl(unwrapped) ?: ThunderParsedResult(
+                    protocol = "thunder",
+                    originalUrl = input,
+                    normalizedUrl = unwrapped,
+                    infoHash = ""
+                )
+                nested.copy(originalUrl = input)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        if (
+            input.startsWith("magnet:", ignoreCase = true) ||
+            input.startsWith("ed2k://", ignoreCase = true) ||
+            input.startsWith("ftp://", ignoreCase = true) ||
+            input.startsWith("http://", ignoreCase = true) ||
+            input.startsWith("https://", ignoreCase = true)
+        ) {
+            val protocol = input.substringBefore(':').lowercase()
+            val infoHash = if (protocol == "magnet") {
+                extractMagnetInfoHash(input)
+            } else {
+                ""
+            }
+            return ThunderParsedResult(
+                protocol = protocol,
+                originalUrl = input,
+                normalizedUrl = input,
+                infoHash = infoHash
+            )
+        }
+        return null
+    }
+
+    private fun extractMagnetInfoHash(url: String): String {
+        return try {
+            val uri = Uri.parse(url)
+            val xt = uri.getQueryParameter("xt").orEmpty()
+            if (xt.startsWith("urn:btih:", ignoreCase = true)) {
+                xt.removePrefix("urn:btih:").trim()
+            } else {
+                ""
+            }
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    private data class ThunderParsedResult(
+        val protocol: String,
+        val originalUrl: String,
+        val normalizedUrl: String,
+        val infoHash: String
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {

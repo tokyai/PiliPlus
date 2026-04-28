@@ -97,6 +97,22 @@ This document records the practical migration increments after the initial rever
 - Verified by Android build compile task:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 19
+- Added Android Thunder fallback bridge in `MainActivity`:
+  - `thunderIsSupported`
+  - `thunderParseMagnet`
+  - `thunderGetPlayUrl`
+  - `thunderStopTask`
+  - `thunderRelease`
+- Added Flutter-side `ThunderService` and Source Helper route/page:
+  - `/thunderTest` for direct capability probing and URL parse/play-url checks.
+- Current boundary remains explicit:
+  - this is a lightweight protocol/URL fallback bridge,
+  - not yet equivalent to reverse package Thunder SDK behavior.
+- Verified by checks:
+  - `flutter analyze` on changed Dart files passed,
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -111,3 +127,4 @@ This document records the practical migration increments after the initial rever
 - Android Source Helper generic bridge is no longer pure placeholder for Python/Node/PHP.
 - Android Jar helper no longer file-check stub and now has real reflective invoke capability.
 - Android Jar helper now supports `Main-Class` auto-discovery for runnable jars.
+- Android now has a callable Thunder fallback bridge and test page.

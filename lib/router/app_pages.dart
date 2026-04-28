@@ -210,6 +210,7 @@ class Routes {
     ),
     GetPage(name: '/jarTest', page: () => const JarTestPage()),
     GetPage(name: '/goProxyTest', page: () => const GoProxyTestPage()),
+    GetPage(name: '/thunderTest', page: () => const ThunderTestPage()),
     GetPage(
       name: '/t4ActiveConfigTest',
       page: () => const T4ActiveConfigTestPage(),

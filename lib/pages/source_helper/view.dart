@@ -9,6 +9,7 @@ import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_active_config_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_home_tab_config_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_navigation_config_service.dart';
+import 'package:PiliPlus/services/source_runtime/thunder_service.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -57,6 +58,12 @@ class SourceHelperSettingPage extends StatelessWidget {
             subtitle: '/goProxyTest',
             route: '/goProxyTest',
             icon: Icons.hub_outlined,
+          ),
+          _HelperRouteTile(
+            title: 'Thunder Test',
+            subtitle: '/thunderTest',
+            route: '/thunderTest',
+            icon: Icons.bolt_outlined,
           ),
           _HelperRouteTile(
             title: 'T4 Active Config',
@@ -851,6 +858,250 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
     if (needToast) {
       SmartDialog.showToast('GoProxy preset saved');
     }
+  }
+}
+
+class ThunderTestPage extends StatefulWidget {
+  const ThunderTestPage({super.key});
+
+  @override
+  State<ThunderTestPage> createState() => _ThunderTestPageState();
+}
+
+class _ThunderTestPageState extends State<ThunderTestPage> {
+  late final ThunderService _thunderService;
+  late final TextEditingController _urlCtr;
+  late final TextEditingController _taskIdCtr;
+
+  bool _loading = false;
+  bool _supported = false;
+  ThunderParseResult? _parseResult;
+  ThunderPlayUrlResult? _playResult;
+  ThunderStatusResult? _statusResult;
+
+  @override
+  void initState() {
+    super.initState();
+    _thunderService = Get.find<ThunderService>();
+    _urlCtr = TextEditingController(text: 'magnet:?xt=urn:btih:');
+    _taskIdCtr = TextEditingController();
+    _checkSupported();
+  }
+
+  @override
+  void dispose() {
+    _urlCtr.dispose();
+    _taskIdCtr.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Thunder Test')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Android Thunder Bridge'),
+            subtitle: Text(
+              _supported ? 'supported=true' : 'supported=false',
+            ),
+          ),
+          TextField(
+            controller: _urlCtr,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Magnet/Thunder URL',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _taskIdCtr,
+            decoration: const InputDecoration(
+              labelText: 'Task ID (for stopTask)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: _loading ? null : _checkSupported,
+                icon: const Icon(Icons.health_and_safety_outlined),
+                label: const Text('Is Supported'),
+              ),
+              FilledButton.icon(
+                onPressed: _loading ? null : _parse,
+                icon: const Icon(Icons.search),
+                label: const Text('Parse Magnet'),
+              ),
+              FilledButton.icon(
+                onPressed: _loading ? null : _getPlayUrl,
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Get Play Url'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _stopTask,
+                icon: const Icon(Icons.stop_circle_outlined),
+                label: const Text('Stop Task'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _release,
+                icon: const Icon(Icons.power_settings_new_outlined),
+                label: const Text('Release'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_parseResult != null) _buildParseCard(context, _parseResult!),
+          const SizedBox(height: 8),
+          if (_playResult != null) _buildPlayCard(context, _playResult!),
+          const SizedBox(height: 8),
+          if (_statusResult != null) _buildStatusCard(context, _statusResult!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParseCard(BuildContext context, ThunderParseResult result) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(label: Text(result.success ? 'PARSE OK' : 'PARSE FAIL')),
+                Chip(label: Text('protocol=${result.protocol}')),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SelectableText('normalized: ${result.normalizedUrl}'),
+            const SizedBox(height: 4),
+            SelectableText('infoHash: ${result.infoHash}'),
+            const SizedBox(height: 4),
+            SelectableText('message: ${result.message}'),
+            if (result.error.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              SelectableText('error: ${result.error}'),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayCard(BuildContext context, ThunderPlayUrlResult result) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(
+                  label: Text(result.success ? 'PLAY URL OK' : 'PLAY URL FAIL'),
+                ),
+                Chip(label: Text('protocol=${result.protocol}')),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SelectableText('playUrl: ${result.playUrl}'),
+            const SizedBox(height: 4),
+            SelectableText('infoHash: ${result.infoHash}'),
+            const SizedBox(height: 4),
+            SelectableText('message: ${result.message}'),
+            if (result.error.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              SelectableText('error: ${result.error}'),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(BuildContext context, ThunderStatusResult result) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Chip(label: Text(result.success ? 'STATUS OK' : 'STATUS FAIL')),
+            const SizedBox(height: 8),
+            SelectableText('message: ${result.message}'),
+            if (result.error.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              SelectableText('error: ${result.error}'),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _checkSupported() async {
+    setState(() => _loading = true);
+    final supported = await _thunderService.isSupported();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _supported = supported;
+    });
+  }
+
+  Future<void> _parse() async {
+    setState(() => _loading = true);
+    final result = await _thunderService.parseMagnet(_urlCtr.text.trim());
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _parseResult = result;
+    });
+  }
+
+  Future<void> _getPlayUrl() async {
+    setState(() => _loading = true);
+    final result = await _thunderService.getPlayUrl(url: _urlCtr.text.trim());
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _playResult = result;
+    });
+  }
+
+  Future<void> _stopTask() async {
+    setState(() => _loading = true);
+    final result = await _thunderService.stopTask(_taskIdCtr.text.trim());
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _statusResult = result;
+    });
+  }
+
+  Future<void> _release() async {
+    setState(() => _loading = true);
+    final result = await _thunderService.release();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _statusResult = result;
+    });
   }
 }
 
