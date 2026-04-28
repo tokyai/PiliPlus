@@ -580,6 +580,17 @@ This document records the practical migration increments after the initial rever
   - new document `docs/PeekPili_runtime_closure_checklist.md` captures remaining runtime validation work across Android/iOS/Windows and cross-platform packaging acceptance criteria.
 - Reverse inventory now links to this checklist from pending-runtime section for traceable closure tracking.
 
+## Step 65
+- Hardened cross-platform build script for Windows plugin dependency bootstrap:
+  - fixed single-target parsing under strict PowerShell mode,
+  - added host detection compatibility for Windows PowerShell (`$IsWindows/$IsMacOS` fallback),
+  - added automatic `tools/nuget/nuget.exe` bootstrap download for Windows build dependency chain.
+- Repo hygiene:
+  - `.gitignore` now ignores `tools/nuget/nuget.exe` (auto-downloaded tool binary).
+- Smoke verification:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -SkipPubGet` passed,
+  - artifact produced: `build\\windows\\x64\\runner\\Debug\\piliplus.exe`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -640,3 +651,4 @@ This document records the practical migration increments after the initial rever
 - GoProxy stop flow now uses staged signal escalation with stop-strategy diagnostics (`lastStopStrategy`).
 - GoProxy stop-strategy diagnostics are now visible end-to-end in Flutter runtime model and `/goProxyTest` UI.
 - Remaining reverse/migration closure tasks are now explicitly operationalized in `docs/PeekPili_runtime_closure_checklist.md`.
+- Windows local packaging flow has been smoke-validated via the unified build script.

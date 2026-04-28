@@ -10,6 +10,17 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+$isWindowsHost = if (Get-Variable IsWindows -ErrorAction SilentlyContinue) {
+    [bool]$IsWindows
+} else {
+    ($env:OS -eq "Windows_NT")
+}
+$isMacOsHost = if (Get-Variable IsMacOS -ErrorAction SilentlyContinue) {
+    [bool]$IsMacOS
+} else {
+    $false
+}
+
 function Write-Step {
     param([string]$Message)
     Write-Host ("[build_all] " + $Message)
@@ -56,7 +67,7 @@ function Build-Ios {
         [string]$BuildMode,
         [switch]$DisableCodesign
     )
-    if (-not $IsMacOS) {
+    if (-not $isMacOsHost) {
         Write-Step "Skip iOS build: host is not macOS."
         return
     }
@@ -73,7 +84,7 @@ function Build-Windows {
         [string[]]$FlutterCommand,
         [string]$BuildMode
     )
-    if (-not $IsWindows) {
+    if (-not $isWindowsHost) {
         Write-Step "Skip Windows build: host is not Windows."
         return
     }
@@ -81,16 +92,38 @@ function Build-Windows {
     Invoke-CommandChecked -Command ($FlutterCommand + @("build", "windows", "--$BuildMode"))
 }
 
+function Ensure-NuGetCli {
+    param(
+        [string]$RepositoryRoot
+    )
+    if (-not $isWindowsHost) {
+        return
+    }
+    $nugetDir = Join-Path $RepositoryRoot "tools/nuget"
+    $nugetExe = Join-Path $nugetDir "nuget.exe"
+    if (Test-Path $nugetExe) {
+        return
+    }
+    New-Item -ItemType Directory -Path $nugetDir -Force | Out-Null
+    $downloadUrl = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
+    Write-Step ("Downloading nuget.exe from " + $downloadUrl)
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $nugetExe -UseBasicParsing
+    if (-not (Test-Path $nugetExe)) {
+        throw "Failed to prepare nuget.exe at $nugetExe"
+    }
+}
+
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..\")
 Set-Location $root
+Ensure-NuGetCli -RepositoryRoot $root
 
-$normalizedTargets = $Targets | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ -ne "" }
+$normalizedTargets = @($Targets | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ -ne "" })
 if ($normalizedTargets.Count -eq 0) {
     throw "Targets is empty. Use android/ios/windows."
 }
 
 $validTargets = @("android", "ios", "windows")
-$unknownTargets = $normalizedTargets | Where-Object { $_ -notin $validTargets }
+$unknownTargets = @($normalizedTargets | Where-Object { $_ -notin $validTargets })
 if ($unknownTargets.Count -gt 0) {
     throw "Unknown targets: $($unknownTargets -join ', '). Valid: $($validTargets -join ', ')"
 }

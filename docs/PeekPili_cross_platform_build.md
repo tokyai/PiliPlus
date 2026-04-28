@@ -49,3 +49,4 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -SkipPubGet
 - On non-macOS hosts, iOS build is skipped with a clear message.
 - On non-Windows hosts, Windows build is skipped with a clear message.
 - Any failed build command stops the script with non-zero exit.
+- On Windows, script auto-prepares `tools/nuget/nuget.exe` if missing (required by some Windows plugins).
