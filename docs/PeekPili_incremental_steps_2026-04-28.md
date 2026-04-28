@@ -157,6 +157,25 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze` on updated jar/source-helper files passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 24
+- Added Android Jar spider business method baseline in `MainActivity`:
+  - `homeContent`
+  - `homeVideoContent`
+  - `categoryContent`
+  - `searchContent`
+  - `detailContent`
+  - `playerContent`
+  - `action`
+  - `setRecent`
+- Added reflective business-method invoke path:
+  - resolves runtime by `key + jar` identity (or `entryClass + jarPath` fallback),
+  - supports common primitive/list/map argument conversion for reverse spider method signatures.
+- `clearAll` now also clears local `setRecent` state cache.
+- Extended Flutter `JarLoaderService` with typed wrappers for the above business methods.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/jar_loader_service.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -176,3 +195,4 @@ This document records the practical migration increments after the initial rever
 - Source Helper generic tool now supports switching between echo-probe and real code-exec modes.
 - Jar Test now exposes advanced invoke controls for `mainClass/staticOnly`.
 - Android Jar lifecycle baseline method surface is now callable from Flutter (`destroy/mark/is/count/clear`), but deep spider API parity is still pending.
+- Android Jar business method surface (`home/search/detail/player/action/setRecent`) now has a reflective baseline bridge for migration integration.

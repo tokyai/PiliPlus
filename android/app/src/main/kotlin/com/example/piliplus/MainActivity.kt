@@ -39,6 +39,7 @@ class MainActivity : AudioServiceActivity() {
     private val jarRuntimeLock = Any()
     private val loadedJarSpiders = linkedMapOf<String, JarSpiderRuntime>()
     private val crashedJarSpiders = linkedSetOf<String>()
+    private val recentJarSpiders = linkedMapOf<String, String?>()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -231,6 +232,30 @@ class MainActivity : AudioServiceActivity() {
                 }
                 "clearAll" -> {
                     result.success(clearAllJarSpiders())
+                }
+                "homeContent" -> {
+                    result.success(homeContent(call))
+                }
+                "homeVideoContent" -> {
+                    result.success(homeVideoContent(call))
+                }
+                "categoryContent" -> {
+                    result.success(categoryContent(call))
+                }
+                "searchContent" -> {
+                    result.success(searchContent(call))
+                }
+                "detailContent" -> {
+                    result.success(detailContent(call))
+                }
+                "playerContent" -> {
+                    result.success(playerContent(call))
+                }
+                "action" -> {
+                    result.success(action(call))
+                }
+                "setRecent" -> {
+                    result.success(setRecent(call))
                 }
                 "thunderIsSupported" -> {
                     result.success(
@@ -1009,12 +1034,334 @@ class MainActivity : AudioServiceActivity() {
         synchronized(jarRuntimeLock) {
             crashedJarSpiders.clear()
             loadedJarSpiders.clear()
+            recentJarSpiders.clear()
         }
         return mapOf(
             "success" to true,
             "message" to "All spiders cleared",
             "error" to ""
         )
+    }
+
+    private fun homeContent(call: MethodCall): Map<String, Any?> {
+        val filter = call.argument<Boolean>("filter") ?: true
+        return invokeJarSpiderDataMethod(
+            call = call,
+            methodName = "homeContent",
+            argumentCandidates = listOf(listOf(filter)),
+            failureMessage = "homeContent error"
+        )
+    }
+
+    private fun homeVideoContent(call: MethodCall): Map<String, Any?> {
+        return invokeJarSpiderDataMethod(
+            call = call,
+            methodName = "homeVideoContent",
+            argumentCandidates = listOf(emptyList()),
+            failureMessage = "homeVideoContent error"
+        )
+    }
+
+    private fun categoryContent(call: MethodCall): Map<String, Any?> {
+        val tid = call.argument<String>("tid") ?: ""
+        val pg = call.argument<String>("pg") ?: "1"
+        val filter = call.argument<Boolean>("filter") ?: true
+        val extend = hashMapOf<String, String>()
+        val extendRaw = call.argument<Map<*, *>>("extend") ?: emptyMap<Any?, Any?>()
+        for ((key, value) in extendRaw) {
+            if (key != null && value != null) {
+                extend[key.toString()] = value.toString()
+            }
+        }
+        return invokeJarSpiderDataMethod(
+            call = call,
+            methodName = "categoryContent",
+            argumentCandidates = listOf(listOf(tid, pg, filter, extend)),
+            failureMessage = "categoryContent error"
+        )
+    }
+
+    private fun searchContent(call: MethodCall): Map<String, Any?> {
+        val keyword = call.argument<String>("keyword")
+            ?: call.argument<String>("wd")
+            ?: ""
+        val quick = call.argument<Boolean>("quick") ?: false
+        val pg = call.argument<String>("pg") ?: "1"
+        return invokeJarSpiderDataMethod(
+            call = call,
+            methodName = "searchContent",
+            argumentCandidates = listOf(
+                listOf(keyword, quick, pg),
+                listOf(keyword, quick)
+            ),
+            failureMessage = "searchContent error"
+        )
+    }
+
+    private fun detailContent(call: MethodCall): Map<String, Any?> {
+        val ids = call.argument<List<String>>("ids") ?: emptyList()
+        return invokeJarSpiderDataMethod(
+            call = call,
+            methodName = "detailContent",
+            argumentCandidates = listOf(listOf(ids)),
+            failureMessage = "detailContent error"
+        )
+    }
+
+    private fun playerContent(call: MethodCall): Map<String, Any?> {
+        val flag = call.argument<String>("flag") ?: ""
+        val id = call.argument<String>("id") ?: ""
+        val vipFlags = call.argument<List<String>>("vipFlags") ?: emptyList()
+        return invokeJarSpiderDataMethod(
+            call = call,
+            methodName = "playerContent",
+            argumentCandidates = listOf(listOf(flag, id, vipFlags)),
+            failureMessage = "playerContent error"
+        )
+    }
+
+    private fun action(call: MethodCall): Map<String, Any?> {
+        val action = call.argument<String>("action") ?: ""
+        return invokeJarSpiderDataMethod(
+            call = call,
+            methodName = "action",
+            argumentCandidates = listOf(listOf(action)),
+            failureMessage = "action error"
+        )
+    }
+
+    private fun setRecent(call: MethodCall): Map<String, Any?> {
+        val rawJarPath = sequenceOf(
+            call.argument<String>("jar"),
+            call.argument<String>("jarPath")
+        ).mapNotNull { it?.trim() }.firstOrNull { it.isNotEmpty() }
+            ?: return mapOf(
+                "success" to false,
+                "message" to "jar or jarPath is required.",
+                "error" to "missing_jar"
+            )
+        val key = sequenceOf(
+            call.argument<String>("key"),
+            call.argument<String>("entryClass")
+        ).mapNotNull { it?.trim() }.firstOrNull { it.isNotEmpty() }
+        val jarPath = resolveRuntimePath(rawJarPath).absolutePath
+        synchronized(jarRuntimeLock) {
+            recentJarSpiders[jarPath] = key
+        }
+        return mapOf(
+            "success" to true,
+            "message" to "Recent set successfully",
+            "error" to ""
+        )
+    }
+
+    private fun invokeJarSpiderDataMethod(
+        call: MethodCall,
+        methodName: String,
+        argumentCandidates: List<List<Any?>>,
+        failureMessage: String
+    ): Map<String, Any?> {
+        val runtime = resolveJarSpiderRuntime(call)
+            ?: return mapOf(
+                "success" to false,
+                "error" to "spider_not_found",
+                "message" to "Spider not found. Run loadJar first or provide entryClass + jarPath."
+            )
+        val invoke = invokeJarSpiderMethod(
+            runtime = runtime,
+            methodName = methodName,
+            argumentCandidates = argumentCandidates
+        )
+        if (!invoke.success) {
+            return mapOf(
+                "success" to false,
+                "error" to invoke.error,
+                "message" to failureMessage
+            )
+        }
+        return mapOf(
+            "success" to true,
+            "data" to invoke.result,
+            "message" to "ok",
+            "error" to ""
+        )
+    }
+
+    private fun resolveJarSpiderRuntime(call: MethodCall): JarSpiderRuntime? {
+        val identity = resolveJarSpiderIdentity(call)
+        if (identity != null) {
+            synchronized(jarRuntimeLock) {
+                loadedJarSpiders[identity.id]?.let { return it }
+            }
+        }
+        val entryClass = call.argument<String>("entryClass")?.trim().orEmpty()
+        if (entryClass.isEmpty()) {
+            return null
+        }
+        val rawJarPath = sequenceOf(
+            call.argument<String>("jar"),
+            call.argument<String>("jarPath")
+        ).mapNotNull { it?.trim() }.firstOrNull { it.isNotEmpty() } ?: return null
+        val jarPath = resolveRuntimePath(rawJarPath).absolutePath
+        return JarSpiderRuntime(
+            key = entryClass,
+            jarPath = jarPath,
+            entryClass = entryClass,
+            methodName = "dynamic",
+            loadedAt = 0L
+        )
+    }
+
+    private fun invokeJarSpiderMethod(
+        runtime: JarSpiderRuntime,
+        methodName: String,
+        argumentCandidates: List<List<Any?>>
+    ): JarSpiderMethodInvoke {
+        return try {
+            val jarFile = File(runtime.jarPath)
+            if (!jarFile.exists() || !jarFile.canRead()) {
+                return JarSpiderMethodInvoke(
+                    success = false,
+                    result = "",
+                    error = "jar_unavailable"
+                )
+            }
+            val optimizedDir = File(codeCacheDir, "jar_opt").apply { mkdirs() }
+            val loader = DexClassLoader(
+                jarFile.absolutePath,
+                optimizedDir.absolutePath,
+                null,
+                classLoader
+            )
+            val clazz = loader.loadClass(runtime.entryClass)
+            val methods = clazz.methods.filter { it.name == methodName }
+            if (methods.isEmpty()) {
+                return JarSpiderMethodInvoke(
+                    success = false,
+                    result = "",
+                    error = "method_not_found"
+                )
+            }
+            var lastError = "signature_not_supported"
+            for (args in argumentCandidates) {
+                for (method in methods) {
+                    if (method.parameterTypes.size != args.size) {
+                        continue
+                    }
+                    val bind = convertArguments(method.parameterTypes, args) ?: continue
+                    try {
+                        val target = if (Modifier.isStatic(method.modifiers)) {
+                            null
+                        } else {
+                            clazz.getDeclaredConstructor().newInstance()
+                        }
+                        method.isAccessible = true
+                        val value = method.invoke(target, *bind)
+                        return JarSpiderMethodInvoke(
+                            success = true,
+                            result = formatJarReturnValue(value),
+                            error = ""
+                        )
+                    } catch (e: Exception) {
+                        lastError = e.message ?: e.toString()
+                    }
+                }
+            }
+            JarSpiderMethodInvoke(
+                success = false,
+                result = "",
+                error = lastError
+            )
+        } catch (e: Exception) {
+            JarSpiderMethodInvoke(
+                success = false,
+                result = "",
+                error = e.message ?: e.toString()
+            )
+        }
+    }
+
+    private fun convertArguments(
+        parameterTypes: Array<Class<*>>,
+        args: List<Any?>
+    ): Array<Any?>? {
+        if (parameterTypes.size != args.size) {
+            return null
+        }
+        val converted = arrayOfNulls<Any?>(args.size)
+        for (index in parameterTypes.indices) {
+            val type = parameterTypes[index]
+            val value = args[index]
+            val convertedValue = convertArgument(type, value) ?: return null
+            converted[index] = convertedValue
+        }
+        return converted
+    }
+
+    private fun convertArgument(type: Class<*>, value: Any?): Any? {
+        if (value == null) {
+            return if (type.isPrimitive) null else null
+        }
+        if (type.isInstance(value)) {
+            return value
+        }
+        if (type == String::class.java) {
+            return value.toString()
+        }
+        if (type == Boolean::class.java || type == java.lang.Boolean.TYPE) {
+            return when (value) {
+                is Boolean -> value
+                is String -> value.toBooleanStrictOrNull()
+                else -> null
+            }
+        }
+        if (type == Int::class.java || type == Integer.TYPE) {
+            return when (value) {
+                is Int -> value
+                is Number -> value.toInt()
+                is String -> value.toIntOrNull()
+                else -> null
+            }
+        }
+        if (type == Long::class.java || type == java.lang.Long.TYPE) {
+            return when (value) {
+                is Long -> value
+                is Number -> value.toLong()
+                is String -> value.toLongOrNull()
+                else -> null
+            }
+        }
+        if (type == Double::class.java || type == java.lang.Double.TYPE) {
+            return when (value) {
+                is Double -> value
+                is Number -> value.toDouble()
+                is String -> value.toDoubleOrNull()
+                else -> null
+            }
+        }
+        if (type == Float::class.java || type == java.lang.Float.TYPE) {
+            return when (value) {
+                is Float -> value
+                is Number -> value.toFloat()
+                is String -> value.toFloatOrNull()
+                else -> null
+            }
+        }
+        if (type.isArray && type.componentType == String::class.java && value is List<*>) {
+            val stringArray = value.mapNotNull { it?.toString() }.toTypedArray()
+            return stringArray
+        }
+        if (List::class.java.isAssignableFrom(type) && value is List<*>) {
+            return value
+        }
+        if (Map::class.java.isAssignableFrom(type) && value is Map<*, *>) {
+            val map = hashMapOf<Any?, Any?>()
+            for ((key, item) in value) {
+                map[key] = item
+            }
+            return map
+        }
+        return null
     }
 
     private fun registerLoadedJarSpider(
@@ -1256,6 +1603,12 @@ class MainActivity : AudioServiceActivity() {
         val key: String,
         val jarPath: String,
         val id: String
+    )
+
+    private data class JarSpiderMethodInvoke(
+        val success: Boolean,
+        val result: String,
+        val error: String
     )
 
     private fun thunderParseMagnet(call: MethodCall): Map<String, Any?> {

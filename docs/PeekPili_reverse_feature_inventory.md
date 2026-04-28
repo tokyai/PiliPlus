@@ -268,7 +268,7 @@ Conclusion: documentation and binaries are not aligned for Android; migration sh
 - `PENDING (runtime)` confirm whether thunder markers on iOS/Windows are UI-only with no hidden runtime bridge path.
 - `PENDING (migration)` current project still contains implementation gaps:
   - Android `sourceRuntimeProbe/sourceRuntimeExecute` has moved from pure placeholder to command-bridge mode, but not yet equivalent to reverse package plugin depth.
-  - Android `loadJar` has moved to `DexClassLoader + reflection`, and lifecycle method surface (`destroy/mark/is/count/clear`) now has baseline bridge support, but it is still not equivalent to reverse package `JarLoader` full spider business API (`home/search/detail/player/action/setRecent/...`).
+  - Android `loadJar` + Jar lifecycle + spider business method surface (`home/search/detail/player/action/setRecent`) now have baseline reflective bridge support, but still lack reverse package `JarLoader`-equivalent runtime behavior guarantees (spider object lifecycle consistency, plugin side-effects, and full compatibility validation across real source jars).
   - Android has an initial thunder protocol fallback bridge (parse/playUrl route), and non-Android has local parser fallback, but Thunder SDK-equivalent lifecycle and streaming capabilities are still not closed.
 
 Checkpoint conclusion: reverse work is **not fully complete** for migration-grade certainty yet; static reverse is largely complete, but runtime confirmation and implementation closure are still required.

@@ -205,6 +205,37 @@ class JarSpiderCrashCountResult {
   }
 }
 
+class JarDataResult {
+  const JarDataResult({
+    required this.success,
+    required this.data,
+    required this.message,
+    required this.error,
+  });
+
+  final bool success;
+  final String data;
+  final String message;
+  final String error;
+
+  static JarDataResult fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const JarDataResult(
+        success: false,
+        data: '',
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+    return JarDataResult(
+      success: map['success'] == true,
+      data: (map['data'] ?? '').toString(),
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+    );
+  }
+}
+
 class JarLoaderService {
   JarLoaderService({
     MethodChannel? channel,
@@ -509,6 +540,202 @@ class JarLoaderService {
       return JarLifecycleActionResult(
         success: false,
         message: 'clearAll not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<JarDataResult> homeContent({
+    required String key,
+    required String jarPath,
+    bool filter = true,
+  }) {
+    return _invokeJarDataMethod(
+      method: 'homeContent',
+      args: <String, dynamic>{
+        'key': key.trim(),
+        'jar': jarPath.trim(),
+        'jarPath': jarPath.trim(),
+        'filter': filter,
+      },
+    );
+  }
+
+  Future<JarDataResult> homeVideoContent({
+    required String key,
+    required String jarPath,
+  }) {
+    return _invokeJarDataMethod(
+      method: 'homeVideoContent',
+      args: <String, dynamic>{
+        'key': key.trim(),
+        'jar': jarPath.trim(),
+        'jarPath': jarPath.trim(),
+      },
+    );
+  }
+
+  Future<JarDataResult> categoryContent({
+    required String key,
+    required String jarPath,
+    String tid = '',
+    String pg = '1',
+    bool filter = true,
+    Map<String, String> extend = const <String, String>{},
+  }) {
+    return _invokeJarDataMethod(
+      method: 'categoryContent',
+      args: <String, dynamic>{
+        'key': key.trim(),
+        'jar': jarPath.trim(),
+        'jarPath': jarPath.trim(),
+        'tid': tid,
+        'pg': pg,
+        'filter': filter,
+        'extend': extend,
+      },
+    );
+  }
+
+  Future<JarDataResult> searchContent({
+    required String key,
+    required String jarPath,
+    required String keyword,
+    bool quick = false,
+    String pg = '1',
+  }) {
+    return _invokeJarDataMethod(
+      method: 'searchContent',
+      args: <String, dynamic>{
+        'key': key.trim(),
+        'jar': jarPath.trim(),
+        'jarPath': jarPath.trim(),
+        'keyword': keyword,
+        'quick': quick,
+        'pg': pg,
+      },
+    );
+  }
+
+  Future<JarDataResult> detailContent({
+    required String key,
+    required String jarPath,
+    List<String> ids = const <String>[],
+  }) {
+    return _invokeJarDataMethod(
+      method: 'detailContent',
+      args: <String, dynamic>{
+        'key': key.trim(),
+        'jar': jarPath.trim(),
+        'jarPath': jarPath.trim(),
+        'ids': ids,
+      },
+    );
+  }
+
+  Future<JarDataResult> playerContent({
+    required String key,
+    required String jarPath,
+    String flag = '',
+    String id = '',
+    List<String> vipFlags = const <String>[],
+  }) {
+    return _invokeJarDataMethod(
+      method: 'playerContent',
+      args: <String, dynamic>{
+        'key': key.trim(),
+        'jar': jarPath.trim(),
+        'jarPath': jarPath.trim(),
+        'flag': flag,
+        'id': id,
+        'vipFlags': vipFlags,
+      },
+    );
+  }
+
+  Future<JarDataResult> actionContent({
+    required String key,
+    required String jarPath,
+    required String action,
+  }) {
+    return _invokeJarDataMethod(
+      method: 'action',
+      args: <String, dynamic>{
+        'key': key.trim(),
+        'jar': jarPath.trim(),
+        'jarPath': jarPath.trim(),
+        'action': action,
+      },
+    );
+  }
+
+  Future<JarLifecycleActionResult> setRecent({
+    required String jarPath,
+    String key = '',
+  }) async {
+    if (!Platform.isAndroid) {
+      return const JarLifecycleActionResult(
+        success: false,
+        message:
+            'Jar native lifecycle bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'setRecent',
+        <String, dynamic>{
+          'key': key.trim(),
+          'jar': jarPath.trim(),
+          'jarPath': jarPath.trim(),
+        },
+      );
+      return JarLifecycleActionResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'setRecent platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'setRecent not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<JarDataResult> _invokeJarDataMethod({
+    required String method,
+    required Map<String, dynamic> args,
+  }) async {
+    if (!Platform.isAndroid) {
+      return const JarDataResult(
+        success: false,
+        data: '',
+        message: 'Jar native data bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        method,
+        args,
+      );
+      return JarDataResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return JarDataResult(
+        success: false,
+        data: '',
+        message: '$method platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return JarDataResult(
+        success: false,
+        data: '',
+        message: '$method not implemented',
         error: error.toString(),
       );
     }
