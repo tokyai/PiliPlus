@@ -209,6 +209,16 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `flutter analyze lib/pages/source_helper/view.dart lib/router/app_pages.dart` passed.
 
+## Step 28
+- Improved Android Jar spider runtime consistency for business API calls:
+  - added per-`key+jar` cached execution context (`DexClassLoader + loaded class + lazy instance`),
+  - business API invoke now reuses cached spider instance for non-static methods,
+  - `destroySpider`/`clearAll` now also clear cached execution contexts,
+  - reloading a spider identity now resets stale cached context.
+- This reduces behavior drift caused by creating a new spider object on every call.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -232,3 +242,4 @@ This document records the practical migration increments after the initial rever
 - Thunder bridge now has baseline task lifecycle behavior (`taskId` tracking + stop/release state management) on Android and fallback platforms.
 - Jar business API baseline now has an integrated UI validation entry in Source Helper (`/jarTest`).
 - Source Helper now includes direct `PHP Test` route for runtime/migration verification.
+- Android Jar business API now reuses per-spider runtime context/instance baseline instead of always re-instantiating.

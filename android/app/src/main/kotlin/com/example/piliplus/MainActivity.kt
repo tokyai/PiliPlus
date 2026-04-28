@@ -40,6 +40,7 @@ class MainActivity : AudioServiceActivity() {
     private val loadedJarSpiders = linkedMapOf<String, JarSpiderRuntime>()
     private val crashedJarSpiders = linkedSetOf<String>()
     private val recentJarSpiders = linkedMapOf<String, String?>()
+    private val jarSpiderContexts = linkedMapOf<String, JarSpiderExecutionContext>()
     private val thunderRuntimeLock = Any()
     private val thunderActiveTasks = linkedMapOf<String, ThunderTaskState>()
     private var thunderTaskSequence = 0L
@@ -966,6 +967,7 @@ class MainActivity : AudioServiceActivity() {
         synchronized(jarRuntimeLock) {
             loadedJarSpiders.remove(identity.id)
             crashedJarSpiders.remove(identity.id)
+            jarSpiderContexts.remove(identity.id)
         }
         return mapOf(
             "success" to true,
@@ -1033,6 +1035,7 @@ class MainActivity : AudioServiceActivity() {
             crashedJarSpiders.clear()
             loadedJarSpiders.clear()
             recentJarSpiders.clear()
+            jarSpiderContexts.clear()
         }
         return mapOf(
             "success" to true,
@@ -1204,6 +1207,7 @@ class MainActivity : AudioServiceActivity() {
         return JarSpiderRuntime(
             key = entryClass,
             jarPath = jarPath,
+            runtimeId = buildJarSpiderId(entryClass, jarPath),
             entryClass = entryClass,
             methodName = "dynamic",
             loadedAt = 0L
@@ -1216,23 +1220,8 @@ class MainActivity : AudioServiceActivity() {
         argumentCandidates: List<List<Any?>>
     ): JarSpiderMethodInvoke {
         return try {
-            val jarFile = File(runtime.jarPath)
-            if (!jarFile.exists() || !jarFile.canRead()) {
-                return JarSpiderMethodInvoke(
-                    success = false,
-                    result = "",
-                    error = "jar_unavailable"
-                )
-            }
-            val optimizedDir = File(codeCacheDir, "jar_opt").apply { mkdirs() }
-            val loader = DexClassLoader(
-                jarFile.absolutePath,
-                optimizedDir.absolutePath,
-                null,
-                classLoader
-            )
-            val clazz = loader.loadClass(runtime.entryClass)
-            val methods = clazz.methods.filter { it.name == methodName }
+            val context = resolveOrCreateJarSpiderContext(runtime)
+            val methods = context.clazz.methods.filter { it.name == methodName }
             if (methods.isEmpty()) {
                 return JarSpiderMethodInvoke(
                     success = false,
@@ -1251,7 +1240,21 @@ class MainActivity : AudioServiceActivity() {
                         val target = if (Modifier.isStatic(method.modifiers)) {
                             null
                         } else {
-                            clazz.getDeclaredConstructor().newInstance()
+                            synchronized(jarRuntimeLock) {
+                                val existing = jarSpiderContexts[runtime.runtimeId]
+                                if (existing?.instance != null) {
+                                    existing.instance
+                                } else {
+                                    val instance = context.clazz.getDeclaredConstructor().newInstance()
+                                    if (existing != null) {
+                                        existing.instance = instance
+                                    } else {
+                                        context.instance = instance
+                                        jarSpiderContexts[runtime.runtimeId] = context
+                                    }
+                                    instance
+                                }
+                            }
                         }
                         method.isAccessible = true
                         val value = method.invoke(target, *bind)
@@ -1277,6 +1280,40 @@ class MainActivity : AudioServiceActivity() {
                 error = e.message ?: e.toString()
             )
         }
+    }
+
+    private fun resolveOrCreateJarSpiderContext(
+        runtime: JarSpiderRuntime
+    ): JarSpiderExecutionContext {
+        synchronized(jarRuntimeLock) {
+            jarSpiderContexts[runtime.runtimeId]?.let { return it }
+        }
+        val jarFile = File(runtime.jarPath)
+        if (!jarFile.exists() || !jarFile.canRead()) {
+            throw IllegalStateException("jar_unavailable")
+        }
+        val optimizedDir = File(codeCacheDir, "jar_opt").apply { mkdirs() }
+        val loader = DexClassLoader(
+            jarFile.absolutePath,
+            optimizedDir.absolutePath,
+            null,
+            classLoader
+        )
+        val clazz = loader.loadClass(runtime.entryClass)
+        val context = JarSpiderExecutionContext(
+            runtimeId = runtime.runtimeId,
+            loader = loader,
+            clazz = clazz,
+            instance = null
+        )
+        synchronized(jarRuntimeLock) {
+            val existing = jarSpiderContexts[runtime.runtimeId]
+            if (existing != null) {
+                return existing
+            }
+            jarSpiderContexts[runtime.runtimeId] = context
+        }
+        return context
     }
 
     private fun convertArguments(
@@ -1378,9 +1415,11 @@ class MainActivity : AudioServiceActivity() {
         synchronized(jarRuntimeLock) {
             for (alias in aliases) {
                 val id = buildJarSpiderId(alias, jarPath)
+                jarSpiderContexts.remove(id)
                 loadedJarSpiders[id] = JarSpiderRuntime(
                     key = alias,
                     jarPath = jarPath,
+                    runtimeId = id,
                     entryClass = entryClass,
                     methodName = methodName,
                     loadedAt = System.currentTimeMillis()
@@ -1592,6 +1631,7 @@ class MainActivity : AudioServiceActivity() {
     private data class JarSpiderRuntime(
         val key: String,
         val jarPath: String,
+        val runtimeId: String,
         val entryClass: String,
         val methodName: String,
         val loadedAt: Long
@@ -1607,6 +1647,13 @@ class MainActivity : AudioServiceActivity() {
         val success: Boolean,
         val result: String,
         val error: String
+    )
+
+    private data class JarSpiderExecutionContext(
+        val runtimeId: String,
+        val loader: DexClassLoader,
+        val clazz: Class<*>,
+        var instance: Any?
     )
 
     private fun thunderParseMagnet(call: MethodCall): Map<String, Any?> {
