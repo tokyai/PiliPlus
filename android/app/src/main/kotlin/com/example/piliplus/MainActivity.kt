@@ -689,7 +689,9 @@ class MainActivity : AudioServiceActivity() {
                 "proxyUrl" to goProxyUrl,
                 "message" to "GoProxy is already running.",
                 "error" to "",
-                "foregroundServiceRunning" to GoProxyForegroundService.isRunning()
+                "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+                "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
+                "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld()
             )
         }
 
@@ -768,6 +770,8 @@ class MainActivity : AudioServiceActivity() {
                 "error" to "",
                 "command" to command,
                 "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+                "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
+                "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
                 "foregroundServiceError" to goProxyForegroundLastError
             )
         } catch (e: Exception) {
@@ -798,6 +802,8 @@ class MainActivity : AudioServiceActivity() {
                 "message" to "GoProxy is not running.",
                 "error" to "",
                 "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+                "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
+                "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
                 "foregroundServiceError" to fgError
             )
         }
@@ -817,6 +823,8 @@ class MainActivity : AudioServiceActivity() {
                 "message" to "GoProxy process stopped.",
                 "error" to "",
                 "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+                "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
+                "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
                 "foregroundServiceError" to fgError
             )
         } catch (e: Exception) {
@@ -855,6 +863,8 @@ class MainActivity : AudioServiceActivity() {
             "uptimeMs" to uptimeMs,
             "pid" to if (running) getProcessPidCompat(process) else null,
             "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+            "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
+            "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
             "foregroundServiceError" to goProxyForegroundLastError,
             "message" to "GoProxy runtime state snapshot loaded.",
             "error" to ""

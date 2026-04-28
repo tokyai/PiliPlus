@@ -97,6 +97,8 @@ class GoProxyRuntimeStateResult {
     required this.uptimeMs,
     required this.pid,
     required this.foregroundServiceRunning,
+    required this.foregroundWakeLockHeld,
+    required this.foregroundWifiLockHeld,
     required this.foregroundServiceError,
     required this.message,
     required this.error,
@@ -115,6 +117,8 @@ class GoProxyRuntimeStateResult {
   final int uptimeMs;
   final int? pid;
   final bool foregroundServiceRunning;
+  final bool foregroundWakeLockHeld;
+  final bool foregroundWifiLockHeld;
   final String foregroundServiceError;
   final String message;
   final String error;
@@ -135,6 +139,8 @@ class GoProxyRuntimeStateResult {
         uptimeMs: 0,
         pid: null,
         foregroundServiceRunning: false,
+        foregroundWakeLockHeld: false,
+        foregroundWifiLockHeld: false,
         foregroundServiceError: '',
         message: 'Empty platform response.',
         error: 'empty_response',
@@ -169,6 +175,8 @@ class GoProxyRuntimeStateResult {
         _ => null,
       },
       foregroundServiceRunning: map['foregroundServiceRunning'] == true,
+      foregroundWakeLockHeld: map['foregroundWakeLockHeld'] == true,
+      foregroundWifiLockHeld: map['foregroundWifiLockHeld'] == true,
       foregroundServiceError: (map['foregroundServiceError'] ?? '').toString(),
       message: (map['message'] ?? '').toString(),
       error: (map['error'] ?? '').toString(),
@@ -382,6 +390,8 @@ class GoProxyService {
         uptimeMs: 0,
         pid: null,
         foregroundServiceRunning: false,
+        foregroundWakeLockHeld: false,
+        foregroundWifiLockHeld: false,
         foregroundServiceError: '',
         message: 'GoProxy native bridge is only implemented on Android now.',
         error: 'unsupported_platform',
@@ -407,6 +417,8 @@ class GoProxyService {
         uptimeMs: 0,
         pid: null,
         foregroundServiceRunning: false,
+        foregroundWakeLockHeld: false,
+        foregroundWifiLockHeld: false,
         foregroundServiceError: '',
         message: 'getGoProxyRuntimeState platform error',
         error: error.message ?? error.code,
@@ -426,6 +438,8 @@ class GoProxyService {
         uptimeMs: 0,
         pid: null,
         foregroundServiceRunning: false,
+        foregroundWakeLockHeld: false,
+        foregroundWifiLockHeld: false,
         foregroundServiceError: '',
         message: 'getGoProxyRuntimeState not implemented',
         error: error.toString(),

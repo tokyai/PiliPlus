@@ -1963,6 +1963,16 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                             'fg=${_runtimeStateResult!.foregroundServiceRunning}',
                           ),
                         ),
+                        Chip(
+                          label: Text(
+                            'wake=${_runtimeStateResult!.foregroundWakeLockHeld}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'wifi=${_runtimeStateResult!.foregroundWifiLockHeld}',
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),

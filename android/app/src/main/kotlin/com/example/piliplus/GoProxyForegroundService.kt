@@ -6,8 +6,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
@@ -23,6 +25,10 @@ class GoProxyForegroundService : Service() {
 
         @Volatile
         private var running: Boolean = false
+        @Volatile
+        private var wakeLockHeld: Boolean = false
+        @Volatile
+        private var wifiLockHeld: Boolean = false
 
         fun buildStartIntent(
             context: Context,
@@ -40,12 +46,18 @@ class GoProxyForegroundService : Service() {
             }
 
         fun isRunning(): Boolean = running
+        fun isWakeLockHeld(): Boolean = wakeLockHeld
+        fun isWifiLockHeld(): Boolean = wifiLockHeld
     }
+
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            releaseRuntimeLocks()
             stopForegroundCompat()
             stopSelf()
             running = false
@@ -59,11 +71,13 @@ class GoProxyForegroundService : Service() {
             NOTIFICATION_ID,
             buildNotification(proxyUrl, commandLine)
         )
+        acquireRuntimeLocks()
         running = true
         return START_STICKY
     }
 
     override fun onDestroy() {
+        releaseRuntimeLocks()
         running = false
         stopForegroundCompat()
         super.onDestroy()
@@ -76,6 +90,78 @@ class GoProxyForegroundService : Service() {
             @Suppress("DEPRECATION")
             stopForeground(true)
         }
+    }
+
+    private fun acquireRuntimeLocks() {
+        acquireWakeLock()
+        acquireWifiLock()
+    }
+
+    private fun releaseRuntimeLocks() {
+        releaseWakeLock()
+        releaseWifiLock()
+    }
+
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) {
+            wakeLockHeld = true
+            return
+        }
+        val manager = getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
+        runCatching {
+            val lock = manager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "peekpili:goproxy_wake_lock"
+            ).apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+            wakeLock = lock
+            wakeLockHeld = lock.isHeld
+        }.onFailure {
+            wakeLockHeld = false
+        }
+    }
+
+    private fun releaseWakeLock() {
+        runCatching {
+            wakeLock?.takeIf { it.isHeld }?.release()
+        }
+        wakeLock = null
+        wakeLockHeld = false
+    }
+
+    private fun acquireWifiLock() {
+        if (wifiLock?.isHeld == true) {
+            wifiLockHeld = true
+            return
+        }
+        val manager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            ?: return
+        runCatching {
+            val lockMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+            } else {
+                @Suppress("DEPRECATION")
+                WifiManager.WIFI_MODE_FULL_HIGH_PERF
+            }
+            val lock = manager.createWifiLock(lockMode, "peekpili:goproxy_wifi_lock").apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+            wifiLock = lock
+            wifiLockHeld = lock.isHeld
+        }.onFailure {
+            wifiLockHeld = false
+        }
+    }
+
+    private fun releaseWifiLock() {
+        runCatching {
+            wifiLock?.takeIf { it.isHeld }?.release()
+        }
+        wifiLock = null
+        wifiLockHeld = false
     }
 
     private fun buildNotification(proxyUrl: String, commandLine: String) =
