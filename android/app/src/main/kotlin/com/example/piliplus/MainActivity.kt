@@ -3120,9 +3120,24 @@ class MainActivity : AudioServiceActivity() {
         normalizedUrl: String,
         infoHash: String
     ): List<Map<String, Any?>> {
-        if (!normalizedUrl.startsWith("magnet:", ignoreCase = true)) {
-            return emptyList()
+        val lower = normalizedUrl.lowercase()
+        return when {
+            lower.startsWith("magnet:") -> buildMagnetMediaSnapshot(
+                normalizedUrl = normalizedUrl,
+                infoHash = infoHash
+            )?.let { listOf(it) } ?: emptyList()
+
+            lower.startsWith("ed2k://") -> buildEd2kMediaSnapshot(normalizedUrl)
+                ?.let { listOf(it) } ?: emptyList()
+
+            else -> emptyList()
         }
+    }
+
+    private fun buildMagnetMediaSnapshot(
+        normalizedUrl: String,
+        infoHash: String
+    ): Map<String, Any?>? {
         return try {
             val uri = Uri.parse(normalizedUrl)
             val displayName = uri.getQueryParameter("dn")?.trim().orEmpty()
@@ -3140,18 +3155,42 @@ class MainActivity : AudioServiceActivity() {
                     ""
                 }
             }
-            listOf(
-                mapOf(
-                    "name" to name,
-                    "size" to size,
-                    "index" to 0,
-                    "ext" to ext,
-                    "sizeText" to if (size > 0L) formatThunderByteSize(size) else ""
-                )
+            mapOf(
+                "name" to name,
+                "size" to size,
+                "index" to 0,
+                "ext" to ext,
+                "sizeText" to if (size > 0L) formatThunderByteSize(size) else ""
             )
         } catch (_: Exception) {
-            emptyList()
+            null
         }
+    }
+
+    private fun buildEd2kMediaSnapshot(normalizedUrl: String): Map<String, Any?>? {
+        val payload = normalizedUrl.substringAfter("://", "").trimStart('/')
+        if (payload.isEmpty()) return null
+        val segments = payload.split('|')
+        if (segments.size < 5) return null
+        if (!segments[0].equals("file", ignoreCase = true)) return null
+        val rawName = Uri.decode(segments[1]).trim()
+        val name = if (rawName.isNotEmpty()) rawName else "ed2k_item"
+        val size = segments[2].trim().toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+        val ext = run {
+            val index = name.lastIndexOf('.')
+            if (index >= 0 && index < name.lastIndex) {
+                name.substring(index + 1)
+            } else {
+                ""
+            }
+        }
+        return mapOf(
+            "name" to name,
+            "size" to size,
+            "index" to 0,
+            "ext" to ext,
+            "sizeText" to if (size > 0L) formatThunderByteSize(size) else ""
+        )
     }
 
     private fun formatThunderByteSize(size: Long): String {

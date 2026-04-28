@@ -648,7 +648,7 @@ class ThunderService {
         error: 'unsupported_protocol',
       );
     }
-    final medias = _buildMagnetMedias(
+    final medias = _buildParsedMedias(
       normalizedUrl: parsed.normalizedUrl,
       infoHash: parsed.infoHash,
     );
@@ -665,17 +665,29 @@ class ThunderService {
     );
   }
 
-  List<ThunderMediaSnapshot> _buildMagnetMedias({
+  List<ThunderMediaSnapshot> _buildParsedMedias({
     required String normalizedUrl,
     required String infoHash,
   }) {
-    if (!normalizedUrl.toLowerCase().startsWith('magnet:')) {
-      return const <ThunderMediaSnapshot>[];
+    final lower = normalizedUrl.toLowerCase();
+    if (lower.startsWith('magnet:')) {
+      return _buildMagnetMediaSnapshot(
+        normalizedUrl: normalizedUrl,
+        infoHash: infoHash,
+      );
     }
+    if (lower.startsWith('ed2k://')) {
+      return _buildEd2kMediaSnapshot(normalizedUrl);
+    }
+    return const <ThunderMediaSnapshot>[];
+  }
+
+  List<ThunderMediaSnapshot> _buildMagnetMediaSnapshot({
+    required String normalizedUrl,
+    required String infoHash,
+  }) {
     final uri = Uri.tryParse(normalizedUrl);
-    if (uri == null) {
-      return const <ThunderMediaSnapshot>[];
-    }
+    if (uri == null) return const <ThunderMediaSnapshot>[];
     final name = (uri.queryParameters['dn'] ?? '').trim().isNotEmpty
         ? (uri.queryParameters['dn'] ?? '').trim()
         : (infoHash.isNotEmpty ? infoHash : 'magnet_item');
@@ -693,6 +705,39 @@ class ThunderService {
         sizeText: _formatThunderSizeText(size),
       ),
     ];
+  }
+
+  List<ThunderMediaSnapshot> _buildEd2kMediaSnapshot(String normalizedUrl) {
+    try {
+      final prefixIndex = normalizedUrl.indexOf('://');
+      final payload = prefixIndex >= 0
+          ? normalizedUrl.substring(prefixIndex + 3)
+          : normalizedUrl;
+      final trimmed = payload.replaceFirst(RegExp(r'^/+'), '');
+      if (trimmed.isEmpty) return const <ThunderMediaSnapshot>[];
+      final segments = trimmed.split('|');
+      if (segments.length < 5 || segments.first.toLowerCase() != 'file') {
+        return const <ThunderMediaSnapshot>[];
+      }
+      final rawName = Uri.decodeComponent(segments[1]).trim();
+      final name = rawName.isNotEmpty ? rawName : 'ed2k_item';
+      final size = int.tryParse(segments[2].trim()) ?? 0;
+      final dotIndex = name.lastIndexOf('.');
+      final ext = dotIndex > 0 && dotIndex < name.length - 1
+          ? name.substring(dotIndex + 1)
+          : '';
+      return <ThunderMediaSnapshot>[
+        ThunderMediaSnapshot(
+          name: name,
+          size: size < 0 ? 0 : size,
+          index: 0,
+          ext: ext,
+          sizeText: _formatThunderSizeText(size),
+        ),
+      ];
+    } catch (_) {
+      return const <ThunderMediaSnapshot>[];
+    }
   }
 
   String _formatThunderSizeText(int size) {

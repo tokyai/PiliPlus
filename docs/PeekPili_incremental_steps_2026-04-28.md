@@ -466,6 +466,15 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 52
+- Improved Thunder parse-media snapshot coverage for `ed2k` links:
+  - Android thunder parser now extracts file-name/size/ext snapshot from canonical `ed2k://|file|...|` format,
+  - non-Android Thunder fallback parser now mirrors the same `ed2k` media snapshot behavior.
+- This reduces parse-schema drift where `ed2k` previously returned protocol-only success without media snapshot detail.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/thunder_service.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -513,3 +522,4 @@ This document records the practical migration increments after the initial rever
 - GoProxy now has a foreground-service baseline (notification + stop action) linked to process lifecycle.
 - GoProxy foreground-service runtime now includes wake/wifi lock baseline with state visibility.
 - GoProxy notification stop path now includes tracked child-pid termination attempt with runtime pid visibility.
+- Thunder parse-media snapshot now covers both magnet and canonical ed2k file links.
