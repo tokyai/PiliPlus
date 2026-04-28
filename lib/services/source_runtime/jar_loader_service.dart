@@ -256,16 +256,57 @@ class JarRuntimeRecentItem {
   }
 }
 
+class JarRuntimeContextItem {
+  const JarRuntimeContextItem({
+    required this.runtimeId,
+    required this.hasInstance,
+    required this.initAttempted,
+    required this.initialized,
+    required this.initMethod,
+    required this.initError,
+  });
+
+  final String runtimeId;
+  final bool hasInstance;
+  final bool initAttempted;
+  final bool initialized;
+  final String initMethod;
+  final String initError;
+
+  static JarRuntimeContextItem fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const JarRuntimeContextItem(
+        runtimeId: '',
+        hasInstance: false,
+        initAttempted: false,
+        initialized: false,
+        initMethod: '',
+        initError: '',
+      );
+    }
+    return JarRuntimeContextItem(
+      runtimeId: (map['runtimeId'] ?? '').toString(),
+      hasInstance: map['hasInstance'] == true,
+      initAttempted: map['initAttempted'] == true,
+      initialized: map['initialized'] == true,
+      initMethod: (map['initMethod'] ?? '').toString(),
+      initError: (map['initError'] ?? '').toString(),
+    );
+  }
+}
+
 class JarRuntimeStateResult {
   const JarRuntimeStateResult({
     required this.success,
     required this.loadedCount,
     required this.crashedCount,
     required this.contextCount,
+    required this.initializedContextCount,
     required this.recentCount,
     required this.loadedIds,
     required this.crashedIds,
     required this.contextIds,
+    required this.contextItems,
     required this.recentItems,
     required this.message,
     required this.error,
@@ -275,10 +316,12 @@ class JarRuntimeStateResult {
   final int loadedCount;
   final int crashedCount;
   final int contextCount;
+  final int initializedContextCount;
   final int recentCount;
   final List<String> loadedIds;
   final List<String> crashedIds;
   final List<String> contextIds;
+  final List<JarRuntimeContextItem> contextItems;
   final List<JarRuntimeRecentItem> recentItems;
   final String message;
   final String error;
@@ -290,10 +333,12 @@ class JarRuntimeStateResult {
         loadedCount: 0,
         crashedCount: 0,
         contextCount: 0,
+        initializedContextCount: 0,
         recentCount: 0,
         loadedIds: <String>[],
         crashedIds: <String>[],
         contextIds: <String>[],
+        contextItems: <JarRuntimeContextItem>[],
         recentItems: <JarRuntimeRecentItem>[],
         message: 'Empty platform response.',
         error: 'empty_response',
@@ -326,15 +371,39 @@ class JarRuntimeStateResult {
       }).toList();
     }
 
+    List<JarRuntimeContextItem> parseContextItems(Object? value) {
+      final list = value is List ? value : const <dynamic>[];
+      return list.map((item) {
+        if (item is Map<Object?, Object?>) {
+          return JarRuntimeContextItem.fromMap(item);
+        }
+        if (item is Map) {
+          return JarRuntimeContextItem.fromMap(
+            item.map(MapEntry.new),
+          );
+        }
+        return const JarRuntimeContextItem(
+          runtimeId: '',
+          hasInstance: false,
+          initAttempted: false,
+          initialized: false,
+          initMethod: '',
+          initError: '',
+        );
+      }).toList();
+    }
+
     return JarRuntimeStateResult(
       success: map['success'] == true,
       loadedCount: parseIntValue(map['loadedCount']),
       crashedCount: parseIntValue(map['crashedCount']),
       contextCount: parseIntValue(map['contextCount']),
+      initializedContextCount: parseIntValue(map['initializedContextCount']),
       recentCount: parseIntValue(map['recentCount']),
       loadedIds: parseStringList(map['loadedIds']),
       crashedIds: parseStringList(map['crashedIds']),
       contextIds: parseStringList(map['contextIds']),
+      contextItems: parseContextItems(map['contextItems']),
       recentItems: parseRecentItems(map['recentItems']),
       message: (map['message'] ?? '').toString(),
       error: (map['error'] ?? '').toString(),
@@ -658,10 +727,12 @@ class JarLoaderService {
         loadedCount: 0,
         crashedCount: 0,
         contextCount: 0,
+        initializedContextCount: 0,
         recentCount: 0,
         loadedIds: <String>[],
         crashedIds: <String>[],
         contextIds: <String>[],
+        contextItems: <JarRuntimeContextItem>[],
         recentItems: <JarRuntimeRecentItem>[],
         message:
             'Jar native lifecycle bridge is only implemented on Android now.',
@@ -679,10 +750,12 @@ class JarLoaderService {
         loadedCount: 0,
         crashedCount: 0,
         contextCount: 0,
+        initializedContextCount: 0,
         recentCount: 0,
         loadedIds: const <String>[],
         crashedIds: const <String>[],
         contextIds: const <String>[],
+        contextItems: const <JarRuntimeContextItem>[],
         recentItems: const <JarRuntimeRecentItem>[],
         message: 'getJarRuntimeState platform error',
         error: error.message ?? error.code,
@@ -693,10 +766,12 @@ class JarLoaderService {
         loadedCount: 0,
         crashedCount: 0,
         contextCount: 0,
+        initializedContextCount: 0,
         recentCount: 0,
         loadedIds: const <String>[],
         crashedIds: const <String>[],
         contextIds: const <String>[],
+        contextItems: const <JarRuntimeContextItem>[],
         recentItems: const <JarRuntimeRecentItem>[],
         message: 'getJarRuntimeState not implemented',
         error: error.toString(),

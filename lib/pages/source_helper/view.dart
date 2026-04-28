@@ -778,6 +778,11 @@ class _JarTestPageState extends State<JarTestPage> {
                         ),
                         Chip(
                           label: Text(
+                            'inited=${_runtimeStateResult!.initializedContextCount}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
                             'recent=${_runtimeStateResult!.recentCount}',
                           ),
                         ),
@@ -797,6 +802,12 @@ class _JarTestPageState extends State<JarTestPage> {
                     SelectableText(
                       'crashedIds: ${_runtimeStateResult!.crashedIds.join(', ')}',
                     ),
+                    if (_runtimeStateResult!.contextItems.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'contextInit: ${_runtimeStateResult!.contextItems.map((item) => '${item.runtimeId}[inst=${item.hasInstance},attempt=${item.initAttempted},ok=${item.initialized},method=${item.initMethod},err=${item.initError}]').join(' | ')}',
+                      ),
+                    ],
                     if (_runtimeStateResult!.recentItems.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       SelectableText(

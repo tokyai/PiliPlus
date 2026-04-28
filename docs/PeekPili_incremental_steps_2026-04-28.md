@@ -373,6 +373,15 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 43
+- Synced Jar init-lifecycle diagnostics to Flutter side:
+  - `JarRuntimeStateResult` now parses `initializedContextCount` and `contextItems`,
+  - `/jarTest` runtime-state card now displays per-context init attempt/status/method/error details.
+- This closes the diagnostics loop for Step42, making init side-effect behavior observable from migration test UI.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/jar_loader_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -411,3 +420,4 @@ This document records the practical migration increments after the initial rever
 - PHP install diagnostics now separate `downloaded` vs `extracted` states for clearer failure triage.
 - PHP runtime snapshot diagnostics are now available in bridge and `/phpBridgeTest` for install/server/process state checks.
 - Jar runtime context now includes one-time init hook attempts (`init/initialize/setContext`) with runtime-state diagnostics.
+- Jar init-lifecycle diagnostics are now parsed and displayed in `/jarTest` runtime-state UI.
