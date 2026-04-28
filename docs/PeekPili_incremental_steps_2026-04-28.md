@@ -61,6 +61,21 @@ This document records the practical migration increments after the initial rever
   with automatic fallback to system command.
 - Kept `jar/goproxy` on desktop routed to dedicated pages (`/jarTest`, `/goProxyTest`) instead of generic execute path.
 
+## Step 16
+- Replaced Android `sourceRuntimeProbe/sourceRuntimeExecute` pure placeholder return with executable bridge logic in `MainActivity`:
+  - supports command resolution + process execution for `python/nodejs/catjs/php`,
+  - supports `executeAsCode` mode and default payload-echo mode via base64 transfer,
+  - keeps `jar/goproxy` routed to dedicated bridges with explicit guidance message.
+- Added Android runtime command resolution strategy:
+  - options override (`command`, `commandCandidates`),
+  - fallback candidates under app `filesDir/tools/*` and common shell commands.
+- Added Android execution safety controls:
+  - timeout handling with process kill path,
+  - stdout/stderr capture,
+  - structured result mapping with success/exitCode/elapsed/error.
+- Verified by Android build compile task:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -72,3 +87,4 @@ This document records the practical migration increments after the initial rever
   - static reverse inventory is mostly complete,
   - runtime confirmation + implementation closure are still pending.
 - Desktop Source Helper execute path is no longer global stub for Python/Node/PHP.
+- Android Source Helper generic bridge is no longer pure placeholder for Python/Node/PHP.

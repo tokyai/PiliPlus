@@ -267,7 +267,7 @@ Conclusion: documentation and binaries are not aligned for Android; migration sh
 - `PENDING (runtime)` confirm whether iOS `/pythonTest` and related routes are strictly remote/proxy fallbacks at runtime.
 - `PENDING (runtime)` confirm whether thunder markers on iOS/Windows are UI-only with no hidden runtime bridge path.
 - `PENDING (migration)` current project still contains implementation gaps:
-  - Android `sourceRuntimeProbe/sourceRuntimeExecute` still placeholder in `MainActivity`.
+  - Android `sourceRuntimeProbe/sourceRuntimeExecute` has moved from pure placeholder to command-bridge mode, but not yet equivalent to reverse package plugin depth.
   - Jar real execute and thunder equivalent path are not closed in current project.
 
 Checkpoint conclusion: reverse work is **not fully complete** for migration-grade certainty yet; static reverse is largely complete, but runtime confirmation and implementation closure are still required.
