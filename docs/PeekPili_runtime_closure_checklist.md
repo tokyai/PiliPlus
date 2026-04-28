@@ -140,6 +140,7 @@ CI artifact snapshots:
 - Windows workflow uploads `windows-runtime-smoke-summary`.
 - Android workflow uploads `android-runtime-smoke-summary`.
 - Both workflows support `fail_on_pending=true` to fail run when blockers remain.
+- Both workflows support `fail_on_runtime_validation_pending=true` to fail only on runtime-validation blockers.
 - Gate failure is deferred to final step so closure/report artifacts remain available for troubleshooting.
 - Workflow job summary also shows reverse completion `overallReady`, blocker category counts, and pending blocker list.
 - Unified build manifest (`-ArtifactManifestPath`) now also captures closure/reverse-check report artifacts when those steps are enabled.

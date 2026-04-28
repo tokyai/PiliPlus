@@ -25,6 +25,14 @@ on:
         options:
           - "false"
           - "true"
+      fail_on_runtime_validation_pending:
+        description: Fail workflow only when runtime_validation blockers remain
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   runtime-smoke-windows:
@@ -163,7 +171,19 @@ jobs:
         shell: pwsh
         run: |
           $failOnPending = "${{ github.event.inputs.fail_on_pending || 'false' }}"
+          $failOnRuntimeValidation = "${{ github.event.inputs.fail_on_runtime_validation_pending || 'false' }}"
           $closureExitCode = "${{ steps.closure_status.outputs.closure_exit_code }}"
+          if ($failOnRuntimeValidation -eq "true") {
+            $jsonPath = "build/runtime-smoke/reverse-completion-report.json"
+            if (-not (Test-Path $jsonPath)) {
+              throw "runtime-validation gate enabled but reverse completion json report is missing"
+            }
+            $payload = Get-Content -Raw $jsonPath | ConvertFrom-Json
+            $runtimeValidationCount = [int]$payload.blockerCounts.runtimeValidation
+            if ($runtimeValidationCount -gt 0) {
+              throw "runtime-validation gate failed (runtimeValidation blockers: $runtimeValidationCount)"
+            }
+          }
           if ($failOnPending -eq "true" -and $closureExitCode -ne "" -and $closureExitCode -ne "0") {
             throw "closure gate failed (exit code: $closureExitCode)"
           }

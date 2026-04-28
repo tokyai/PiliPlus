@@ -1025,6 +1025,19 @@ This document records the practical migration increments after the initial rever
   - Runtime-only strict passes when only environment blockers remain:
     - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1 -MinAndroidSmokeLogs 0 -MinWindowsSmokeReports 0 -StrictRuntimeValidationOnly` returned zero in current environment.
 
+## Step 103
+- Added runtime-validation-only gate input to runtime-smoke CI workflows:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - new workflow input: `fail_on_runtime_validation_pending` (`false/true`),
+  - final gate step now reads `reverse-completion-report.json` and fails only when `blockerCounts.runtimeValidation > 0`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1122,3 +1135,4 @@ This document records the practical migration increments after the initial rever
 - Closure reports now separate environment blockers from runtime-validation blockers for clearer triage.
 - Runtime-smoke workflow summaries now also display blocker category counts for quicker diagnosis.
 - Reverse completion strict mode now supports runtime-validation-only gating to avoid environment-only false failures.
+- Runtime-smoke CI workflows now support runtime-validation-only gate input for practical non-macOS/non-device runners.
