@@ -558,6 +558,14 @@ This document records the practical migration increments after the initial rever
   - PowerShell script syntax parse passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 62
+- Improved GoProxy stop signal strategy robustness:
+  - `stopGoProxy` now uses staged termination (`destroy -> sigterm -> sigkill -> force`) instead of single-path destroy,
+  - runtime/operation diagnostics now include `lastStopStrategy/stopStrategy` for stop-path traceability.
+- This narrows reverse migration gap around GoProxy long-run stop reliability and failure triage.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -615,3 +623,4 @@ This document records the practical migration increments after the initial rever
 - Source Runtime generic bridge now supports Thunder runtime `status/parse/play/stop/release` actions with runtime snapshot probe output.
 - Source Runtime generic bridge now supports Jar runtime `status/crash_count/clear_marks/clear_all` actions with runtime snapshot probe output.
 - Cross-platform packaging baseline now has a unified PowerShell build orchestrator for Android/iOS/Windows.
+- GoProxy stop flow now uses staged signal escalation with stop-strategy diagnostics (`lastStopStrategy`).

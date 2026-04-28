@@ -52,6 +52,7 @@ class MainActivity : AudioServiceActivity() {
     private var goProxyForegroundLastError: String = ""
     private var goProxyLastExitCode: Int? = null
     private var goProxyLastExitedAtMs: Long = 0L
+    private var goProxyLastStopStrategy: String = ""
     private val phpServerProcesses = mutableListOf<Process>()
     private val phpServerPorts = mutableListOf<Int>()
     private var phpServerRunning: Boolean = false
@@ -893,6 +894,7 @@ class MainActivity : AudioServiceActivity() {
         lines += "foregroundTrackedPid=${state["foregroundTrackedPid"]}"
         lines += "lastExitCode=${state["lastExitCode"]}"
         lines += "lastExitedAtMs=${state["lastExitedAtMs"]}"
+        lines += "lastStopStrategy=${state["lastStopStrategy"]}"
         lines += "lastCommand=${state["lastCommand"]}"
         lines += "lastArgs=${state["lastArgs"]}"
         lines += "lastWorkingDirectory=${state["lastWorkingDirectory"]}"
@@ -914,6 +916,7 @@ class MainActivity : AudioServiceActivity() {
         lines += "foregroundWifiLockHeld=${result["foregroundWifiLockHeld"]}"
         lines += "foregroundTrackedPid=${result["foregroundTrackedPid"]}"
         lines += "foregroundServiceError=${result["foregroundServiceError"]}"
+        lines += "stopStrategy=${result["stopStrategy"]}"
         return lines.joinToString("\n")
     }
 
@@ -1225,6 +1228,7 @@ class MainActivity : AudioServiceActivity() {
             goProxyLastError = ""
             goProxyLastExitCode = null
             goProxyLastExitedAtMs = 0L
+            goProxyLastStopStrategy = ""
             goProxyStartedAtMs = System.currentTimeMillis()
             val processPid = getProcessPidCompat(goProxyProcess)?.toInt() ?: -1
             goProxyForegroundLastError = startGoProxyForegroundService(
@@ -1269,6 +1273,7 @@ class MainActivity : AudioServiceActivity() {
         val process = goProxyProcess
         if (process == null) {
             goProxyStartedAtMs = 0L
+            goProxyLastStopStrategy = "already_stopped"
             val fgError = stopGoProxyForegroundService()
             return mapOf(
                 "success" to true,
@@ -1280,40 +1285,58 @@ class MainActivity : AudioServiceActivity() {
                 "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
                 "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
                 "foregroundTrackedPid" to GoProxyForegroundService.getTrackedProcessPid(),
-                "foregroundServiceError" to fgError
+                "foregroundServiceError" to fgError,
+                "stopStrategy" to goProxyLastStopStrategy
             )
         }
         return try {
-            process.destroy()
-            process.waitFor(1500, TimeUnit.MILLISECONDS)
-            if (process.isAlive) {
-                process.destroyForcibly()
-            }
-            goProxyLastExitCode = runCatching { process.exitValue() }.getOrNull()
-            goProxyLastExitedAtMs = System.currentTimeMillis()
-            goProxyProcess = null
-            goProxyStartedAtMs = 0L
+            val (stopped, strategy) = terminateGoProxyProcess(process)
+            goProxyLastStopStrategy = strategy
             val fgError = stopGoProxyForegroundService()
-            mapOf(
-                "success" to true,
-                "running" to false,
-                "proxyUrl" to goProxyUrl,
-                "message" to "GoProxy process stopped.",
-                "error" to "",
-                "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
-                "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
-                "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
-                "foregroundTrackedPid" to GoProxyForegroundService.getTrackedProcessPid(),
-                "foregroundServiceError" to fgError
-            )
+            if (stopped) {
+                goProxyLastExitCode = runCatching { process.exitValue() }.getOrNull()
+                goProxyLastExitedAtMs = System.currentTimeMillis()
+                goProxyProcess = null
+                goProxyStartedAtMs = 0L
+                mapOf(
+                    "success" to true,
+                    "running" to false,
+                    "proxyUrl" to goProxyUrl,
+                    "message" to "GoProxy process stopped.",
+                    "error" to "",
+                    "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+                    "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
+                    "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
+                    "foregroundTrackedPid" to GoProxyForegroundService.getTrackedProcessPid(),
+                    "foregroundServiceError" to fgError,
+                    "stopStrategy" to goProxyLastStopStrategy
+                )
+            } else {
+                goProxyLastError = "GoProxy process is still alive after stop strategy=$strategy."
+                mapOf(
+                    "success" to false,
+                    "running" to isGoProxyRunning(),
+                    "proxyUrl" to goProxyUrl,
+                    "message" to "GoProxy stop did not fully terminate process.",
+                    "error" to "still_running",
+                    "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+                    "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
+                    "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
+                    "foregroundTrackedPid" to GoProxyForegroundService.getTrackedProcessPid(),
+                    "foregroundServiceError" to fgError,
+                    "stopStrategy" to goProxyLastStopStrategy
+                )
+            }
         } catch (e: Exception) {
             goProxyLastError = e.message ?: e.toString()
+            goProxyLastStopStrategy = "stop_exception"
             mapOf(
                 "success" to false,
                 "running" to isGoProxyRunning(),
                 "proxyUrl" to goProxyUrl,
                 "message" to "GoProxy stop failed.",
-                "error" to goProxyLastError
+                "error" to goProxyLastError,
+                "stopStrategy" to goProxyLastStopStrategy
             )
         }
     }
@@ -1343,6 +1366,7 @@ class MainActivity : AudioServiceActivity() {
             "pid" to if (running) getProcessPidCompat(process) else null,
             "lastExitCode" to goProxyLastExitCode,
             "lastExitedAtMs" to goProxyLastExitedAtMs,
+            "lastStopStrategy" to goProxyLastStopStrategy,
             "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
             "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
             "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
@@ -1525,6 +1549,48 @@ class MainActivity : AudioServiceActivity() {
             } ?: return null
             (pidMethod.invoke(process) as? Number)?.toLong()
         }.getOrNull()
+    }
+
+    private fun terminateGoProxyProcess(process: Process): Pair<Boolean, String> {
+        process.destroy()
+        process.waitFor(800, TimeUnit.MILLISECONDS)
+        if (!process.isAlive) {
+            return true to "destroy"
+        }
+
+        val pid = getProcessPidCompat(process)?.toInt() ?: -1
+        if (pid > 1) {
+            val termSent = sendProcessSignal(pid, "-TERM")
+            if (termSent) {
+                process.waitFor(1200, TimeUnit.MILLISECONDS)
+                if (!process.isAlive) {
+                    return true to "destroy+sigterm"
+                }
+            }
+            val killSent = sendProcessSignal(pid, "-KILL")
+            if (killSent) {
+                process.waitFor(600, TimeUnit.MILLISECONDS)
+                if (!process.isAlive) {
+                    return true to "destroy+sigterm+sigkill"
+                }
+            }
+        }
+
+        process.destroyForcibly()
+        process.waitFor(600, TimeUnit.MILLISECONDS)
+        return if (process.isAlive) {
+            false to "destroy+force_failed"
+        } else {
+            true to "destroy+force"
+        }
+    }
+
+    private fun sendProcessSignal(pid: Int, signal: String): Boolean {
+        return runCatching {
+            val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", "kill $signal $pid"))
+            process.waitFor(600, TimeUnit.MILLISECONDS)
+            process.exitValue() == 0
+        }.getOrElse { false }
     }
 
     private fun detectGoProxyCommand(call: MethodCall): Map<String, Any?> {
