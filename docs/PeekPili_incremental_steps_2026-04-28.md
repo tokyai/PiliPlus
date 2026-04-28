@@ -176,6 +176,21 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/jar_loader_service.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 25
+- Upgraded Android Thunder fallback bridge to include task lifecycle state:
+  - `thunderGetPlayUrl` now allocates/tracks `taskId`,
+  - `thunderStopTask` now validates/removes task by id,
+  - `thunderRelease` now clears tracked tasks,
+  - support info fields: `taskId` / `activeTaskCount`.
+- Extended Flutter `ThunderService` models and fallback behavior:
+  - `ThunderPlayUrlResult` now exposes `taskId` and `activeTaskCount`,
+  - `ThunderStatusResult` now exposes `taskId` and `activeTaskCount`,
+  - non-Android fallback now tracks tasks for `getPlayUrl/stopTask/release`.
+- Extended `/thunderTest` cards to display `taskId` and active task count for debugging.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/thunder_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -196,3 +211,4 @@ This document records the practical migration increments after the initial rever
 - Jar Test now exposes advanced invoke controls for `mainClass/staticOnly`.
 - Android Jar lifecycle baseline method surface is now callable from Flutter (`destroy/mark/is/count/clear`), but deep spider API parity is still pending.
 - Android Jar business method surface (`home/search/detail/player/action/setRecent`) now has a reflective baseline bridge for migration integration.
+- Thunder bridge now has baseline task lifecycle behavior (`taskId` tracking + stop/release state management) on Android and fallback platforms.

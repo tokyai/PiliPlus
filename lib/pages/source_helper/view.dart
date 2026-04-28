@@ -1289,6 +1289,9 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
                   label: Text(result.success ? 'PLAY URL OK' : 'PLAY URL FAIL'),
                 ),
                 Chip(label: Text('protocol=${result.protocol}')),
+                if (result.taskId.isNotEmpty)
+                  Chip(label: Text('taskId=${result.taskId}')),
+                Chip(label: Text('active=${result.activeTaskCount}')),
               ],
             ),
             const SizedBox(height: 8),
@@ -1314,7 +1317,16 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Chip(label: Text(result.success ? 'STATUS OK' : 'STATUS FAIL')),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(label: Text(result.success ? 'STATUS OK' : 'STATUS FAIL')),
+                if (result.taskId.isNotEmpty)
+                  Chip(label: Text('taskId=${result.taskId}')),
+                Chip(label: Text('active=${result.activeTaskCount}')),
+              ],
+            ),
             const SizedBox(height: 8),
             SelectableText('message: ${result.message}'),
             if (result.error.isNotEmpty) ...[

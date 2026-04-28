@@ -53,6 +53,8 @@ class ThunderPlayUrlResult {
     required this.playUrl,
     required this.protocol,
     required this.infoHash,
+    required this.taskId,
+    required this.activeTaskCount,
     required this.message,
     required this.error,
   });
@@ -61,6 +63,8 @@ class ThunderPlayUrlResult {
   final String playUrl;
   final String protocol;
   final String infoHash;
+  final String taskId;
+  final int activeTaskCount;
   final String message;
   final String error;
 
@@ -71,15 +75,25 @@ class ThunderPlayUrlResult {
         playUrl: '',
         protocol: '',
         infoHash: '',
+        taskId: '',
+        activeTaskCount: 0,
         message: 'Empty platform response.',
         error: 'empty_response',
       );
     }
+    final activeTaskCount = map['activeTaskCount'];
     return ThunderPlayUrlResult(
       success: map['success'] == true,
       playUrl: (map['playUrl'] ?? '').toString(),
       protocol: (map['protocol'] ?? '').toString(),
       infoHash: (map['infoHash'] ?? '').toString(),
+      taskId: (map['taskId'] ?? '').toString(),
+      activeTaskCount: switch (activeTaskCount) {
+        int value => value,
+        num value => value.toInt(),
+        String value => int.tryParse(value) ?? 0,
+        _ => 0,
+      },
       message: (map['message'] ?? '').toString(),
       error: (map['error'] ?? '').toString(),
     );
@@ -89,11 +103,15 @@ class ThunderPlayUrlResult {
 class ThunderStatusResult {
   const ThunderStatusResult({
     required this.success,
+    required this.taskId,
+    required this.activeTaskCount,
     required this.message,
     required this.error,
   });
 
   final bool success;
+  final String taskId;
+  final int activeTaskCount;
   final String message;
   final String error;
 
@@ -101,12 +119,22 @@ class ThunderStatusResult {
     if (map == null) {
       return const ThunderStatusResult(
         success: false,
+        taskId: '',
+        activeTaskCount: 0,
         message: 'Empty platform response.',
         error: 'empty_response',
       );
     }
+    final activeTaskCount = map['activeTaskCount'];
     return ThunderStatusResult(
       success: map['success'] == true,
+      taskId: (map['taskId'] ?? '').toString(),
+      activeTaskCount: switch (activeTaskCount) {
+        int value => value,
+        num value => value.toInt(),
+        String value => int.tryParse(value) ?? 0,
+        _ => 0,
+      },
       message: (map['message'] ?? '').toString(),
       error: (map['error'] ?? '').toString(),
     );
@@ -119,6 +147,8 @@ class ThunderService {
   }) : _channel = channel ?? const MethodChannel(Constants.appName);
 
   final MethodChannel _channel;
+  final Map<String, String> _fallbackTasks = <String, String>{};
+  int _fallbackTaskCounter = 0;
 
   Future<bool> isSupported() async {
     if (!Platform.isAndroid) return true;
@@ -173,11 +203,16 @@ class ThunderService {
   }) async {
     if (!Platform.isAndroid) {
       final parsed = _parseFallback(url);
+      final taskId = parsed.success
+          ? _createFallbackTask(parsed.normalizedUrl)
+          : '';
       return ThunderPlayUrlResult(
         success: parsed.success,
         playUrl: parsed.normalizedUrl,
         protocol: parsed.protocol,
         infoHash: parsed.infoHash,
+        taskId: taskId,
+        activeTaskCount: _fallbackTasks.length,
         message: parsed.message,
         error: parsed.error,
       );
@@ -197,6 +232,8 @@ class ThunderService {
         playUrl: '',
         protocol: '',
         infoHash: '',
+        taskId: '',
+        activeTaskCount: 0,
         message: 'thunderGetPlayUrl platform error',
         error: error.message ?? error.code,
       );
@@ -206,6 +243,8 @@ class ThunderService {
         playUrl: '',
         protocol: '',
         infoHash: '',
+        taskId: '',
+        activeTaskCount: 0,
         message: 'thunderGetPlayUrl not implemented',
         error: error.toString(),
       );
@@ -214,10 +253,25 @@ class ThunderService {
 
   Future<ThunderStatusResult> stopTask(String taskId) async {
     if (!Platform.isAndroid) {
-      return const ThunderStatusResult(
-        success: true,
-        message: 'Thunder fallback mode has no active task process.',
-        error: '',
+      final normalized = taskId.trim();
+      if (normalized.isEmpty) {
+        return ThunderStatusResult(
+          success: false,
+          taskId: '',
+          activeTaskCount: _fallbackTasks.length,
+          message: 'taskId is required.',
+          error: 'missing_task_id',
+        );
+      }
+      final removed = _fallbackTasks.remove(normalized);
+      return ThunderStatusResult(
+        success: removed != null,
+        taskId: normalized,
+        activeTaskCount: _fallbackTasks.length,
+        message: removed != null
+            ? 'Thunder fallback task stopped.'
+            : 'Thunder fallback task not found.',
+        error: removed != null ? '' : 'task_not_found',
       );
     }
     try {
@@ -229,12 +283,16 @@ class ThunderService {
     } on PlatformException catch (error) {
       return ThunderStatusResult(
         success: false,
+        taskId: '',
+        activeTaskCount: 0,
         message: 'thunderStopTask platform error',
         error: error.message ?? error.code,
       );
     } on MissingPluginException catch (error) {
       return ThunderStatusResult(
         success: false,
+        taskId: '',
+        activeTaskCount: 0,
         message: 'thunderStopTask not implemented',
         error: error.toString(),
       );
@@ -243,9 +301,13 @@ class ThunderService {
 
   Future<ThunderStatusResult> release() async {
     if (!Platform.isAndroid) {
-      return const ThunderStatusResult(
+      final cleared = _fallbackTasks.length;
+      _fallbackTasks.clear();
+      return ThunderStatusResult(
         success: true,
-        message: 'Thunder fallback mode released.',
+        taskId: '',
+        activeTaskCount: 0,
+        message: 'Thunder fallback mode released. Cleared $cleared tasks.',
         error: '',
       );
     }
@@ -257,16 +319,27 @@ class ThunderService {
     } on PlatformException catch (error) {
       return ThunderStatusResult(
         success: false,
+        taskId: '',
+        activeTaskCount: 0,
         message: 'thunderRelease platform error',
         error: error.message ?? error.code,
       );
     } on MissingPluginException catch (error) {
       return ThunderStatusResult(
         success: false,
+        taskId: '',
+        activeTaskCount: 0,
         message: 'thunderRelease not implemented',
         error: error.toString(),
       );
     }
+  }
+
+  String _createFallbackTask(String playUrl) {
+    _fallbackTaskCounter += 1;
+    final taskId = 'fallback_$_fallbackTaskCounter';
+    _fallbackTasks[taskId] = playUrl;
+    return taskId;
   }
 
   ThunderParseResult _parseFallback(String url) {

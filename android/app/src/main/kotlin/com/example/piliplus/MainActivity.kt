@@ -40,6 +40,9 @@ class MainActivity : AudioServiceActivity() {
     private val loadedJarSpiders = linkedMapOf<String, JarSpiderRuntime>()
     private val crashedJarSpiders = linkedSetOf<String>()
     private val recentJarSpiders = linkedMapOf<String, String?>()
+    private val thunderRuntimeLock = Any()
+    private val thunderActiveTasks = linkedMapOf<String, ThunderTaskState>()
+    private var thunderTaskSequence = 0L
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -263,6 +266,7 @@ class MainActivity : AudioServiceActivity() {
                             "success" to true,
                             "supported" to true,
                             "message" to "Thunder bridge fallback is available.",
+                            "activeTaskCount" to thunderActiveTaskCount(),
                             "error" to ""
                         )
                     )
@@ -277,13 +281,7 @@ class MainActivity : AudioServiceActivity() {
                     result.success(thunderStopTask(call))
                 }
                 "thunderRelease" -> {
-                    result.success(
-                        mapOf(
-                            "success" to true,
-                            "message" to "Thunder bridge released.",
-                            "error" to ""
-                        )
-                    )
+                    result.success(thunderRelease())
                 }
 
                 else -> result.notImplemented()
@@ -1655,11 +1653,28 @@ class MainActivity : AudioServiceActivity() {
                 "message" to "Unsupported url protocol.",
                 "error" to "unsupported_protocol"
             )
+        val taskId = call.argument<String>("taskId")?.trim()?.takeIf { it.isNotEmpty() }
+            ?: nextThunderTaskId(parsed.protocol)
+        val index = call.argument<Int>("index") ?: 0
+        val activeTaskCount = synchronized(thunderRuntimeLock) {
+            thunderActiveTasks[taskId] = ThunderTaskState(
+                taskId = taskId,
+                protocol = parsed.protocol,
+                originalUrl = parsed.originalUrl,
+                playUrl = parsed.normalizedUrl,
+                infoHash = parsed.infoHash,
+                index = index,
+                createdAt = System.currentTimeMillis()
+            )
+            thunderActiveTasks.size
+        }
         return mapOf(
             "success" to true,
             "playUrl" to parsed.normalizedUrl,
             "protocol" to parsed.protocol,
             "infoHash" to parsed.infoHash,
+            "taskId" to taskId,
+            "activeTaskCount" to activeTaskCount,
             "message" to "Play url resolved.",
             "error" to ""
         )
@@ -1667,12 +1682,62 @@ class MainActivity : AudioServiceActivity() {
 
     private fun thunderStopTask(call: MethodCall): Map<String, Any?> {
         val taskId = call.argument<String>("taskId")?.trim().orEmpty()
+        if (taskId.isEmpty()) {
+            return mapOf(
+                "success" to false,
+                "taskId" to "",
+                "activeTaskCount" to thunderActiveTaskCount(),
+                "message" to "taskId is required.",
+                "error" to "missing_task_id"
+            )
+        }
+        val removed = synchronized(thunderRuntimeLock) {
+            thunderActiveTasks.remove(taskId)
+        }
+        val activeTaskCount = thunderActiveTaskCount()
+        if (removed == null) {
+            return mapOf(
+                "success" to false,
+                "taskId" to taskId,
+                "activeTaskCount" to activeTaskCount,
+                "message" to "Thunder task not found.",
+                "error" to "task_not_found"
+            )
+        }
         return mapOf(
             "success" to true,
             "taskId" to taskId,
-            "message" to "No active thunder task in fallback bridge.",
+            "activeTaskCount" to activeTaskCount,
+            "message" to "Thunder task stopped.",
             "error" to ""
         )
+    }
+
+    private fun thunderRelease(): Map<String, Any?> {
+        val clearedCount = synchronized(thunderRuntimeLock) {
+            val count = thunderActiveTasks.size
+            thunderActiveTasks.clear()
+            count
+        }
+        return mapOf(
+            "success" to true,
+            "activeTaskCount" to 0,
+            "message" to "Thunder bridge released. Cleared $clearedCount tasks.",
+            "error" to ""
+        )
+    }
+
+    private fun thunderActiveTaskCount(): Int {
+        return synchronized(thunderRuntimeLock) {
+            thunderActiveTasks.size
+        }
+    }
+
+    private fun nextThunderTaskId(protocol: String): String {
+        return synchronized(thunderRuntimeLock) {
+            thunderTaskSequence += 1
+            "thunder_${protocol}_${thunderTaskSequence}"
+        }
     }
 
     private fun parseThunderLikeUrl(raw: String): ThunderParsedResult? {
@@ -1744,6 +1809,16 @@ class MainActivity : AudioServiceActivity() {
         val infoHash: String
     )
 
+    private data class ThunderTaskState(
+        val taskId: String,
+        val protocol: String,
+        val originalUrl: String,
+        val playUrl: String,
+        val infoHash: String,
+        val index: Int,
+        val createdAt: Long
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -1754,6 +1829,7 @@ class MainActivity : AudioServiceActivity() {
 
     override fun onDestroy() {
         stopGoProxy()
+        thunderRelease()
         stopService(Intent(this, com.ryanheise.audioservice.AudioService::class.java))
         super.onDestroy()
         android.os.Process.killProcess(android.os.Process.myPid())

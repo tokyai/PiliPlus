@@ -269,7 +269,7 @@ Conclusion: documentation and binaries are not aligned for Android; migration sh
 - `PENDING (migration)` current project still contains implementation gaps:
   - Android `sourceRuntimeProbe/sourceRuntimeExecute` has moved from pure placeholder to command-bridge mode, but not yet equivalent to reverse package plugin depth.
   - Android `loadJar` + Jar lifecycle + spider business method surface (`home/search/detail/player/action/setRecent`) now have baseline reflective bridge support, but still lack reverse package `JarLoader`-equivalent runtime behavior guarantees (spider object lifecycle consistency, plugin side-effects, and full compatibility validation across real source jars).
-  - Android has an initial thunder protocol fallback bridge (parse/playUrl route), and non-Android has local parser fallback, but Thunder SDK-equivalent lifecycle and streaming capabilities are still not closed.
+  - Thunder bridge now includes baseline task lifecycle tracking (`taskId`/stop/release) on Android and fallback platforms, but Thunder SDK-equivalent download/playback/streaming engine behavior is still not closed.
 
 Checkpoint conclusion: reverse work is **not fully complete** for migration-grade certainty yet; static reverse is largely complete, but runtime confirmation and implementation closure are still required.
 
