@@ -49,6 +49,7 @@
 - 进行中：已建立 `SourceRuntimeService` 与 `SourceRuntimeAdapter` 分层，接入 Android/Desktop/Stub 适配器骨架；`pythonTest`/`catJsTest`/`nodeJsTest` 已可执行 Probe/Execute 调试调用。
 - 进行中：Android `MainActivity` 已预留 `sourceRuntimeProbe` / `sourceRuntimeExecute` 通道占位返回，便于后续接入真实 Jar/GoProxy/Thunder 逻辑。
 - 进行中：已落地 GoProxy 首条桥接链路（`startGoProxy` / `stopGoProxy` / `isGoProxyRunning` / `getProxyUrl`）以及 `/goProxyTest` 联调页。
+- 进行中：已新增 GoProxy 自动命令探测与资源下发（`detectGoProxyCommand` / `prepareGoProxyBinary`），`/goProxyTest` 可一键 Detect/Prepare。
 - 未完成：配置驱动首页/底栏映射、真实业务脚本执行链路。
 
 ### Phase 3（P1）Android 平台能力迁移

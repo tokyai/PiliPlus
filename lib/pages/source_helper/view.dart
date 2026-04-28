@@ -258,8 +258,10 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
   late final TextEditingController _argsCtr;
   late final TextEditingController _portCtr;
   late final TextEditingController _proxyUrlCtr;
+  late final TextEditingController _assetCandidatesCtr;
 
   GoProxyStatus? _status;
+  GoProxyCommandResult? _commandResult;
   bool _loading = false;
 
   @override
@@ -270,7 +272,11 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
     _argsCtr = TextEditingController(text: '--listen 127.0.0.1:9978');
     _portCtr = TextEditingController(text: '9978');
     _proxyUrlCtr = TextEditingController(text: 'http://127.0.0.1:9978');
+    _assetCandidatesCtr = TextEditingController(
+      text: 'assets/runtime/goproxy,assets/goproxy,goproxy',
+    );
     _refreshStatus();
+    _detectCommand();
   }
 
   @override
@@ -279,6 +285,7 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
     _argsCtr.dispose();
     _portCtr.dispose();
     _proxyUrlCtr.dispose();
+    _assetCandidatesCtr.dispose();
     super.dispose();
   }
 
@@ -334,6 +341,15 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
             ],
           ),
           const SizedBox(height: 12),
+          TextField(
+            controller: _assetCandidatesCtr,
+            decoration: const InputDecoration(
+              labelText: 'Asset Candidates (comma separated)',
+              hintText: 'assets/runtime/goproxy,assets/goproxy,goproxy',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -353,9 +369,54 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh'),
               ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _detectCommand,
+                icon: const Icon(Icons.search),
+                label: const Text('Detect Command'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _prepareBinary,
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: const Text('Prepare Asset'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
+          if (_commandResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _commandResult!.success
+                                ? 'COMMAND OK'
+                                : 'COMMAND FAIL',
+                          ),
+                        ),
+                        if (_commandResult!.preparedFromAsset)
+                          const Chip(label: Text('FROM ASSET')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('command: ${_commandResult!.command}'),
+                    const SizedBox(height: 4),
+                    SelectableText('message: ${_commandResult!.message}'),
+                    if (_commandResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_commandResult!.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
           if (status != null)
             Card(
               child: Padding(
@@ -409,6 +470,36 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
     });
   }
 
+  Future<void> _detectCommand() async {
+    setState(() => _loading = true);
+    final result = await _goProxyService.detectCommand(
+      candidates: _parseCsv(_assetCandidatesCtr.text),
+    );
+    if (!mounted) return;
+    if (result.success && result.command.isNotEmpty) {
+      _commandCtr.text = result.command;
+    }
+    setState(() {
+      _loading = false;
+      _commandResult = result;
+    });
+  }
+
+  Future<void> _prepareBinary() async {
+    setState(() => _loading = true);
+    final result = await _goProxyService.prepareBinary(
+      assetCandidates: _parseCsv(_assetCandidatesCtr.text),
+    );
+    if (!mounted) return;
+    if (result.success && result.command.isNotEmpty) {
+      _commandCtr.text = result.command;
+    }
+    setState(() {
+      _loading = false;
+      _commandResult = result;
+    });
+  }
+
   Future<void> _start() async {
     setState(() => _loading = true);
     final args = _parseArgs(_argsCtr.text);
@@ -442,5 +533,15 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
     final text = raw.trim();
     if (text.isEmpty) return const <String>[];
     return text.split(RegExp(r'\s+')).where((item) => item.isNotEmpty).toList();
+  }
+
+  List<String> _parseCsv(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return const <String>[];
+    return text
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 }

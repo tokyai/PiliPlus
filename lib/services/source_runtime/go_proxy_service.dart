@@ -48,6 +48,40 @@ class GoProxyStatus {
   }
 }
 
+class GoProxyCommandResult {
+  const GoProxyCommandResult({
+    required this.success,
+    required this.command,
+    required this.message,
+    required this.error,
+    this.preparedFromAsset = false,
+  });
+
+  final bool success;
+  final String command;
+  final String message;
+  final String error;
+  final bool preparedFromAsset;
+
+  static GoProxyCommandResult fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const GoProxyCommandResult(
+        success: false,
+        command: '',
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+    return GoProxyCommandResult(
+      success: map['success'] == true,
+      command: (map['command'] ?? '').toString(),
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+      preparedFromAsset: map['preparedFromAsset'] == true,
+    );
+  }
+}
+
 class GoProxyService {
   GoProxyService({
     MethodChannel? channel,
@@ -133,6 +167,82 @@ class GoProxyService {
         running: false,
         proxyUrl: '',
         message: 'stopGoProxy not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<GoProxyCommandResult> detectCommand({
+    List<String> candidates = const <String>[],
+  }) async {
+    if (!Platform.isAndroid) {
+      return const GoProxyCommandResult(
+        success: false,
+        command: '',
+        message: 'GoProxy native bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'detectGoProxyCommand',
+        <String, dynamic>{'candidates': candidates},
+      );
+      return GoProxyCommandResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return GoProxyCommandResult(
+        success: false,
+        command: '',
+        message: 'detectGoProxyCommand platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return GoProxyCommandResult(
+        success: false,
+        command: '',
+        message: 'detectGoProxyCommand not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<GoProxyCommandResult> prepareBinary({
+    List<String> assetCandidates = const <String>[
+      'assets/runtime/goproxy',
+      'assets/goproxy',
+      'goproxy',
+    ],
+    String targetRelativePath = 'tools/goproxy',
+  }) async {
+    if (!Platform.isAndroid) {
+      return const GoProxyCommandResult(
+        success: false,
+        command: '',
+        message: 'GoProxy native bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'prepareGoProxyBinary',
+        <String, dynamic>{
+          'assetCandidates': assetCandidates,
+          'targetRelativePath': targetRelativePath,
+        },
+      );
+      return GoProxyCommandResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return GoProxyCommandResult(
+        success: false,
+        command: '',
+        message: 'prepareGoProxyBinary platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return GoProxyCommandResult(
+        success: false,
+        command: '',
+        message: 'prepareGoProxyBinary not implemented',
         error: error.toString(),
       );
     }

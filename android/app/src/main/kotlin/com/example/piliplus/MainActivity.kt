@@ -218,6 +218,12 @@ class MainActivity : AudioServiceActivity() {
                 "getProxyUrl" -> {
                     result.success(goProxyUrl)
                 }
+                "detectGoProxyCommand" -> {
+                    result.success(detectGoProxyCommand(call))
+                }
+                "prepareGoProxyBinary" -> {
+                    result.success(prepareGoProxyBinary(call))
+                }
 
                 else -> result.notImplemented()
             }
@@ -245,15 +251,21 @@ class MainActivity : AudioServiceActivity() {
             )
         }
 
-        val command = call.argument<String>("command")?.trim().orEmpty()
-        if (command.isEmpty()) {
-            goProxyLastError = "Empty command."
+        val commandInput = call.argument<String>("command")?.trim().orEmpty()
+        val command = if (commandInput.isNotEmpty()) {
+            commandInput
+        } else {
+            resolveGoProxyCommand(emptyList())
+        }
+        if (command.isNullOrEmpty()) {
+            goProxyLastError = "Empty command and auto-detect failed."
             return mapOf(
                 "success" to false,
                 "running" to false,
                 "proxyUrl" to goProxyUrl,
                 "message" to "GoProxy start failed.",
-                "error" to goProxyLastError
+                "error" to goProxyLastError,
+                "command" to ""
             )
         }
 
@@ -289,7 +301,8 @@ class MainActivity : AudioServiceActivity() {
                 "running" to true,
                 "proxyUrl" to goProxyUrl,
                 "message" to "GoProxy process started.",
-                "error" to ""
+                "error" to "",
+                "command" to command
             )
         } catch (e: Exception) {
             goProxyProcess = null
@@ -299,7 +312,8 @@ class MainActivity : AudioServiceActivity() {
                 "running" to false,
                 "proxyUrl" to goProxyUrl,
                 "message" to "GoProxy start failed.",
-                "error" to goProxyLastError
+                "error" to goProxyLastError,
+                "command" to command
             )
         }
     }
@@ -339,6 +353,126 @@ class MainActivity : AudioServiceActivity() {
                 "error" to goProxyLastError
             )
         }
+    }
+
+    private fun detectGoProxyCommand(call: MethodCall): Map<String, Any?> {
+        val candidates = call.argument<List<String>>("candidates") ?: emptyList()
+        val command = resolveGoProxyCommand(candidates)
+        return if (!command.isNullOrEmpty()) {
+            mapOf(
+                "success" to true,
+                "command" to command,
+                "message" to "GoProxy command detected.",
+                "error" to "",
+                "preparedFromAsset" to false
+            )
+        } else {
+            mapOf(
+                "success" to false,
+                "command" to "",
+                "message" to "No executable GoProxy command detected.",
+                "error" to "not_found",
+                "preparedFromAsset" to false
+            )
+        }
+    }
+
+    private fun prepareGoProxyBinary(call: MethodCall): Map<String, Any?> {
+        val targetRelativePath = call.argument<String>("targetRelativePath")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "tools/goproxy"
+        val appRoot = filesDir.canonicalFile
+        val targetFile = File(appRoot, targetRelativePath).canonicalFile
+        if (!targetFile.absolutePath.startsWith(appRoot.absolutePath)) {
+            return mapOf(
+                "success" to false,
+                "command" to "",
+                "message" to "Invalid targetRelativePath.",
+                "error" to "invalid_target_path",
+                "preparedFromAsset" to false
+            )
+        }
+
+        try {
+            targetFile.parentFile?.mkdirs()
+            if (targetFile.exists() && targetFile.length() > 0) {
+                targetFile.setExecutable(true, false)
+                return mapOf(
+                    "success" to true,
+                    "command" to targetFile.absolutePath,
+                    "message" to "GoProxy binary already prepared.",
+                    "error" to "",
+                    "preparedFromAsset" to false
+                )
+            }
+        } catch (e: Exception) {
+            return mapOf(
+                "success" to false,
+                "command" to "",
+                "message" to "Prepare target path failed.",
+                "error" to (e.message ?: e.toString()),
+                "preparedFromAsset" to false
+            )
+        }
+
+        val assetCandidates = call.argument<List<String>>("assetCandidates")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?: listOf("assets/runtime/goproxy", "assets/goproxy", "goproxy")
+        val errors = mutableListOf<String>()
+        for (candidate in assetCandidates) {
+            val assetPath = candidate.removePrefix("/")
+            try {
+                assets.open(assetPath).use { input ->
+                    targetFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                targetFile.setExecutable(true, false)
+                return mapOf(
+                    "success" to true,
+                    "command" to targetFile.absolutePath,
+                    "message" to "GoProxy binary prepared from asset: $assetPath",
+                    "error" to "",
+                    "preparedFromAsset" to true
+                )
+            } catch (e: Exception) {
+                errors.add("$assetPath: ${e.message ?: e.toString()}")
+            }
+        }
+
+        return mapOf(
+            "success" to false,
+            "command" to "",
+            "message" to "Failed to prepare GoProxy binary from assets.",
+            "error" to errors.joinToString(" | "),
+            "preparedFromAsset" to false
+        )
+    }
+
+    private fun resolveGoProxyCommand(rawCandidates: List<String>): String? {
+        val candidates = rawCandidates
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toMutableList()
+        candidates.add(File(filesDir, "tools/goproxy").absolutePath)
+        candidates.add(File(filesDir, "goproxy").absolutePath)
+        candidates.add("/data/local/tmp/goproxy")
+        candidates.add("/system/bin/goproxy")
+        candidates.add("/system/xbin/goproxy")
+        for (candidate in candidates.distinct()) {
+            val resolved = if (candidate.startsWith("/")) {
+                candidate
+            } else {
+                File(filesDir, candidate).absolutePath
+            }
+            val file = File(resolved)
+            if (file.exists() && file.canExecute()) {
+                return resolved
+            }
+        }
+        return null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
