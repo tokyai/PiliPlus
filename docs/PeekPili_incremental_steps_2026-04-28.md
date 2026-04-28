@@ -49,6 +49,18 @@ This document records the practical migration increments after the initial rever
   - refined cross-platform matrix,
   - reverse completion checklist with explicit pending runtime/migration items.
 
+## Step 15
+- Replaced Desktop `SourceRuntime` execute stub with real process execution for:
+  - `python` (`python -c` or payload-echo mode),
+  - `nodejs/catjs` (`node -e` or payload-echo mode),
+  - `php` (`php -r` or payload-echo mode).
+- Added desktop bundled-runtime path probing for packaged layout:
+  - `data/python/python(.exe)`,
+  - `data/nodejs/node(.exe)`,
+  - `data/php/php(.exe)`,
+  with automatic fallback to system command.
+- Kept `jar/goproxy` on desktop routed to dedicated pages (`/jarTest`, `/goProxyTest`) instead of generic execute path.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -59,3 +71,4 @@ This document records the practical migration increments after the initial rever
 - Reverse status is now explicit:
   - static reverse inventory is mostly complete,
   - runtime confirmation + implementation closure are still pending.
+- Desktop Source Helper execute path is no longer global stub for Python/Node/PHP.

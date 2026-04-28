@@ -266,9 +266,9 @@ Conclusion: documentation and binaries are not aligned for Android; migration sh
   - only Node/JS related plugin/runtime signals are explicit.
 - `PENDING (runtime)` confirm whether iOS `/pythonTest` and related routes are strictly remote/proxy fallbacks at runtime.
 - `PENDING (runtime)` confirm whether thunder markers on iOS/Windows are UI-only with no hidden runtime bridge path.
-- `PENDING (migration)` current project still contains stub placeholders in:
-  - Android `sourceRuntimeProbe/sourceRuntimeExecute`,
-  - Desktop execute pipeline for source engines.
+- `PENDING (migration)` current project still contains implementation gaps:
+  - Android `sourceRuntimeProbe/sourceRuntimeExecute` still placeholder in `MainActivity`.
+  - Jar real execute and thunder equivalent path are not closed in current project.
 
 Checkpoint conclusion: reverse work is **not fully complete** for migration-grade certainty yet; static reverse is largely complete, but runtime confirmation and implementation closure are still required.
 
