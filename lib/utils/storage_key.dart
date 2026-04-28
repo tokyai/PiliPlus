@@ -171,6 +171,17 @@ abstract final class SettingBoxKey {
       subtitleFontScaleFS = 'subtitleFontScaleFS',
       subtitleFontWeight = 'subtitleFontWeight';
 
+  static const String t4ApiConfigs = 't4ApiConfigs',
+      t4CurrentApiConfigId = 't4CurrentApiConfigId',
+      t4SourceConfigUrl = 't4_source_config_url',
+      t4IsLocalConfig = 't4_is_local_config',
+      t4TrendingViewMode = 't4_trending_view_mode',
+      tmdbAccessToken = 'tmdbAccessToken',
+      tmdbIntegrationEnabled = 'tmdbIntegrationEnabled',
+      tmdbImageProxy = 'tmdbImageProxy',
+      tmdbSavedMatches = 'tmdb_saved_matches',
+      webdavSetting = 'webdavSetting';
+
   static const String webdavUri = 'webdavUri',
       webdavUsername = 'webdavUsername',
       webdavPassword = 'webdavPassword',

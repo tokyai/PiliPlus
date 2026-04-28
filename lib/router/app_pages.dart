@@ -67,15 +67,19 @@ import 'package:PiliPlus/pages/setting/style_setting.dart';
 import 'package:PiliPlus/pages/setting/video_setting.dart';
 import 'package:PiliPlus/pages/setting/view.dart';
 import 'package:PiliPlus/pages/settings_search/view.dart';
+import 'package:PiliPlus/pages/source_config/view.dart';
+import 'package:PiliPlus/pages/source_helper/view.dart';
 import 'package:PiliPlus/pages/space_setting/view.dart';
 import 'package:PiliPlus/pages/sponsor_block/view.dart';
 import 'package:PiliPlus/pages/subscription/view.dart';
 import 'package:PiliPlus/pages/subscription_detail/view.dart';
+import 'package:PiliPlus/pages/tmdb_setting/view.dart';
 import 'package:PiliPlus/pages/video/view.dart';
 import 'package:PiliPlus/pages/webdav/view.dart';
 import 'package:PiliPlus/pages/webview/view.dart';
 import 'package:PiliPlus/pages/whisper/view.dart';
 import 'package:PiliPlus/pages/whisper_detail/view.dart';
+import 'package:PiliPlus/services/source_runtime/source_engine.dart';
 import 'package:get/get.dart';
 
 class Routes {
@@ -174,6 +178,37 @@ class Routes {
     GetPage(name: '/createFav', page: () => const CreateFavPage()),
     GetPage(name: '/editProfile', page: () => const EditProfilePage()),
     GetPage(name: '/settingsSearch', page: () => const SettingsSearchPage()),
+    GetPage(name: '/sourceConfig', page: () => const SourceConfigSettingPage()),
+    GetPage(name: '/tmdbSetting', page: () => const TmdbSettingPage()),
+    GetPage(
+      name: '/sourceHelperSetting',
+      page: () => const SourceHelperSettingPage(),
+    ),
+    GetPage(
+      name: '/pythonTest',
+      page: () => const SourceHelperToolPage(
+        title: 'Python Test',
+        routeName: '/pythonTest',
+        engine: SourceEngine.python,
+      ),
+    ),
+    GetPage(
+      name: '/catJsTest',
+      page: () => const SourceHelperToolPage(
+        title: 'CatJs Test',
+        routeName: '/catJsTest',
+        engine: SourceEngine.catJs,
+      ),
+    ),
+    GetPage(
+      name: '/nodeJsTest',
+      page: () => const SourceHelperToolPage(
+        title: 'NodeJs Test',
+        routeName: '/nodeJsTest',
+        engine: SourceEngine.nodeJs,
+      ),
+    ),
+    GetPage(name: '/goProxyTest', page: () => const GoProxyTestPage()),
     GetPage(name: '/webdavSetting', page: () => const WebDavSettingPage()),
     GetPage(name: '/searchTrending', page: () => const SearchTrendingPage()),
     GetPage(name: '/dynTopic', page: () => const DynTopicPage()),

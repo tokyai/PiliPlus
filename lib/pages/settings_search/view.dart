@@ -33,6 +33,21 @@ class _SettingsSearchPageState
     ...videoSettings,
     ...playSettings,
     ...styleSettings,
+    NormalModel(
+      title: 'Source Config',
+      subtitle: 't4_source_config_url / t4ApiConfigs',
+      onTap: (context, setState) => Get.toNamed('/sourceConfig'),
+    ),
+    NormalModel(
+      title: 'TMDB Config',
+      subtitle: 'tmdbAccessToken / tmdbImageProxy',
+      onTap: (context, setState) => Get.toNamed('/tmdbSetting'),
+    ),
+    NormalModel(
+      title: 'Source Helper',
+      subtitle: '/pythonTest /catJsTest /nodeJsTest /goProxyTest',
+      onTap: (context, setState) => Get.toNamed('/sourceHelperSetting'),
+    ),
   ];
 
   @override

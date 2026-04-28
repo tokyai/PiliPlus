@@ -19,12 +19,17 @@ import android.view.WindowManager.LayoutParams
 import androidx.core.net.toUri
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlin.system.exitProcess
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AudioServiceActivity() {
     private lateinit var methodChannel: MethodChannel
+    private var goProxyProcess: Process? = null
+    private var goProxyUrl: String = "http://127.0.0.1:9978"
+    private var goProxyLastError: String = ""
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -170,6 +175,49 @@ class MainActivity : AudioServiceActivity() {
                         }
                     }
                 }
+                "sourceRuntimeProbe" -> {
+                    val engine = call.argument<String>("engine") ?: "unknown"
+                    result.success(
+                        mapOf(
+                            "success" to false,
+                            "stdout" to "",
+                            "stderr" to "",
+                            "elapsedMs" to 0,
+                            "exitCode" to -1,
+                            "isStub" to true,
+                            "message" to "Android source runtime probe placeholder for engine=$engine. " +
+                                    "Wire native bridge implementation here."
+                        )
+                    )
+                }
+                "sourceRuntimeExecute" -> {
+                    val engine = call.argument<String>("engine") ?: "unknown"
+                    val payload = call.argument<String>("payload") ?: ""
+                    result.success(
+                        mapOf(
+                            "success" to false,
+                            "stdout" to "engine=$engine\npayload=$payload",
+                            "stderr" to "",
+                            "elapsedMs" to 0,
+                            "exitCode" to -1,
+                            "isStub" to true,
+                            "message" to "Android source runtime execute placeholder. " +
+                                    "Replace with jar/php/proxy/thunder bridge implementation."
+                        )
+                    )
+                }
+                "startGoProxy" -> {
+                    result.success(startGoProxy(call))
+                }
+                "stopGoProxy" -> {
+                    result.success(stopGoProxy())
+                }
+                "isGoProxyRunning" -> {
+                    result.success(isGoProxyRunning())
+                }
+                "getProxyUrl" -> {
+                    result.success(goProxyUrl)
+                }
 
                 else -> result.notImplemented()
             }
@@ -184,6 +232,115 @@ class MainActivity : AudioServiceActivity() {
         startActivity(intent)
     }
 
+    private fun isGoProxyRunning(): Boolean = goProxyProcess?.isAlive == true
+
+    private fun startGoProxy(call: MethodCall): Map<String, Any?> {
+        if (isGoProxyRunning()) {
+            return mapOf(
+                "success" to true,
+                "running" to true,
+                "proxyUrl" to goProxyUrl,
+                "message" to "GoProxy is already running.",
+                "error" to ""
+            )
+        }
+
+        val command = call.argument<String>("command")?.trim().orEmpty()
+        if (command.isEmpty()) {
+            goProxyLastError = "Empty command."
+            return mapOf(
+                "success" to false,
+                "running" to false,
+                "proxyUrl" to goProxyUrl,
+                "message" to "GoProxy start failed.",
+                "error" to goProxyLastError
+            )
+        }
+
+        val args = call.argument<List<String>>("args") ?: emptyList()
+        val port = call.argument<Int>("port") ?: 9978
+        val proxyUrl = call.argument<String>("proxyUrl")?.trim()
+        val workingDirectory = call.argument<String>("workingDirectory")?.trim()
+        val environment = (call.argument<Map<*, *>>("environment") ?: emptyMap<Any?, Any?>())
+            .mapNotNull { (key, value) ->
+                if (key is String && value is String) {
+                    key to value
+                } else {
+                    null
+                }
+            }.toMap()
+
+        return try {
+            val commandLine = mutableListOf(command).apply { addAll(args) }
+            val processBuilder = ProcessBuilder(commandLine).apply {
+                if (!workingDirectory.isNullOrEmpty()) {
+                    directory(File(workingDirectory))
+                }
+                if (environment.isNotEmpty()) {
+                    environment().putAll(environment)
+                }
+                redirectErrorStream(false)
+            }
+            goProxyProcess = processBuilder.start()
+            goProxyUrl = if (!proxyUrl.isNullOrEmpty()) proxyUrl else "http://127.0.0.1:$port"
+            goProxyLastError = ""
+            mapOf(
+                "success" to true,
+                "running" to true,
+                "proxyUrl" to goProxyUrl,
+                "message" to "GoProxy process started.",
+                "error" to ""
+            )
+        } catch (e: Exception) {
+            goProxyProcess = null
+            goProxyLastError = e.message ?: e.toString()
+            mapOf(
+                "success" to false,
+                "running" to false,
+                "proxyUrl" to goProxyUrl,
+                "message" to "GoProxy start failed.",
+                "error" to goProxyLastError
+            )
+        }
+    }
+
+    private fun stopGoProxy(): Map<String, Any?> {
+        val process = goProxyProcess
+        if (process == null) {
+            return mapOf(
+                "success" to true,
+                "running" to false,
+                "proxyUrl" to goProxyUrl,
+                "message" to "GoProxy is not running.",
+                "error" to ""
+            )
+        }
+        return try {
+            process.destroy()
+            process.waitFor(1500, TimeUnit.MILLISECONDS)
+            if (process.isAlive) {
+                process.destroyForcibly()
+            }
+            goProxyProcess = null
+            mapOf(
+                "success" to true,
+                "running" to false,
+                "proxyUrl" to goProxyUrl,
+                "message" to "GoProxy process stopped.",
+                "error" to ""
+            )
+        } catch (e: Exception) {
+            goProxyLastError = e.message ?: e.toString()
+            mapOf(
+                "success" to false,
+                "running" to isGoProxyRunning(),
+                "proxyUrl" to goProxyUrl,
+                "message" to "GoProxy stop failed.",
+                "error" to goProxyLastError
+            )
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -193,6 +350,7 @@ class MainActivity : AudioServiceActivity() {
     }
 
     override fun onDestroy() {
+        stopGoProxy()
         stopService(Intent(this, com.ryanheise.audioservice.AudioService::class.java))
         super.onDestroy()
         android.os.Process.killProcess(android.os.Process.myPid())

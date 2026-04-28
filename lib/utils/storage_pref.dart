@@ -574,6 +574,27 @@ abstract final class Pref {
   static bool get recordSearchHistory =>
       _setting.get(SettingBoxKey.recordSearchHistory, defaultValue: true);
 
+  static String get t4ApiConfigs =>
+      _setting.get(SettingBoxKey.t4ApiConfigs, defaultValue: '[]');
+
+  static String get t4SourceConfigUrl =>
+      _setting.get(SettingBoxKey.t4SourceConfigUrl, defaultValue: '');
+
+  static bool get t4IsLocalConfig =>
+      _setting.get(SettingBoxKey.t4IsLocalConfig, defaultValue: false);
+
+  static String get t4CurrentApiConfigId =>
+      _setting.get(SettingBoxKey.t4CurrentApiConfigId, defaultValue: '');
+
+  static String get tmdbAccessToken =>
+      _setting.get(SettingBoxKey.tmdbAccessToken, defaultValue: '');
+
+  static bool get tmdbIntegrationEnabled =>
+      _setting.get(SettingBoxKey.tmdbIntegrationEnabled, defaultValue: false);
+
+  static String get tmdbImageProxy =>
+      _setting.get(SettingBoxKey.tmdbImageProxy, defaultValue: '');
+
   static String get webdavUri =>
       _setting.get(SettingBoxKey.webdavUri, defaultValue: '');
 

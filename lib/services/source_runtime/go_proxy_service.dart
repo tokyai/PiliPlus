@@ -1,0 +1,162 @@
+import 'dart:io';
+
+import 'package:PiliPlus/common/constants.dart';
+import 'package:flutter/services.dart';
+
+class GoProxyStatus {
+  const GoProxyStatus({
+    required this.success,
+    required this.running,
+    required this.proxyUrl,
+    required this.message,
+    required this.error,
+    this.pid,
+  });
+
+  final bool success;
+  final bool running;
+  final String proxyUrl;
+  final String message;
+  final String error;
+  final int? pid;
+
+  static GoProxyStatus fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const GoProxyStatus(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+
+    final pid = map['pid'];
+    return GoProxyStatus(
+      success: map['success'] == true,
+      running: map['running'] == true,
+      proxyUrl: (map['proxyUrl'] ?? '').toString(),
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+      pid: switch (pid) {
+        int value => value,
+        num value => value.toInt(),
+        String value => int.tryParse(value),
+        _ => null,
+      },
+    );
+  }
+}
+
+class GoProxyService {
+  GoProxyService({
+    MethodChannel? channel,
+  }) : _channel = channel ?? const MethodChannel(Constants.appName);
+
+  final MethodChannel _channel;
+
+  Future<GoProxyStatus> start({
+    required String command,
+    List<String> args = const <String>[],
+    int port = 9978,
+    String? workingDirectory,
+    String? proxyUrl,
+    Map<String, String> environment = const <String, String>{},
+  }) async {
+    if (!Platform.isAndroid) {
+      return const GoProxyStatus(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        message: 'GoProxy native bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'startGoProxy',
+        <String, dynamic>{
+          'command': command.trim(),
+          'args': args,
+          'port': port,
+          'workingDirectory': workingDirectory,
+          'proxyUrl': proxyUrl,
+          'environment': environment,
+        },
+      );
+      return GoProxyStatus.fromMap(map);
+    } on PlatformException catch (error) {
+      return GoProxyStatus(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        message: 'startGoProxy platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return GoProxyStatus(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        message: 'startGoProxy not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<GoProxyStatus> stop() async {
+    if (!Platform.isAndroid) {
+      return const GoProxyStatus(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        message: 'GoProxy native bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'stopGoProxy',
+      );
+      return GoProxyStatus.fromMap(map);
+    } on PlatformException catch (error) {
+      return GoProxyStatus(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        message: 'stopGoProxy platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return GoProxyStatus(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        message: 'stopGoProxy not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<bool> isRunning() async {
+    if (!Platform.isAndroid) return false;
+    try {
+      return await _channel.invokeMethod<bool>('isGoProxyRunning') ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  Future<String> getProxyUrl() async {
+    if (!Platform.isAndroid) return '';
+    try {
+      return await _channel.invokeMethod<String>('getProxyUrl') ?? '';
+    } on PlatformException {
+      return '';
+    } on MissingPluginException {
+      return '';
+    }
+  }
+}

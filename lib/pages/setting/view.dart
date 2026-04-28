@@ -188,6 +188,33 @@ class _SettingPageState extends State<SettingPage> {
               ),
             ),
         ListTile(
+          leading: const Icon(Icons.dataset_linked_outlined),
+          onTap: () => Get.toNamed('/sourceConfig'),
+          title: Text('Source Config', style: titleStyle),
+          subtitle: Text(
+            't4_source_config_url / t4ApiConfigs',
+            style: subTitleStyle,
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.movie_filter_outlined),
+          onTap: () => Get.toNamed('/tmdbSetting'),
+          title: Text('TMDB Config', style: titleStyle),
+          subtitle: Text(
+            'tmdbAccessToken / tmdbImageProxy',
+            style: subTitleStyle,
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.integration_instructions_outlined),
+          onTap: () => Get.toNamed('/sourceHelperSetting'),
+          title: Text('Source Helper', style: titleStyle),
+          subtitle: Text(
+            '/pythonTest /catJsTest /nodeJsTest /goProxyTest',
+            style: subTitleStyle,
+          ),
+        ),
+        ListTile(
           onTap: () => LoginPageController.switchAccountDialog(context),
           leading: const Icon(Icons.switch_account_outlined),
           title: Text('设置账号模式', style: titleStyle),

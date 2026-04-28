@@ -14,6 +14,8 @@ import 'package:PiliPlus/router/app_pages.dart';
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/services/service_locator.dart';
+import 'package:PiliPlus/services/source_runtime/go_proxy_service.dart';
+import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/calc_window_position.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
@@ -104,7 +106,9 @@ void main() async {
   await Future.wait([_initDownPath(), _initTmpPath()]);
   Get
     ..lazyPut(AccountService.new)
-    ..lazyPut(DownloadService.new);
+    ..lazyPut(DownloadService.new)
+    ..lazyPut(GoProxyService.new)
+    ..lazyPut(SourceRuntimeService.new);
   HttpOverrides.global = _CustomHttpOverrides();
 
   CacheManager.autoClearCache();

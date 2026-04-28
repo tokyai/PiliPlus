@@ -1,0 +1,446 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:PiliPlus/services/source_runtime/go_proxy_service.dart';
+import 'package:PiliPlus/services/source_runtime/source_engine.dart';
+import 'package:PiliPlus/services/source_runtime/source_runtime_models.dart';
+import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
+import 'package:PiliPlus/utils/utils.dart';
+
+class SourceHelperSettingPage extends StatelessWidget {
+  const SourceHelperSettingPage({
+    super.key,
+    this.showAppBar = true,
+  });
+
+  final bool showAppBar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: showAppBar ? AppBar(title: const Text('Source Helper')) : null,
+      body: ListView(
+        children: const [
+          _HelperRouteTile(
+            title: 'Python Test',
+            subtitle: '/pythonTest',
+            route: '/pythonTest',
+            icon: Icons.data_object_outlined,
+          ),
+          _HelperRouteTile(
+            title: 'CatJs Test',
+            subtitle: '/catJsTest',
+            route: '/catJsTest',
+            icon: Icons.javascript_outlined,
+          ),
+          _HelperRouteTile(
+            title: 'NodeJs Test',
+            subtitle: '/nodeJsTest',
+            route: '/nodeJsTest',
+            icon: Icons.terminal_outlined,
+          ),
+          _HelperRouteTile(
+            title: 'GoProxy Test',
+            subtitle: '/goProxyTest',
+            route: '/goProxyTest',
+            icon: Icons.hub_outlined,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HelperRouteTile extends StatelessWidget {
+  const _HelperRouteTile({
+    required this.title,
+    required this.subtitle,
+    required this.route,
+    required this.icon,
+  });
+
+  final String title;
+  final String subtitle;
+  final String route;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: Icon(icon),
+    title: Text(title),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () => Get.toNamed(route),
+  );
+}
+
+class SourceHelperToolPage extends StatefulWidget {
+  const SourceHelperToolPage({
+    super.key,
+    required this.title,
+    required this.routeName,
+    required this.engine,
+  });
+
+  final String title;
+  final String routeName;
+  final SourceEngine engine;
+
+  @override
+  State<SourceHelperToolPage> createState() => _SourceHelperToolPageState();
+}
+
+class _SourceHelperToolPageState extends State<SourceHelperToolPage> {
+  late final SourceRuntimeService _runtimeService;
+  late final TextEditingController _payloadCtr;
+  SourceRuntimeResult? _lastResult;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _runtimeService = Get.find<SourceRuntimeService>();
+    _payloadCtr = TextEditingController(
+      text:
+          '{"message":"ping","timestamp":${DateTime.now().millisecondsSinceEpoch}}',
+    );
+  }
+
+  @override
+  void dispose() {
+    _payloadCtr.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final result = _lastResult;
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.info_outline),
+            title: Text('Route: ${widget.routeName}'),
+            subtitle: Text(
+              'Engine: ${widget.engine.key} | Native bridge: ${_runtimeService.supportsNativeBridge}',
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _payloadCtr,
+            minLines: 4,
+            maxLines: 8,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontFamily: 'monospace',
+            ),
+            decoration: const InputDecoration(
+              alignLabelWithHint: true,
+              labelText: 'Payload',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: _isLoading ? null : _probe,
+                icon: const Icon(Icons.health_and_safety_outlined),
+                label: const Text('Probe Runtime'),
+              ),
+              FilledButton.icon(
+                onPressed: _isLoading ? null : _execute,
+                icon: _isLoading
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.play_arrow),
+                label: const Text('Execute Test'),
+              ),
+              OutlinedButton.icon(
+                onPressed: result == null
+                    ? null
+                    : () => Utils.copyText(
+                        result.mergedOutput,
+                        toastText: 'Output copied',
+                      ),
+                icon: const Icon(Icons.copy_all_outlined),
+                label: const Text('Copy Output'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (result != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(result.success ? 'SUCCESS' : 'FAILED'),
+                          avatar: Icon(
+                            result.success
+                                ? Icons.check_circle_outline
+                                : Icons.error_outline,
+                            size: 16,
+                          ),
+                        ),
+                        Chip(label: Text('exit=${result.exitCode}')),
+                        Chip(label: Text('elapsed=${result.elapsedMs}ms')),
+                        if (result.isStub) const Chip(label: Text('STUB')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      result.message,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const Divider(height: 16),
+                    SelectableText(
+                      result.mergedOutput,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _probe() async {
+    setState(() => _isLoading = true);
+    final result = await _runtimeService.probe(widget.engine);
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _lastResult = result;
+    });
+  }
+
+  Future<void> _execute() async {
+    setState(() => _isLoading = true);
+    final result = await _runtimeService.execute(
+      engine: widget.engine,
+      payload: _payloadCtr.text.trim(),
+      options: <String, dynamic>{'route': widget.routeName},
+    );
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _lastResult = result;
+    });
+  }
+}
+
+class GoProxyTestPage extends StatefulWidget {
+  const GoProxyTestPage({super.key});
+
+  @override
+  State<GoProxyTestPage> createState() => _GoProxyTestPageState();
+}
+
+class _GoProxyTestPageState extends State<GoProxyTestPage> {
+  late final GoProxyService _goProxyService;
+  late final TextEditingController _commandCtr;
+  late final TextEditingController _argsCtr;
+  late final TextEditingController _portCtr;
+  late final TextEditingController _proxyUrlCtr;
+
+  GoProxyStatus? _status;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _goProxyService = Get.find<GoProxyService>();
+    _commandCtr = TextEditingController();
+    _argsCtr = TextEditingController(text: '--listen 127.0.0.1:9978');
+    _portCtr = TextEditingController(text: '9978');
+    _proxyUrlCtr = TextEditingController(text: 'http://127.0.0.1:9978');
+    _refreshStatus();
+  }
+
+  @override
+  void dispose() {
+    _commandCtr.dispose();
+    _argsCtr.dispose();
+    _portCtr.dispose();
+    _proxyUrlCtr.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _status;
+    return Scaffold(
+      appBar: AppBar(title: const Text('GoProxy Test')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _commandCtr,
+            decoration: const InputDecoration(
+              labelText: 'Command',
+              hintText: '/data/user/0/<pkg>/files/goproxy',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _argsCtr,
+            decoration: const InputDecoration(
+              labelText: 'Args',
+              hintText: '--listen 127.0.0.1:9978',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _portCtr,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Port',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _proxyUrlCtr,
+                  decoration: const InputDecoration(
+                    labelText: 'Proxy URL',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.icon(
+                onPressed: _loading ? null : _start,
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Start'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: _loading ? null : _stop,
+                icon: const Icon(Icons.stop),
+                label: const Text('Stop'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _refreshStatus,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (status != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(status.running ? 'RUNNING' : 'STOPPED'),
+                        ),
+                        Chip(label: Text('success=${status.success}')),
+                        if (status.pid != null)
+                          Chip(label: Text('pid=${status.pid}')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('proxyUrl: ${status.proxyUrl}'),
+                    const SizedBox(height: 4),
+                    SelectableText('message: ${status.message}'),
+                    if (status.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${status.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _refreshStatus() async {
+    setState(() => _loading = true);
+    final running = await _goProxyService.isRunning();
+    final url = await _goProxyService.getProxyUrl();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _status = GoProxyStatus(
+        success: true,
+        running: running,
+        proxyUrl: url,
+        message: 'Status refreshed',
+        error: '',
+      );
+    });
+  }
+
+  Future<void> _start() async {
+    setState(() => _loading = true);
+    final args = _parseArgs(_argsCtr.text);
+    final port = int.tryParse(_portCtr.text.trim()) ?? 9978;
+    final status = await _goProxyService.start(
+      command: _commandCtr.text.trim(),
+      args: args,
+      port: port,
+      proxyUrl: _proxyUrlCtr.text.trim().isEmpty
+          ? null
+          : _proxyUrlCtr.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _status = status;
+    });
+  }
+
+  Future<void> _stop() async {
+    setState(() => _loading = true);
+    final status = await _goProxyService.stop();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _status = status;
+    });
+  }
+
+  List<String> _parseArgs(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return const <String>[];
+    return text.split(RegExp(r'\s+')).where((item) => item.isNotEmpty).toList();
+  }
+}
