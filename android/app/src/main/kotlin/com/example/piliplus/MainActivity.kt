@@ -381,6 +381,20 @@ class MainActivity : AudioServiceActivity() {
             )
         }
 
+        if (engine == "php") {
+            val state = getPhpRuntimeState()
+            val success = state["success"] == true
+            return mapOf(
+                "success" to success,
+                "stdout" to formatPhpRuntimeStateSnapshot(state),
+                "stderr" to if (success) "" else (state["error"]?.toString().orEmpty()),
+                "elapsedMs" to 0,
+                "exitCode" to if (success) 0 else -1,
+                "isStub" to false,
+                "message" to (state["message"]?.toString() ?: "PHP runtime probe finished.")
+            )
+        }
+
         if (engine == "jar") {
             val jarPath = options["jarPath"]?.toString()?.trim().orEmpty()
             if (jarPath.isEmpty()) {
@@ -507,6 +521,62 @@ class MainActivity : AudioServiceActivity() {
                     error = "unsupported_action",
                     isStub = true
                 )
+            }
+        }
+
+        if (engine == "php") {
+            val action = options["action"]?.toString()?.trim()?.lowercase().orEmpty()
+            if (action.isNotEmpty() && action !in setOf("execute", "code", "run")) {
+                return when (action) {
+                    "status", "state", "runtime", "probe" -> {
+                        val state = getPhpRuntimeState()
+                        val success = state["success"] == true
+                        mapOf(
+                            "success" to success,
+                            "stdout" to formatPhpRuntimeStateSnapshot(state),
+                            "stderr" to if (success) "" else (state["error"]?.toString().orEmpty()),
+                            "elapsedMs" to 0,
+                            "exitCode" to if (success) 0 else -1,
+                            "isStub" to false,
+                            "message" to (state["message"]?.toString()
+                                ?: "PHP runtime state collected.")
+                        )
+                    }
+
+                    "start", "start_server", "server_start" -> {
+                        val result = phpStartServerWithOptions(options)
+                        val success = result["success"] == true
+                        mapOf(
+                            "success" to success,
+                            "stdout" to formatPhpServerOperationResult(result),
+                            "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                            "elapsedMs" to 0,
+                            "exitCode" to if (success) 0 else -1,
+                            "isStub" to false,
+                            "message" to (result["message"]?.toString() ?: "PHP server start finished.")
+                        )
+                    }
+
+                    "stop", "stop_server", "server_stop" -> {
+                        val result = phpStopServer()
+                        val success = result["success"] == true
+                        mapOf(
+                            "success" to success,
+                            "stdout" to formatPhpServerOperationResult(result),
+                            "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                            "elapsedMs" to 0,
+                            "exitCode" to if (success) 0 else -1,
+                            "isStub" to false,
+                            "message" to (result["message"]?.toString() ?: "PHP server stop finished.")
+                        )
+                    }
+
+                    else -> sourceRuntimeFailure(
+                        message = "Unsupported php action=$action. Supported: status, start, stop, execute.",
+                        error = "unsupported_action",
+                        isStub = true
+                    )
+                }
             }
         }
 
@@ -666,6 +736,43 @@ class MainActivity : AudioServiceActivity() {
         lines += "foregroundWifiLockHeld=${result["foregroundWifiLockHeld"]}"
         lines += "foregroundTrackedPid=${result["foregroundTrackedPid"]}"
         lines += "foregroundServiceError=${result["foregroundServiceError"]}"
+        return lines.joinToString("\n")
+    }
+
+    private fun formatPhpRuntimeStateSnapshot(state: Map<String, Any?>): String {
+        val lines = mutableListOf<String>()
+        lines += "success=${state["success"]}"
+        lines += "running=${state["running"]}"
+        lines += "installed=${state["installed"]}"
+        lines += "port=${state["port"]}"
+        lines += "ports=${state["ports"]}"
+        lines += "documentRoot=${state["documentRoot"]}"
+        lines += "startedAtMs=${state["startedAtMs"]}"
+        lines += "uptimeMs=${state["uptimeMs"]}"
+        lines += "processCount=${state["processCount"]}"
+        lines += "aliveProcessCount=${state["aliveProcessCount"]}"
+        lines += "phpDir=${state["phpDir"]}"
+        lines += "phpBinary=${state["phpBinary"]}"
+        lines += "phpBinaryExists=${state["phpBinaryExists"]}"
+        lines += "phpBinaryExecutable=${state["phpBinaryExecutable"]}"
+        lines += "scriptsDir=${state["scriptsDir"]}"
+        lines += "command=${state["command"]}"
+        lines += "version=${state["version"]}"
+        lines += "runningFlag=${state["runningFlag"]}"
+        lines += "message=${state["message"]}"
+        lines += "error=${state["error"]}"
+        return lines.joinToString("\n")
+    }
+
+    private fun formatPhpServerOperationResult(result: Map<String, Any?>): String {
+        val lines = mutableListOf<String>()
+        lines += "success=${result["success"]}"
+        lines += "running=${result["running"]}"
+        lines += "port=${result["port"]}"
+        lines += "ports=${result["ports"]}"
+        lines += "documentRoot=${result["documentRoot"]}"
+        lines += "message=${result["message"]}"
+        lines += "error=${result["error"]}"
         return lines.joinToString("\n")
     }
 
@@ -1309,6 +1416,44 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun phpStartServer(call: MethodCall): Map<String, Any?> {
+        val runtimeOptions = mergePhpRuntimeOptionsWithEnvironment(buildPhpRuntimeOptions(call))
+        val port = (call.argument<Int>("port") ?: 9980).coerceIn(1, 65500)
+        val instances = (call.argument<Int>("instances") ?: 4).coerceIn(1, 8)
+        val documentRoot = call.argument<String>("documentRoot")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: phpGetScriptsDir()
+        return phpStartServerInternal(
+            port = port,
+            instances = instances,
+            documentRoot = documentRoot,
+            runtimeOptions = runtimeOptions
+        )
+    }
+
+    private fun phpStartServerWithOptions(options: Map<*, *>): Map<String, Any?> {
+        val runtimeOptions = mergePhpRuntimeOptionsWithEnvironment(buildPhpRuntimeOptions(options))
+        val port = parseIntValue(options["port"], 9980).coerceIn(1, 65500)
+        val instances = parseIntValue(options["instances"], 4).coerceIn(1, 8)
+        val documentRoot = options["documentRoot"]
+            ?.toString()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: phpGetScriptsDir()
+        return phpStartServerInternal(
+            port = port,
+            instances = instances,
+            documentRoot = documentRoot,
+            runtimeOptions = runtimeOptions
+        )
+    }
+
+    private fun phpStartServerInternal(
+        port: Int,
+        instances: Int,
+        documentRoot: String,
+        runtimeOptions: Map<String, Any>
+    ): Map<String, Any?> {
         if (phpIsServerRunning()) {
             return mapOf(
                 "success" to true,
@@ -1320,7 +1465,6 @@ class MainActivity : AudioServiceActivity() {
                 "error" to ""
             )
         }
-        val runtimeOptions = mergePhpRuntimeOptionsWithEnvironment(buildPhpRuntimeOptions(call))
         val command = resolvePhpCommand(runtimeOptions)
             ?: return mapOf(
                 "success" to false,
@@ -1331,12 +1475,6 @@ class MainActivity : AudioServiceActivity() {
                 "message" to "PHP command not found.",
                 "error" to "command_not_found"
             )
-        val port = (call.argument<Int>("port") ?: 9980).coerceIn(1, 65500)
-        val instances = (call.argument<Int>("instances") ?: 4).coerceIn(1, 8)
-        val documentRoot = call.argument<String>("documentRoot")
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?: phpGetScriptsDir()
         val rootFile = File(documentRoot).apply { mkdirs() }
         ensurePhpScripts(rootFile)
         val startedProcesses = mutableListOf<Process>()
@@ -2125,6 +2263,27 @@ class MainActivity : AudioServiceActivity() {
             ?.takeIf { it.isNotEmpty() }
             ?.let { options["workingDirectory"] = it }
         call.argument<Map<*, *>>("environment")
+            ?.let { options["environment"] = it }
+        return options
+    }
+
+    private fun buildPhpRuntimeOptions(optionsInput: Map<*, *>): Map<String, Any> {
+        val options = mutableMapOf<String, Any>()
+        optionsInput["command"]
+            ?.toString()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { options["command"] = it }
+        parseStringList(optionsInput["commandCandidates"])
+            .takeIf { it.isNotEmpty() }
+            ?.let { options["commandCandidates"] = it }
+        optionsInput["workingDirectory"]
+            ?.toString()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { options["workingDirectory"] = it }
+        parseStringMap(optionsInput["environment"])
+            .takeIf { it.isNotEmpty() }
             ?.let { options["environment"] = it }
         return options
     }

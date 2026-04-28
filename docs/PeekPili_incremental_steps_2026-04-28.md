@@ -520,6 +520,15 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 58
+- Extended generic Source Runtime PHP runtime actions:
+  - `sourceRuntimeProbe(engine=php)` now returns structured PHP runtime snapshot text instead of plain version-only probe,
+  - `sourceRuntimeExecute(engine=php)` now supports `options.action=status|start|stop` besides execute mode,
+  - generic PHP `start` now reuses shared internal server-start logic with dedicated PHP bridge path.
+- This reduces dedicated-vs-generic behavior drift for PHP runtime control and improves migration observability.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -573,3 +582,4 @@ This document records the practical migration increments after the initial rever
 - GoProxy runtime diagnostics now include last exit code/time snapshot fields.
 - Source Runtime generic bridge now supports GoProxy runtime `status/stop` actions.
 - Source Runtime generic bridge now supports full GoProxy `start/status/stop` action set.
+- Source Runtime generic bridge now supports PHP runtime `status/start/stop` actions with runtime snapshot probe output.
