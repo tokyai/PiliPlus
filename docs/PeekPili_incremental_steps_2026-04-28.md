@@ -76,6 +76,19 @@ This document records the practical migration increments after the initial rever
 - Verified by Android build compile task:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 17
+- Replaced Android `loadJar` placeholder implementation with real execution path:
+  - uses `DexClassLoader` to load target class from jar/dex artifact,
+  - reflects and invokes configured method (`entryClass + methodName`),
+  - supports common signatures (`()`, `String`, `String[]`, `List<String>`, all-String positional args).
+- Added richer `loadJar` result output:
+  - reports resolved jar path, signature used, and return value snapshot.
+- Kept explicit boundary:
+  - this is reflective method invocation capability,
+  - not yet full parity with reverse package `JarLoader` spider lifecycle API.
+- Verified by Android build compile task:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -88,3 +101,4 @@ This document records the practical migration increments after the initial rever
   - runtime confirmation + implementation closure are still pending.
 - Desktop Source Helper execute path is no longer global stub for Python/Node/PHP.
 - Android Source Helper generic bridge is no longer pure placeholder for Python/Node/PHP.
+- Android Jar helper no longer file-check stub and now has real reflective invoke capability.

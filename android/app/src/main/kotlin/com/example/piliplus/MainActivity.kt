@@ -22,8 +22,11 @@ import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import dalvik.system.DexClassLoader
 import kotlin.system.exitProcess
 import java.io.File
+import java.lang.reflect.Modifier
+import java.util.Arrays
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AudioServiceActivity() {
@@ -814,7 +817,8 @@ class MainActivity : AudioServiceActivity() {
                 "isStub" to true
             )
         }
-        val probe = probeJarFileInternal(jarPath)
+        val resolvedJarFile = resolveRuntimePath(jarPath)
+        val probe = probeJarFileInternal(resolvedJarFile.absolutePath)
         val probeSuccess = probe["success"] == true
         if (!probeSuccess) {
             return mapOf(
@@ -828,22 +832,194 @@ class MainActivity : AudioServiceActivity() {
             )
         }
 
-        val stdout = buildString {
-            appendLine("jarPath=$jarPath")
-            appendLine("entryClass=$entryClass")
-            appendLine("methodName=$methodName")
-            appendLine("args=${args.joinToString(",")}")
-        }.trim()
+        if (entryClass.isEmpty()) {
+            return mapOf(
+                "success" to false,
+                "stdout" to "",
+                "stderr" to "",
+                "exitCode" to -1,
+                "message" to "entryClass is required for real jar execution.",
+                "error" to "empty_entry_class",
+                "isStub" to false
+            )
+        }
+
+        val options = call.argument<Map<*, *>>("options") ?: emptyMap<Any?, Any?>()
+        val invoke = invokeJarMethod(
+            jarFile = resolvedJarFile,
+            entryClass = entryClass,
+            methodName = if (methodName.isEmpty()) "main" else methodName,
+            args = args,
+            staticOnly = (options["staticOnly"] as? Boolean) == true
+        )
         return mapOf(
-            "success" to true,
-            "stdout" to stdout,
-            "stderr" to "",
-            "exitCode" to 0,
-            "message" to "Jar loader bridge placeholder. File validated, execution not wired yet.",
-            "error" to "",
-            "isStub" to true
+            "success" to invoke.success,
+            "stdout" to invoke.stdout,
+            "stderr" to invoke.stderr,
+            "exitCode" to invoke.exitCode,
+            "message" to invoke.message,
+            "error" to invoke.error,
+            "isStub" to false
         )
     }
+
+    private fun invokeJarMethod(
+        jarFile: File,
+        entryClass: String,
+        methodName: String,
+        args: List<String>,
+        staticOnly: Boolean
+    ): JarInvokeExecution {
+        return try {
+            val optimizedDir = File(codeCacheDir, "jar_opt").apply { mkdirs() }
+            val loader = DexClassLoader(
+                jarFile.absolutePath,
+                optimizedDir.absolutePath,
+                null,
+                classLoader
+            )
+            val clazz = loader.loadClass(entryClass)
+            val methods = clazz.methods.filter { it.name == methodName }
+            if (methods.isEmpty()) {
+                return JarInvokeExecution(
+                    success = false,
+                    stdout = "",
+                    stderr = "",
+                    exitCode = -1,
+                    message = "Method not found: $entryClass#$methodName",
+                    error = "method_not_found"
+                )
+            }
+
+            var lastError = ""
+            for (method in methods) {
+                if (staticOnly && !Modifier.isStatic(method.modifiers)) {
+                    continue
+                }
+                val bind = bindMethodArguments(method.parameterTypes, args) ?: run {
+                    lastError = "unsupported_signature:${method.parameterTypes.joinToString(",") { it.name }}"
+                    continue
+                }
+                val target = if (Modifier.isStatic(method.modifiers)) {
+                    null
+                } else {
+                    clazz.getDeclaredConstructor().newInstance()
+                }
+                method.isAccessible = true
+                val returnValue = method.invoke(target, *bind)
+                return JarInvokeExecution(
+                    success = true,
+                    stdout = buildString {
+                        appendLine("jarPath=${jarFile.absolutePath}")
+                        appendLine("entryClass=$entryClass")
+                        appendLine("method=$methodName")
+                        appendLine("signature=${method.parameterTypes.joinToString(",") { it.simpleName }}")
+                        append("result=${formatJarReturnValue(returnValue)}")
+                    },
+                    stderr = "",
+                    exitCode = 0,
+                    message = "Jar method invoked successfully.",
+                    error = ""
+                )
+            }
+
+            JarInvokeExecution(
+                success = false,
+                stdout = "",
+                stderr = "",
+                exitCode = -1,
+                message = "No compatible method signature for $entryClass#$methodName",
+                error = if (lastError.isNotEmpty()) lastError else "signature_not_supported"
+            )
+        } catch (e: Exception) {
+            JarInvokeExecution(
+                success = false,
+                stdout = "",
+                stderr = "",
+                exitCode = -1,
+                message = "Jar invoke failed.",
+                error = e.message ?: e.toString()
+            )
+        }
+    }
+
+    private fun bindMethodArguments(
+        parameterTypes: Array<Class<*>>,
+        args: List<String>
+    ): Array<Any?>? {
+        if (parameterTypes.isEmpty()) {
+            return if (args.isEmpty()) emptyArray() else null
+        }
+        if (parameterTypes.size == 1) {
+            val type = parameterTypes[0]
+            return when {
+                type == String::class.java -> arrayOf(args.joinToString(","))
+                type.isArray && type.componentType == String::class.java -> arrayOf(args.toTypedArray())
+                List::class.java.isAssignableFrom(type) -> arrayOf(args)
+                type == Int::class.java || type == Integer.TYPE -> {
+                    if (args.size != 1) return null
+                    arrayOf(args[0].toIntOrNull() ?: return null)
+                }
+
+                type == Long::class.java || type == java.lang.Long.TYPE -> {
+                    if (args.size != 1) return null
+                    arrayOf(args[0].toLongOrNull() ?: return null)
+                }
+
+                type == Boolean::class.java || type == java.lang.Boolean.TYPE -> {
+                    if (args.size != 1) return null
+                    arrayOf(args[0].toBooleanStrictOrNull() ?: return null)
+                }
+
+                else -> null
+            }
+        }
+        if (parameterTypes.size == args.size && parameterTypes.all { it == String::class.java }) {
+            return args.toTypedArray<Any?>()
+        }
+        return null
+    }
+
+    private fun formatJarReturnValue(value: Any?): String = when (value) {
+        null -> "null"
+        is Array<*> -> Arrays.toString(value)
+        is IntArray -> Arrays.toString(value)
+        is LongArray -> Arrays.toString(value)
+        is FloatArray -> Arrays.toString(value)
+        is DoubleArray -> Arrays.toString(value)
+        is BooleanArray -> Arrays.toString(value)
+        is ByteArray -> Arrays.toString(value)
+        is ShortArray -> Arrays.toString(value)
+        is CharArray -> Arrays.toString(value)
+        else -> value.toString()
+    }
+
+    private fun String.toBooleanStrictOrNull(): Boolean? = when (this.lowercase()) {
+        "true" -> true
+        "false" -> false
+        else -> null
+    }
+
+    private fun resolveRuntimePath(inputPath: String): File {
+        val raw = inputPath.trim()
+        if (raw.isEmpty()) {
+            return File(raw)
+        }
+        return if (raw.startsWith("/")) {
+            File(raw)
+        } else {
+            File(filesDir, raw)
+        }
+    }
+
+    private data class JarInvokeExecution(
+        val success: Boolean,
+        val stdout: String,
+        val stderr: String,
+        val exitCode: Int,
+        val message: String,
+        val error: String
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
