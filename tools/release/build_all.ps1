@@ -39,6 +39,17 @@ function Write-Step {
     Write-Host ("[build_all] " + $Message)
 }
 
+function Resolve-PathRelativeToRoot {
+    param(
+        [string]$RepositoryRoot,
+        [string]$PathInput
+    )
+    if ([System.IO.Path]::IsPathRooted($PathInput)) {
+        return $PathInput
+    }
+    return Join-Path $RepositoryRoot $PathInput
+}
+
 function Find-FlutterCommand {
     if (Get-Command fvm -ErrorAction SilentlyContinue) {
         return @("fvm", "flutter")
@@ -421,6 +432,30 @@ foreach ($target in $normalizedTargets) {
     }
 }
 
+$closureStatusGenerated = $false
+if ($EmitRuntimeClosureStatus -or $RunRuntimeSmoke) {
+    Write-Step "Generating runtime closure status snapshot..."
+    Invoke-RuntimeClosureStatusSnapshot -RepositoryRoot $root -OutputPath $RuntimeClosureStatusPath
+    $resolvedClosureStatusPath = Resolve-PathRelativeToRoot -RepositoryRoot $root -PathInput $RuntimeClosureStatusPath
+    if (Test-Path $resolvedClosureStatusPath) {
+        $script:BuildArtifacts.Add($resolvedClosureStatusPath)
+    }
+    $closureStatusGenerated = $true
+}
+
+if ($RunReverseCompletionCheck) {
+    Write-Step "Generating reverse completion check report..."
+    Invoke-ReverseCompletionReport -RepositoryRoot $root -ReportPath $ReverseCompletionReportPath -JsonReportPath $ReverseCompletionJsonReportPath -SkipStatusRefresh:$closureStatusGenerated -StrictCheck:$StrictReverseCompletion
+    $resolvedReverseCompletionReportPath = Resolve-PathRelativeToRoot -RepositoryRoot $root -PathInput $ReverseCompletionReportPath
+    if (Test-Path $resolvedReverseCompletionReportPath) {
+        $script:BuildArtifacts.Add($resolvedReverseCompletionReportPath)
+    }
+    $resolvedReverseCompletionJsonReportPath = Resolve-PathRelativeToRoot -RepositoryRoot $root -PathInput $ReverseCompletionJsonReportPath
+    if (Test-Path $resolvedReverseCompletionJsonReportPath) {
+        $script:BuildArtifacts.Add($resolvedReverseCompletionJsonReportPath)
+    }
+}
+
 if ($ArtifactManifestPath.Trim()) {
     $manifestFile = if ([System.IO.Path]::IsPathRooted($ArtifactManifestPath)) {
         $ArtifactManifestPath
@@ -453,18 +488,6 @@ if ($ArtifactManifestPath.Trim()) {
     }
     ($manifestPayload | ConvertTo-Json -Depth 6) | Set-Content -Encoding UTF8 $manifestFile
     Write-Step ("Artifact manifest generated: " + $manifestFile)
-}
-
-$closureStatusGenerated = $false
-if ($EmitRuntimeClosureStatus -or $RunRuntimeSmoke) {
-    Write-Step "Generating runtime closure status snapshot..."
-    Invoke-RuntimeClosureStatusSnapshot -RepositoryRoot $root -OutputPath $RuntimeClosureStatusPath
-    $closureStatusGenerated = $true
-}
-
-if ($RunReverseCompletionCheck) {
-    Write-Step "Generating reverse completion check report..."
-    Invoke-ReverseCompletionReport -RepositoryRoot $root -ReportPath $ReverseCompletionReportPath -JsonReportPath $ReverseCompletionJsonReportPath -SkipStatusRefresh:$closureStatusGenerated -StrictCheck:$StrictReverseCompletion
 }
 
 Write-Step "Build flow finished."

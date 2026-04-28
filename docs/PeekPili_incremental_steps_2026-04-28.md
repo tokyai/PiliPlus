@@ -959,6 +959,25 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 99
+- Extended build artifact manifest coverage for closure artifacts:
+  - updated `tools/release/build_all.ps1`,
+  - manifest generation is now executed after closure/report steps to capture final outputs,
+  - when enabled, generated closure/reverse-check outputs are now added to `BuildArtifacts`,
+  - manifest now can include:
+    - closure status json,
+    - reverse completion markdown report,
+    - reverse completion json report.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/build_all.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - Dry execution with manifest passed:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -EmitRuntimeClosureStatus -RunReverseCompletionCheck -ArtifactManifestPath build/artifacts/ios-closure-manifest.json`.
+  - Manifest contains closure/report artifact entries.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1052,3 +1071,4 @@ This document records the practical migration increments after the initial rever
 - Unified build flow now supports custom reverse completion JSON report path.
 - Reverse inventory snapshot now captures both human-readable and machine-readable closure artifacts.
 - Runtime-smoke workflow run summaries now directly expose closure readiness and pending blockers.
+- Unified build manifest now includes closure/report artifacts for end-to-end auditability.

@@ -123,6 +123,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - Use `-ReverseCompletionReportPath` to override report path.
 - Use `-ReverseCompletionJsonReportPath` to override JSON report path.
 - Use `-StrictReverseCompletion` to fail build flow when closure is still incomplete.
+- When `-ArtifactManifestPath` is enabled, closure/reverse-check outputs are also included in manifest artifact details.
 
 ## Runtime Smoke
 
