@@ -1055,6 +1055,23 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1 -MaxItems 5` passed.
   - `build\\runtime-smoke\\summary.md` contains `Reverse Completion Snapshot` section.
 
+## Step 105
+- Added reverse-check threshold pass-through options in unified build flow:
+  - updated `tools/release/build_all.ps1`,
+  - new options:
+    - `-ReverseMinWindowsSmokeReports`,
+    - `-ReverseMinAndroidSmokeLogs`,
+  - build flow now forwards these thresholds to `reverse_completion_check.ps1`,
+  - when custom thresholds are used, reverse-check step refreshes closure status instead of reusing pre-generated default-threshold snapshot.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/build_all.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - Dry execution passed:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -EmitRuntimeClosureStatus -RunReverseCompletionCheck -StrictReverseCompletionRuntimeOnly -ReverseMinAndroidSmokeLogs 0 -ReverseMinWindowsSmokeReports 0`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1154,3 +1171,4 @@ This document records the practical migration increments after the initial rever
 - Reverse completion strict mode now supports runtime-validation-only gating to avoid environment-only false failures.
 - Runtime-smoke CI workflows now support runtime-validation-only gate input for practical non-macOS/non-device runners.
 - Runtime smoke summary now directly surfaces reverse completion snapshot for human audit.
+- Unified build flow now supports reverse-check threshold tuning without leaving build script context.

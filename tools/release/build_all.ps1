@@ -17,7 +17,9 @@ param(
     [string]$ReverseCompletionReportPath = "build/runtime-smoke/reverse-completion-report.md",
     [string]$ReverseCompletionJsonReportPath = "build/runtime-smoke/reverse-completion-report.json",
     [switch]$StrictReverseCompletion,
-    [switch]$StrictReverseCompletionRuntimeOnly
+    [switch]$StrictReverseCompletionRuntimeOnly,
+    [int]$ReverseMinWindowsSmokeReports = 1,
+    [int]$ReverseMinAndroidSmokeLogs = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -358,7 +360,9 @@ function Invoke-ReverseCompletionReport {
         [string]$JsonReportPath,
         [switch]$SkipStatusRefresh,
         [switch]$StrictCheck,
-        [switch]$StrictRuntimeValidationOnly
+        [switch]$StrictRuntimeValidationOnly,
+        [int]$MinWindowsSmokeReports,
+        [int]$MinAndroidSmokeLogs
     )
     $scriptPath = Join-Path $RepositoryRoot "tools/release/reverse_completion_check.ps1"
     if (-not (Test-Path $scriptPath)) {
@@ -367,7 +371,9 @@ function Invoke-ReverseCompletionReport {
     $command = @(
         "powershell", "-ExecutionPolicy", "Bypass", "-File", $scriptPath,
         "-ReportPath", $ReportPath,
-        "-JsonReportPath", $JsonReportPath
+        "-JsonReportPath", $JsonReportPath,
+        "-MinWindowsSmokeReports", "$MinWindowsSmokeReports",
+        "-MinAndroidSmokeLogs", "$MinAndroidSmokeLogs"
     )
     if ($SkipStatusRefresh) {
         $command += "-SkipStatus"
@@ -450,7 +456,11 @@ if ($EmitRuntimeClosureStatus -or $RunRuntimeSmoke) {
 
 if ($RunReverseCompletionCheck) {
     Write-Step "Generating reverse completion check report..."
-    Invoke-ReverseCompletionReport -RepositoryRoot $root -ReportPath $ReverseCompletionReportPath -JsonReportPath $ReverseCompletionJsonReportPath -SkipStatusRefresh:$closureStatusGenerated -StrictCheck:$StrictReverseCompletion -StrictRuntimeValidationOnly:$StrictReverseCompletionRuntimeOnly
+    $skipStatusRefreshForReverse = $closureStatusGenerated -and ($ReverseMinWindowsSmokeReports -eq 1) -and ($ReverseMinAndroidSmokeLogs -eq 1)
+    if (-not $skipStatusRefreshForReverse -and $closureStatusGenerated) {
+        Write-Step "Reverse completion check will refresh closure status due custom thresholds."
+    }
+    Invoke-ReverseCompletionReport -RepositoryRoot $root -ReportPath $ReverseCompletionReportPath -JsonReportPath $ReverseCompletionJsonReportPath -SkipStatusRefresh:$skipStatusRefreshForReverse -StrictCheck:$StrictReverseCompletion -StrictRuntimeValidationOnly:$StrictReverseCompletionRuntimeOnly -MinWindowsSmokeReports $ReverseMinWindowsSmokeReports -MinAndroidSmokeLogs $ReverseMinAndroidSmokeLogs
     $resolvedReverseCompletionReportPath = Resolve-PathRelativeToRoot -RepositoryRoot $root -PathInput $ReverseCompletionReportPath
     if (Test-Path $resolvedReverseCompletionReportPath) {
         $script:BuildArtifacts.Add($resolvedReverseCompletionReportPath)

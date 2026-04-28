@@ -80,6 +80,12 @@ Runtime-validation-only strict gate example:
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RunReverseCompletionCheck -StrictReverseCompletionRuntimeOnly
 ```
 
+Threshold override example:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RunReverseCompletionCheck -ReverseMinWindowsSmokeReports 1 -ReverseMinAndroidSmokeLogs 1
+```
+
 - Confirm thunder markers are UI-only and not backed by hidden local runtime bridge.
 - Confirm current migration behavior is consistent with packaged app expectations.
 
