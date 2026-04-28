@@ -84,6 +84,12 @@ jobs:
             throw "runtime_closure_status failed with exit code $LASTEXITCODE"
           }
 
+      - name: Generate reverse completion report
+        shell: pwsh
+        run: >
+          powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1
+          -SkipStatus
+
       - name: Upload runtime smoke reports
         uses: actions/upload-artifact@v7
         with:
@@ -98,6 +104,13 @@ jobs:
           archive: false
           name: android-runtime-closure-status
           path: build/runtime-smoke/android-closure-status.json
+
+      - name: Upload reverse completion report
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: android-reverse-completion-report
+          path: build/runtime-smoke/reverse-completion-report.md
 
       - name: Upload build artifact manifest
         uses: actions/upload-artifact@v7

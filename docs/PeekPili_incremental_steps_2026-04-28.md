@@ -819,6 +819,19 @@ This document records the practical migration increments after the initial rever
   - Report generated:
     - `build\\runtime-smoke\\reverse-completion-report.md`.
 
+## Step 88
+- Integrated reverse completion report into runtime-smoke CI workflows:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - both now run `tools/release/reverse_completion_check.ps1 -SkipStatus`,
+  - both upload `reverse-completion-report.md` as dedicated artifacts.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -901,3 +914,4 @@ This document records the practical migration increments after the initial rever
 - Closure status script now supports threshold policies and optional CI gate failure on pending blockers.
 - Runtime smoke workflows now support optional `fail_on_pending` gate for strict closure enforcement.
 - Reverse completion check now has a single command entry with explicit completion/incomplete decision output.
+- Runtime smoke workflows now also publish reverse completion report artifacts for each run.

@@ -111,4 +111,6 @@ powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.
 CI artifact snapshots:
 - Windows workflow uploads `windows-runtime-closure-status`.
 - Android workflow uploads `android-runtime-closure-status`.
+- Windows workflow uploads `windows-reverse-completion-report`.
+- Android workflow uploads `android-reverse-completion-report`.
 - Both workflows support `fail_on_pending=true` to fail run when blockers remain.
