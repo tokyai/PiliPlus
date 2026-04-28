@@ -1942,11 +1942,17 @@ class MainActivity : AudioServiceActivity() {
             argumentCandidates = argumentCandidates
         )
         if (!invoke.success) {
+            synchronized(jarRuntimeLock) {
+                crashedJarSpiders.add(runtime.runtimeId)
+            }
             return mapOf(
                 "success" to false,
                 "error" to invoke.error,
                 "message" to failureMessage
             )
+        }
+        synchronized(jarRuntimeLock) {
+            crashedJarSpiders.remove(runtime.runtimeId)
         }
         return mapOf(
             "success" to true,
@@ -2184,6 +2190,7 @@ class MainActivity : AudioServiceActivity() {
             for (alias in aliases) {
                 val id = buildJarSpiderId(alias, jarPath)
                 jarSpiderContexts.remove(id)
+                crashedJarSpiders.remove(id)
                 loadedJarSpiders[id] = JarSpiderRuntime(
                     key = alias,
                     jarPath = jarPath,

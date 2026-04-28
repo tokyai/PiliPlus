@@ -299,6 +299,15 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/php_bridge_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 36
+- Improved Jar crash-state lifecycle automation:
+  - business API invoke failure now auto-marks spider as crashed,
+  - business API invoke success now auto-clears previous crashed marker,
+  - successful `loadJar` registration now clears stale crashed markers for registered aliases.
+- This reduces manual crash-flag operations and better matches expected runtime protection behavior during reverse migration.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -330,3 +339,4 @@ This document records the practical migration increments after the initial rever
 - Android Jar lifecycle bridge now triggers common plugin lifecycle methods (`destroy/release/close`) during destroy/clear flows when available.
 - Jar runtime snapshot diagnostics are now available in bridge and `/jarTest` for loaded/crashed/context state checks.
 - PHP install diagnostics now expose download/extract/archive details in typed bridge model and test UI.
+- Jar crash markers now auto-synchronize with business invoke success/failure and reload lifecycle.
