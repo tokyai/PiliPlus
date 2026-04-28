@@ -341,7 +341,8 @@ class MainActivity : AudioServiceActivity() {
         val timeoutMs = (call.argument<Int>("timeoutMs") ?: 8000)
             .toLong()
             .coerceIn(500L, 120000L)
-        val options = call.argument<Map<*, *>>("options") ?: emptyMap<Any?, Any?>()
+        val optionsRaw = call.argument<Map<*, *>>("options") ?: emptyMap<Any?, Any?>()
+        val options = withEngineRuntimeOptions(engine, optionsRaw)
 
         if (engine == "goproxy") {
             return mapOf(
@@ -415,7 +416,8 @@ class MainActivity : AudioServiceActivity() {
         val timeoutMs = (call.argument<Int>("timeoutMs") ?: 15000)
             .toLong()
             .coerceIn(500L, 120000L)
-        val options = call.argument<Map<*, *>>("options") ?: emptyMap<Any?, Any?>()
+        val optionsRaw = call.argument<Map<*, *>>("options") ?: emptyMap<Any?, Any?>()
+        val options = withEngineRuntimeOptions(engine, optionsRaw)
         val useCodeMode = (options["executeAsCode"] as? Boolean) == true
 
         if (engine == "jar" || engine == "goproxy") {
@@ -545,6 +547,19 @@ class MainActivity : AudioServiceActivity() {
                 elapsedMs = System.currentTimeMillis() - startedAt
             )
         }
+    }
+
+    private fun withEngineRuntimeOptions(engine: String, options: Map<*, *>): Map<Any?, Any?> {
+        if (engine != "php") {
+            return options.entries.associate { entry -> entry.key to entry.value }
+        }
+        val normalized = options.toMutableMap()
+        normalized["environment"] = buildPhpRuntimeEnvironment(parseStringMap(options["environment"]))
+        val workingDirectory = options["workingDirectory"]?.toString()?.trim().orEmpty()
+        if (workingDirectory.isEmpty()) {
+            normalized["workingDirectory"] = phpGetScriptsDir()
+        }
+        return normalized
     }
 
     private fun resolveRuntimeCommand(engine: String, options: Map<*, *>): String? {

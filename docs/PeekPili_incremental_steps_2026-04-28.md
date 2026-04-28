@@ -253,6 +253,14 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze` on updated Dart files passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 31
+- Aligned generic Android `sourceRuntimeProbe/sourceRuntimeExecute` with PHP bridge runtime context:
+  - PHP engine options now auto-merge runtime environment (`PHPRC`, `PHP_INI_SCAN_DIR`, `HOME`, `TMPDIR`, `LD_LIBRARY_PATH`),
+  - PHP engine now defaults working directory to bridge script root when caller does not provide one.
+- This closes the biggest consistency gap between `/phpTest` (generic runtime path) and `/phpBridgeTest` (dedicated bridge path) for migration verification.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -279,3 +287,4 @@ This document records the practical migration increments after the initial rever
 - Android Jar business API now reuses per-spider runtime context/instance baseline instead of always re-instantiating.
 - PHP plugin-equivalent baseline bridge and debug UI are now available for migration validation on Android.
 - Android PHP bridge now includes baseline download/extract install orchestration, runtime env wiring, and scripts/bootstrap behavior closer to reverse plugin path.
+- Android generic source runtime path for PHP now shares bridge-aligned env/working-directory defaults, reducing behavior drift between debug entry routes.
