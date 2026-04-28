@@ -1711,6 +1711,7 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
 
   GoProxyStatus? _status;
   GoProxyCommandResult? _commandResult;
+  GoProxyRuntimeStateResult? _runtimeStateResult;
   bool _loading = false;
 
   @override
@@ -1848,6 +1849,11 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                 label: const Text('Prepare Asset'),
               ),
               OutlinedButton.icon(
+                onPressed: _loading ? null : _getRuntimeState,
+                icon: const Icon(Icons.storage_outlined),
+                label: const Text('Runtime State'),
+              ),
+              OutlinedButton.icon(
                 onPressed: _saveGoProxyPreset,
                 icon: const Icon(Icons.save_outlined),
                 label: const Text('Save Preset'),
@@ -1916,6 +1922,67 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                     if (status.error.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       SelectableText('error: ${status.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          if (_runtimeStateResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _runtimeStateResult!.success
+                                ? 'RUNTIME OK'
+                                : 'RUNTIME FAIL',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'running=${_runtimeStateResult!.running}',
+                          ),
+                        ),
+                        if (_runtimeStateResult!.pid != null)
+                          Chip(label: Text('pid=${_runtimeStateResult!.pid}')),
+                        Chip(
+                          label: Text(
+                            'uptime=${_runtimeStateResult!.uptimeMs}ms',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('proxyUrl: ${_runtimeStateResult!.proxyUrl}'),
+                    const SizedBox(height: 4),
+                    SelectableText('command: ${_runtimeStateResult!.lastCommand}'),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'args: ${_runtimeStateResult!.lastArgs.join(' ')}',
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'workingDirectory: ${_runtimeStateResult!.lastWorkingDirectory}',
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText('message: ${_runtimeStateResult!.message}'),
+                    if (_runtimeStateResult!.lastError.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'lastError: ${_runtimeStateResult!.lastError}',
+                      ),
+                    ],
+                    if (_runtimeStateResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_runtimeStateResult!.error}'),
                     ],
                   ],
                 ),
@@ -2002,6 +2069,16 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
     setState(() {
       _loading = false;
       _status = status;
+    });
+  }
+
+  Future<void> _getRuntimeState() async {
+    setState(() => _loading = true);
+    final result = await _goProxyService.getRuntimeState();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _runtimeStateResult = result;
     });
   }
 

@@ -82,6 +82,84 @@ class GoProxyCommandResult {
   }
 }
 
+class GoProxyRuntimeStateResult {
+  const GoProxyRuntimeStateResult({
+    required this.success,
+    required this.running,
+    required this.proxyUrl,
+    required this.lastError,
+    required this.lastCommand,
+    required this.lastArgs,
+    required this.lastWorkingDirectory,
+    required this.startedAtMs,
+    required this.uptimeMs,
+    required this.pid,
+    required this.message,
+    required this.error,
+  });
+
+  final bool success;
+  final bool running;
+  final String proxyUrl;
+  final String lastError;
+  final String lastCommand;
+  final List<String> lastArgs;
+  final String lastWorkingDirectory;
+  final int startedAtMs;
+  final int uptimeMs;
+  final int? pid;
+  final String message;
+  final String error;
+
+  static GoProxyRuntimeStateResult fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const GoProxyRuntimeStateResult(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        lastError: '',
+        lastCommand: '',
+        lastArgs: <String>[],
+        lastWorkingDirectory: '',
+        startedAtMs: 0,
+        uptimeMs: 0,
+        pid: null,
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+    int parseInt(Object? value) => switch (value) {
+      int item => item,
+      num item => item.toInt(),
+      String item => int.tryParse(item) ?? 0,
+      _ => 0,
+    };
+    final rawPid = map['pid'];
+    final rawArgs = map['lastArgs'];
+    return GoProxyRuntimeStateResult(
+      success: map['success'] == true,
+      running: map['running'] == true,
+      proxyUrl: (map['proxyUrl'] ?? '').toString(),
+      lastError: (map['lastError'] ?? '').toString(),
+      lastCommand: (map['lastCommand'] ?? '').toString(),
+      lastArgs: rawArgs is List
+          ? rawArgs.map((item) => item.toString()).toList()
+          : const <String>[],
+      lastWorkingDirectory: (map['lastWorkingDirectory'] ?? '').toString(),
+      startedAtMs: parseInt(map['startedAtMs']),
+      uptimeMs: parseInt(map['uptimeMs']),
+      pid: switch (rawPid) {
+        int value => value,
+        num value => value.toInt(),
+        String value => int.tryParse(value),
+        _ => null,
+      },
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+    );
+  }
+}
+
 class GoProxyService {
   GoProxyService({
     MethodChannel? channel,
@@ -267,6 +345,61 @@ class GoProxyService {
       return '';
     } on MissingPluginException {
       return '';
+    }
+  }
+
+  Future<GoProxyRuntimeStateResult> getRuntimeState() async {
+    if (!Platform.isAndroid) {
+      return const GoProxyRuntimeStateResult(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        lastError: '',
+        lastCommand: '',
+        lastArgs: <String>[],
+        lastWorkingDirectory: '',
+        startedAtMs: 0,
+        uptimeMs: 0,
+        pid: null,
+        message: 'GoProxy native bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'getGoProxyRuntimeState',
+      );
+      return GoProxyRuntimeStateResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return GoProxyRuntimeStateResult(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        lastError: '',
+        lastCommand: '',
+        lastArgs: const <String>[],
+        lastWorkingDirectory: '',
+        startedAtMs: 0,
+        uptimeMs: 0,
+        pid: null,
+        message: 'getGoProxyRuntimeState platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return GoProxyRuntimeStateResult(
+        success: false,
+        running: false,
+        proxyUrl: '',
+        lastError: '',
+        lastCommand: '',
+        lastArgs: const <String>[],
+        lastWorkingDirectory: '',
+        startedAtMs: 0,
+        uptimeMs: 0,
+        pid: null,
+        message: 'getGoProxyRuntimeState not implemented',
+        error: error.toString(),
+      );
     }
   }
 }

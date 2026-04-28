@@ -415,6 +415,16 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/thunder_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 47
+- Added GoProxy runtime-state snapshot bridge and diagnostics:
+  - Android bridge adds `getGoProxyRuntimeState` (running/pid/proxyUrl/lastCommand/args/workingDirectory/uptime/lastError),
+  - Flutter `GoProxyService` adds typed `GoProxyRuntimeStateResult`,
+  - `/goProxyTest` adds `Runtime State` action and state snapshot card.
+- This improves reverse migration observability for GoProxy startup/stop behavior and command-state drift.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -457,3 +467,4 @@ This document records the practical migration increments after the initial rever
 - Jar business API now supports broader method-signature fallback combinations to improve cross-jar compatibility.
 - Jar runtime resolution now uses recent-key/recent-jar fallback semantics when business call arguments are incomplete.
 - Thunder parse output now includes media snapshot structure (`mediaCount/medias`) for magnet diagnostics.
+- GoProxy runtime snapshot diagnostics are now available in bridge and `/goProxyTest`.

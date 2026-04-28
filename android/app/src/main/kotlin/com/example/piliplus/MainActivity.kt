@@ -43,6 +43,10 @@ class MainActivity : AudioServiceActivity() {
     private var goProxyProcess: Process? = null
     private var goProxyUrl: String = "http://127.0.0.1:9978"
     private var goProxyLastError: String = ""
+    private var goProxyLastCommand: String = ""
+    private var goProxyLastArgs: List<String> = emptyList()
+    private var goProxyLastWorkingDirectory: String = ""
+    private var goProxyStartedAtMs: Long = 0L
     private val phpServerProcesses = mutableListOf<Process>()
     private val phpServerPorts = mutableListOf<Int>()
     private var phpServerRunning: Boolean = false
@@ -219,6 +223,9 @@ class MainActivity : AudioServiceActivity() {
                 }
                 "getProxyUrl" -> {
                     result.success(goProxyUrl)
+                }
+                "getGoProxyRuntimeState" -> {
+                    result.success(getGoProxyRuntimeState())
                 }
                 "detectGoProxyCommand" -> {
                     result.success(detectGoProxyCommand(call))
@@ -712,6 +719,9 @@ class MainActivity : AudioServiceActivity() {
                     null
                 }
             }.toMap()
+        goProxyLastCommand = command
+        goProxyLastArgs = args.toList()
+        goProxyLastWorkingDirectory = workingDirectory.orEmpty()
 
         return try {
             val commandLine = mutableListOf(command).apply { addAll(args) }
@@ -727,6 +737,7 @@ class MainActivity : AudioServiceActivity() {
             goProxyProcess = processBuilder.start()
             goProxyUrl = if (!proxyUrl.isNullOrEmpty()) proxyUrl else "http://127.0.0.1:$port"
             goProxyLastError = ""
+            goProxyStartedAtMs = System.currentTimeMillis()
             mapOf(
                 "success" to true,
                 "running" to true,
@@ -738,6 +749,7 @@ class MainActivity : AudioServiceActivity() {
         } catch (e: Exception) {
             goProxyProcess = null
             goProxyLastError = e.message ?: e.toString()
+            goProxyStartedAtMs = 0L
             mapOf(
                 "success" to false,
                 "running" to false,
@@ -752,6 +764,7 @@ class MainActivity : AudioServiceActivity() {
     private fun stopGoProxy(): Map<String, Any?> {
         val process = goProxyProcess
         if (process == null) {
+            goProxyStartedAtMs = 0L
             return mapOf(
                 "success" to true,
                 "running" to false,
@@ -767,6 +780,7 @@ class MainActivity : AudioServiceActivity() {
                 process.destroyForcibly()
             }
             goProxyProcess = null
+            goProxyStartedAtMs = 0L
             mapOf(
                 "success" to true,
                 "running" to false,
@@ -784,6 +798,49 @@ class MainActivity : AudioServiceActivity() {
                 "error" to goProxyLastError
             )
         }
+    }
+
+    private fun getGoProxyRuntimeState(): Map<String, Any?> {
+        val process = goProxyProcess
+        val running = process?.isAlive == true
+        val now = System.currentTimeMillis()
+        val startedAt = if (running) goProxyStartedAtMs else 0L
+        val uptimeMs = if (running && startedAt > 0L) {
+            (now - startedAt).coerceAtLeast(0L)
+        } else {
+            0L
+        }
+        return mapOf(
+            "success" to true,
+            "running" to running,
+            "proxyUrl" to goProxyUrl,
+            "lastError" to goProxyLastError,
+            "lastCommand" to goProxyLastCommand,
+            "lastArgs" to goProxyLastArgs,
+            "lastWorkingDirectory" to goProxyLastWorkingDirectory,
+            "startedAtMs" to startedAt,
+            "uptimeMs" to uptimeMs,
+            "pid" to if (running) getProcessPidCompat(process) else null,
+            "message" to "GoProxy runtime state snapshot loaded.",
+            "error" to ""
+        )
+    }
+
+    private fun getProcessPidCompat(process: Process?): Long? {
+        if (process == null) return null
+        return runCatching {
+            val pidMethod = process.javaClass.methods.firstOrNull { method ->
+                val returnType = method.returnType
+                method.name == "pid" &&
+                    method.parameterCount == 0 &&
+                    (
+                        returnType == java.lang.Long.TYPE ||
+                            returnType == java.lang.Long::class.java ||
+                            Number::class.java.isAssignableFrom(returnType)
+                        )
+            } ?: return null
+            (pidMethod.invoke(process) as? Number)?.toLong()
+        }.getOrNull()
     }
 
     private fun detectGoProxyCommand(call: MethodCall): Map<String, Any?> {
