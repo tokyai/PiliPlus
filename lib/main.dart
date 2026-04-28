@@ -18,6 +18,7 @@ import 'package:PiliPlus/services/source_runtime/go_proxy_service.dart';
 import 'package:PiliPlus/services/source_runtime/jar_loader_service.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_active_config_service.dart';
+import 'package:PiliPlus/services/source_runtime/t4_home_tab_config_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_navigation_config_service.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/calc_window_position.dart';
@@ -100,10 +101,14 @@ List<String> _parseGoProxyArgs(String raw) {
   return source.split(RegExp(r'\s+')).where((item) => item.isNotEmpty).toList();
 }
 
-Future<void> _autoApplyT4NavigationIfEnabled() async {
+Future<void> _autoApplyT4LayoutIfEnabled() async {
   if (!Pref.t4NavAutoApply) return;
-  final service = Get.find<T4NavigationConfigService>();
-  await service.applyFromActive(allowRemoteFetch: false);
+  await Get.find<T4NavigationConfigService>().applyFromActive(
+    allowRemoteFetch: false,
+  );
+  await Get.find<T4HomeTabConfigService>().applyFromActive(
+    allowRemoteFetch: false,
+  );
 }
 
 Future<void> _autoStartGoProxyIfEnabled() async {
@@ -137,8 +142,9 @@ void main() async {
     ..lazyPut(JarLoaderService.new)
     ..lazyPut(SourceRuntimeService.new)
     ..lazyPut(T4ActiveConfigService.new)
+    ..lazyPut(T4HomeTabConfigService.new)
     ..lazyPut(T4NavigationConfigService.new);
-  await _autoApplyT4NavigationIfEnabled();
+  await _autoApplyT4LayoutIfEnabled();
   await _autoStartGoProxyIfEnabled();
   HttpOverrides.global = _CustomHttpOverrides();
 

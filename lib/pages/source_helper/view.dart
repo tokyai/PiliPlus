@@ -7,6 +7,7 @@ import 'package:PiliPlus/services/source_runtime/source_engine.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_models.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_active_config_service.dart';
+import 'package:PiliPlus/services/source_runtime/t4_home_tab_config_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_navigation_config_service.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -862,9 +863,11 @@ class T4ActiveConfigTestPage extends StatefulWidget {
 
 class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
   late final T4ActiveConfigService _activeConfigService;
+  late final T4HomeTabConfigService _homeTabConfigService;
   late final T4NavigationConfigService _navigationConfigService;
 
   T4ActiveConfigState? _state;
+  T4HomeTabApplyResult? _homeTabResult;
   T4NavigationApplyResult? _navigationResult;
   bool _loading = false;
   bool _forceRemote = false;
@@ -874,6 +877,7 @@ class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
   void initState() {
     super.initState();
     _activeConfigService = Get.find<T4ActiveConfigService>();
+    _homeTabConfigService = Get.find<T4HomeTabConfigService>();
     _navigationConfigService = Get.find<T4NavigationConfigService>();
     _resolve();
   }
@@ -940,6 +944,16 @@ class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
                 icon: const Icon(Icons.publish_outlined),
                 label: const Text('Apply Nav'),
               ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _previewHomeTabs,
+                icon: const Icon(Icons.preview_outlined),
+                label: const Text('Preview Home Tabs'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _applyHomeTabs,
+                icon: const Icon(Icons.playlist_add_check_outlined),
+                label: const Text('Apply Home Tabs'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -985,6 +999,51 @@ class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
                       const SizedBox(height: 4),
                       SelectableText('description: $desc'),
                     ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          if (_homeTabResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _homeTabResult!.success
+                                ? 'HOME TABS READY'
+                                : 'HOME TABS FAILED',
+                          ),
+                        ),
+                        Chip(
+                          label: Text('source=${_homeTabResult!.source.name}'),
+                        ),
+                        Chip(
+                          label: Text('items=${_homeTabResult!.tabs.length}'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      'fromConfigId: ${_homeTabResult!.fromConfigId}',
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText('message: ${_homeTabResult!.message}'),
+                    if (_homeTabResult!.hasError) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_homeTabResult!.error}'),
+                    ],
+                    const Divider(height: 16),
+                    SelectableText(
+                      'tabBarSort: ${_homeTabResult!.tabs.map((item) => item.name).join(', ')}',
+                    ),
                   ],
                 ),
               ),
@@ -1059,6 +1118,42 @@ class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
       _loading = false;
       _state = state;
     });
+  }
+
+  Future<void> _previewHomeTabs() async {
+    setState(() => _loading = true);
+    final result = await _homeTabConfigService.previewFromActive(
+      forceRemote: _forceRemote,
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _homeTabResult = result;
+    });
+    if (result.success) {
+      SmartDialog.showToast('Home tabs parsed from active config');
+    } else {
+      SmartDialog.showToast('Home tabs parse failed: ${result.error}');
+    }
+  }
+
+  Future<void> _applyHomeTabs() async {
+    setState(() => _loading = true);
+    final result = await _homeTabConfigService.applyFromActive(
+      forceRemote: _forceRemote,
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _homeTabResult = result;
+    });
+    if (result.success) {
+      SmartDialog.showToast(
+        'Applied tabBarSort. Restart main page to take effect.',
+      );
+    } else {
+      SmartDialog.showToast('Apply home tabs failed: ${result.error}');
+    }
   }
 
   Future<void> _previewNavigation() async {

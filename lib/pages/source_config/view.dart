@@ -95,9 +95,9 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
             contentPadding: EdgeInsets.zero,
             value: _navAutoApply,
             onChanged: (value) => setState(() => _navAutoApply = value),
-            title: const Text('Auto apply nav config'),
+            title: const Text('Auto apply home/nav config'),
             subtitle: const Text(
-              'Startup applies active config bottom-nav mapping from local snapshot.',
+              'Startup applies active config home tabs + bottom-nav mapping from local snapshot.',
             ),
           ),
           const SizedBox(height: 16),
