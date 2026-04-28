@@ -832,6 +832,14 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 89
+- Synced latest automated closure-check conclusion into reverse inventory:
+  - updated `docs/PeekPili_reverse_feature_inventory.md`,
+  - added explicit `2026-04-28` snapshot section with command, result, pending blockers and report path.
+- Verified by checks:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
+  - generated report confirms current state is still incomplete due environment/runtime blockers.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -915,3 +923,4 @@ This document records the practical migration increments after the initial rever
 - Runtime smoke workflows now support optional `fail_on_pending` gate for strict closure enforcement.
 - Reverse completion check now has a single command entry with explicit completion/incomplete decision output.
 - Runtime smoke workflows now also publish reverse completion report artifacts for each run.
+- Reverse inventory now contains a dated machine-assisted closure snapshot and concrete blocker list.

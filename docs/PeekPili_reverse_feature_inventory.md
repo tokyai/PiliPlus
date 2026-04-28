@@ -277,6 +277,23 @@ Conclusion: documentation and binaries are not aligned for Android; migration sh
 
 Checkpoint conclusion: reverse work is **not fully complete** for migration-grade certainty yet; static reverse is largely complete, but runtime confirmation and implementation closure are still required.
 
+### 7.1 Latest automated closure snapshot (2026-04-28)
+
+Executed:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1
+```
+
+Result:
+- `overallReady=false` (runtime closure incomplete).
+- Pending blockers:
+  - `android_runtime_validation_pending`
+  - `ios_runtime_environment_missing_macos`
+  - `android_online_device_missing`
+- Generated report:
+  - `build/runtime-smoke/reverse-completion-report.md`
+
 ## 8. Tools Installed During This Pass
 
 - `pypdf` (installed locally) for PDF text extraction and diff against package behavior.
