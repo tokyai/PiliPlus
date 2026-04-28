@@ -181,6 +181,14 @@ Runtime environment readiness check:
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1
 ```
 
+Optional readiness profiles:
+- Android-focused (ignore iOS requirement):
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1 -SkipIosRequirement`
+- iOS-focused (ignore Android/adb requirements):
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1 -SkipAdbRequirement -SkipAndroidDeviceRequirement`
+- Strict fail on unmet requirements:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1 -FailIfNotReady`
+
 One-command reverse completion check:
 
 ```powershell

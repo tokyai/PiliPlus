@@ -1158,6 +1158,26 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 112
+- Enhanced environment readiness helper with requirement profiles and dedicated report output:
+  - updated `tools/release/runtime_environment_readiness.ps1`,
+  - new options:
+    - `-ReportOutputPath`,
+    - `-SkipAdbRequirement`,
+    - `-SkipAndroidDeviceRequirement`,
+    - `-SkipIosRequirement`,
+  - output now includes machine-readable readiness report with `requirements`, `ready`, and `failedChecks`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/runtime_environment_readiness.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - Default check command passed:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1`.
+  - Profile + strict gate command passed:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1 -SkipIosRequirement -SkipAndroidDeviceRequirement -FailIfNotReady`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1264,3 +1284,4 @@ This document records the practical migration increments after the initial rever
 - Reverse inventory snapshot now includes blocker category counts aligned with machine-readable closure output.
 - Environment readiness now has a dedicated quick-check script for pre-flight validation.
 - Runtime-smoke workflows now support an explicit environment-readiness gate option.
+- Environment readiness checks now support profile-based requirements and machine-readable readiness reports.

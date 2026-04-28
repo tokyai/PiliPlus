@@ -134,6 +134,14 @@ Environment readiness quick check:
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1
 ```
 
+Profile examples:
+- Android-focused:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1 -SkipIosRequirement`
+- iOS-focused:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1 -SkipAdbRequirement -SkipAndroidDeviceRequirement`
+- Strict readiness gate:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1 -FailIfNotReady`
+
 One-command closure check report:
 
 ```powershell
