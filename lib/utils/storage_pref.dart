@@ -612,6 +612,9 @@ abstract final class Pref {
     defaultValue: 'assets/runtime/goproxy,assets/goproxy,goproxy',
   );
 
+  static bool get goProxyAutoStart =>
+      _setting.get(SettingBoxKey.goProxyAutoStart, defaultValue: false);
+
   static String get jarTestPath =>
       _setting.get(SettingBoxKey.jarTestPath, defaultValue: '');
 

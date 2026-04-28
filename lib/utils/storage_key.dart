@@ -185,6 +185,7 @@ abstract final class SettingBoxKey {
       goProxyPort = 'goProxyPort',
       goProxyProxyUrl = 'goProxyProxyUrl',
       goProxyAssetCandidates = 'goProxyAssetCandidates',
+      goProxyAutoStart = 'goProxyAutoStart',
       jarTestPath = 'jarTestPath',
       jarTestEntryClass = 'jarTestEntryClass',
       jarTestMethod = 'jarTestMethod',

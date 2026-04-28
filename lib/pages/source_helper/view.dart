@@ -516,6 +516,7 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
   late final TextEditingController _portCtr;
   late final TextEditingController _proxyUrlCtr;
   late final TextEditingController _assetCandidatesCtr;
+  late bool _autoStart;
 
   GoProxyStatus? _status;
   GoProxyCommandResult? _commandResult;
@@ -540,6 +541,7 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
     _assetCandidatesCtr = TextEditingController(
       text: Pref.goProxyAssetCandidates,
     );
+    _autoStart = Pref.goProxyAutoStart;
     _refreshStatus();
     _detectCommand();
   }
@@ -613,6 +615,16 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
               hintText: 'assets/runtime/goproxy,assets/goproxy,goproxy',
               border: OutlineInputBorder(),
             ),
+          ),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Auto Start On Android Launch'),
+            subtitle: const Text(
+              'Use saved command/args/port/proxyUrl to start GoProxy at app startup.',
+            ),
+            value: _autoStart,
+            onChanged: (value) => setState(() => _autoStart = value),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -825,6 +837,7 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
       SettingBoxKey.goProxyPort: int.tryParse(_portCtr.text.trim()) ?? 9978,
       SettingBoxKey.goProxyProxyUrl: _proxyUrlCtr.text.trim(),
       SettingBoxKey.goProxyAssetCandidates: _assetCandidatesCtr.text.trim(),
+      SettingBoxKey.goProxyAutoStart: _autoStart,
     });
     if (needToast) {
       SmartDialog.showToast('GoProxy preset saved');

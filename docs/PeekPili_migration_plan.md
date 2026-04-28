@@ -53,6 +53,7 @@
 - 进行中：已新增 Jar 桥接骨架（`probeJarFile` / `loadJar`）与 `/jarTest` 联调页，当前为“文件校验 + 执行占位”模式。
 - 进行中：`/goProxyTest` 与 `/jarTest` 调试参数已接入本地持久化预设，支持重启后自动回填。
 - 进行中：Source Config 页面已支持从远端 URL 抓取并解析 `t4ApiConfigs`（含常见字段兼容提取）。
+- 进行中：新增 GoProxy `AutoStart` 开关，Android 启动时可按预设自动尝试拉起 GoProxy。
 - 未完成：配置驱动首页/底栏映射、真实业务脚本执行链路。
 
 ### Phase 3（P1）Android 平台能力迁移

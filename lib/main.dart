@@ -92,6 +92,23 @@ Future<void> _initSdkInt() async {
   Utils.sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
 }
 
+List<String> _parseGoProxyArgs(String raw) {
+  final source = raw.trim();
+  if (source.isEmpty) return const <String>[];
+  return source.split(RegExp(r'\s+')).where((item) => item.isNotEmpty).toList();
+}
+
+Future<void> _autoStartGoProxyIfEnabled() async {
+  if (!Platform.isAndroid || !Pref.goProxyAutoStart) return;
+  final service = Get.find<GoProxyService>();
+  await service.start(
+    command: Pref.goProxyCommand,
+    args: _parseGoProxyArgs(Pref.goProxyArgs),
+    port: Pref.goProxyPort,
+    proxyUrl: Pref.goProxyProxyUrl.isEmpty ? null : Pref.goProxyProxyUrl,
+  );
+}
+
 void main() async {
   ScaledWidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
@@ -111,6 +128,7 @@ void main() async {
     ..lazyPut(GoProxyService.new)
     ..lazyPut(JarLoaderService.new)
     ..lazyPut(SourceRuntimeService.new);
+  await _autoStartGoProxyIfEnabled();
   HttpOverrides.global = _CustomHttpOverrides();
 
   CacheManager.autoClearCache();
