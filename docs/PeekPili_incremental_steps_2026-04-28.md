@@ -702,6 +702,18 @@ This document records the practical migration increments after the initial rever
 - Documentation linked in:
   - `docs/PeekPili_cross_platform_build.md`.
 
+## Step 80
+- Added runtime smoke summary script:
+  - new script: `tools/release/runtime_smoke_summary.ps1`,
+  - aggregates recent runtime smoke JSON reports and artifact manifests into Markdown summary (`build/runtime-smoke/summary.md`).
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1 -MaxItems 5` passed.
+  - summary generated: `build\\runtime-smoke\\summary.md`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -776,3 +788,4 @@ This document records the practical migration increments after the initial rever
 - Unified build flow can now directly execute post-build runtime smoke for supported targets.
 - Windows runtime smoke now has a dedicated GitHub Actions entry for repeatable CI execution.
 - Android runtime smoke now has a dedicated GitHub Actions entry for device-enabled runners.
+- Runtime smoke outputs now support one-command summary aggregation for audit and handoff.

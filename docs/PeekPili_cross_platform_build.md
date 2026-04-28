@@ -112,3 +112,9 @@ powershell -ExecutionPolicy Bypass -File tools/release/windows_runtime_smoke.ps1
 Behavior:
 - Starts built app process, waits, writes JSON report, and stops process by default.
 - Use `-LeaveRunning` to keep process alive after smoke check.
+
+Runtime smoke summary helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1
+```

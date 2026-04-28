@@ -77,3 +77,9 @@ Acceptance:
 - target build exits successfully
 - generated artifacts install and launch
 - Source Helper core test pages (`jar/php/thunder/goProxy`) can open and return expected runtime state.
+
+Optional smoke summary:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1
+```
