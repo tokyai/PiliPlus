@@ -395,6 +395,20 @@ class MainActivity : AudioServiceActivity() {
             )
         }
 
+        if (engine == "thunder") {
+            val state = getThunderRuntimeState()
+            val success = state["success"] == true
+            return mapOf(
+                "success" to success,
+                "stdout" to formatThunderRuntimeStateSnapshot(state),
+                "stderr" to if (success) "" else (state["error"]?.toString().orEmpty()),
+                "elapsedMs" to 0,
+                "exitCode" to if (success) 0 else -1,
+                "isStub" to false,
+                "message" to (state["message"]?.toString() ?: "Thunder runtime probe finished.")
+            )
+        }
+
         if (engine == "jar") {
             val jarPath = options["jarPath"]?.toString()?.trim().orEmpty()
             if (jarPath.isEmpty()) {
@@ -577,6 +591,105 @@ class MainActivity : AudioServiceActivity() {
                         isStub = true
                     )
                 }
+            }
+        }
+
+        if (engine == "thunder") {
+            val action = options["action"]?.toString()?.trim()?.lowercase().orEmpty()
+            val resolvedAction = if (action.isNotEmpty()) {
+                action
+            } else if (payload.isNotBlank()) {
+                "parse"
+            } else {
+                "status"
+            }
+            return when (resolvedAction) {
+                "status", "state", "runtime", "probe" -> {
+                    val state = getThunderRuntimeState()
+                    val success = state["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatThunderRuntimeStateSnapshot(state),
+                        "stderr" to if (success) "" else (state["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (state["message"]?.toString()
+                            ?: "Thunder runtime state collected.")
+                    )
+                }
+
+                "parse", "parse_url" -> {
+                    val url = options["url"]?.toString()?.trim().orEmpty()
+                        .ifEmpty { payload.trim() }
+                    val result = thunderParseUrl(url)
+                    val success = result["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatThunderOperationResult(result),
+                        "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (result["message"]?.toString() ?: "Thunder parse finished.")
+                    )
+                }
+
+                "play", "play_url", "resolve_play_url" -> {
+                    val url = options["url"]?.toString()?.trim().orEmpty()
+                        .ifEmpty { payload.trim() }
+                    val taskId = options["taskId"]?.toString()
+                    val index = parseIntValue(options["index"], 0).coerceAtLeast(0)
+                    val result = thunderResolvePlayUrl(
+                        urlInput = url,
+                        taskIdInput = taskId,
+                        index = index
+                    )
+                    val success = result["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatThunderOperationResult(result),
+                        "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (result["message"]?.toString() ?: "Thunder play-url resolve finished.")
+                    )
+                }
+
+                "stop", "stop_task" -> {
+                    val result = thunderStopTaskById(options["taskId"]?.toString())
+                    val success = result["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatThunderOperationResult(result),
+                        "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (result["message"]?.toString() ?: "Thunder stop finished.")
+                    )
+                }
+
+                "release", "reset" -> {
+                    val result = thunderRelease()
+                    val success = result["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatThunderOperationResult(result),
+                        "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (result["message"]?.toString() ?: "Thunder release finished.")
+                    )
+                }
+
+                else -> sourceRuntimeFailure(
+                    message = "Unsupported thunder action=$resolvedAction. Supported: status, parse, play, stop, release, execute.",
+                    error = "unsupported_action",
+                    isStub = true
+                )
             }
         }
 
@@ -771,6 +884,32 @@ class MainActivity : AudioServiceActivity() {
         lines += "port=${result["port"]}"
         lines += "ports=${result["ports"]}"
         lines += "documentRoot=${result["documentRoot"]}"
+        lines += "message=${result["message"]}"
+        lines += "error=${result["error"]}"
+        return lines.joinToString("\n")
+    }
+
+    private fun formatThunderRuntimeStateSnapshot(state: Map<String, Any?>): String {
+        val lines = mutableListOf<String>()
+        lines += "success=${state["success"]}"
+        lines += "activeTaskCount=${state["activeTaskCount"]}"
+        lines += "taskSequence=${state["taskSequence"]}"
+        lines += "tasks=${state["tasks"]}"
+        lines += "message=${state["message"]}"
+        lines += "error=${state["error"]}"
+        return lines.joinToString("\n")
+    }
+
+    private fun formatThunderOperationResult(result: Map<String, Any?>): String {
+        val lines = mutableListOf<String>()
+        lines += "success=${result["success"]}"
+        lines += "taskId=${result["taskId"]}"
+        lines += "protocol=${result["protocol"]}"
+        lines += "playUrl=${result["playUrl"]}"
+        lines += "infoHash=${result["infoHash"]}"
+        lines += "activeTaskCount=${result["activeTaskCount"]}"
+        lines += "mediaCount=${result["mediaCount"]}"
+        lines += "medias=${result["medias"]}"
         lines += "message=${result["message"]}"
         lines += "error=${result["error"]}"
         return lines.joinToString("\n")
@@ -3426,7 +3565,12 @@ class MainActivity : AudioServiceActivity() {
     )
 
     private fun thunderParseMagnet(call: MethodCall): Map<String, Any?> {
-        val url = call.argument<String>("url")?.trim().orEmpty()
+        val url = call.argument<String>("url").orEmpty()
+        return thunderParseUrl(url)
+    }
+
+    private fun thunderParseUrl(urlInput: String): Map<String, Any?> {
+        val url = urlInput.trim()
         if (url.isEmpty()) {
             return mapOf(
                 "success" to false,
@@ -3552,7 +3696,22 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun thunderGetPlayUrl(call: MethodCall): Map<String, Any?> {
-        val url = call.argument<String>("url")?.trim().orEmpty()
+        val url = call.argument<String>("url").orEmpty()
+        val taskId = call.argument<String>("taskId")
+        val index = call.argument<Int>("index") ?: 0
+        return thunderResolvePlayUrl(
+            urlInput = url,
+            taskIdInput = taskId,
+            index = index
+        )
+    }
+
+    private fun thunderResolvePlayUrl(
+        urlInput: String,
+        taskIdInput: String?,
+        index: Int
+    ): Map<String, Any?> {
+        val url = urlInput.trim()
         if (url.isEmpty()) {
             return mapOf(
                 "success" to false,
@@ -3568,9 +3727,9 @@ class MainActivity : AudioServiceActivity() {
                 "message" to "Unsupported url protocol.",
                 "error" to "unsupported_protocol"
             )
-        val taskId = call.argument<String>("taskId")?.trim()?.takeIf { it.isNotEmpty() }
+        val taskId = taskIdInput?.trim()?.takeIf { it.isNotEmpty() }
             ?: nextThunderTaskId(parsed.protocol)
-        val index = call.argument<Int>("index") ?: 0
+        val safeIndex = index.coerceAtLeast(0)
         val activeTaskCount = synchronized(thunderRuntimeLock) {
             thunderActiveTasks[taskId] = ThunderTaskState(
                 taskId = taskId,
@@ -3578,7 +3737,7 @@ class MainActivity : AudioServiceActivity() {
                 originalUrl = parsed.originalUrl,
                 playUrl = parsed.normalizedUrl,
                 infoHash = parsed.infoHash,
-                index = index,
+                index = safeIndex,
                 createdAt = System.currentTimeMillis()
             )
             thunderActiveTasks.size
@@ -3589,6 +3748,7 @@ class MainActivity : AudioServiceActivity() {
             "protocol" to parsed.protocol,
             "infoHash" to parsed.infoHash,
             "taskId" to taskId,
+            "index" to safeIndex,
             "activeTaskCount" to activeTaskCount,
             "message" to "Play url resolved.",
             "error" to ""
@@ -3596,7 +3756,12 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun thunderStopTask(call: MethodCall): Map<String, Any?> {
-        val requestedTaskId = call.argument<String>("taskId")?.trim().orEmpty()
+        val requestedTaskId = call.argument<String>("taskId")
+        return thunderStopTaskById(requestedTaskId)
+    }
+
+    private fun thunderStopTaskById(requestedTaskIdInput: String?): Map<String, Any?> {
+        val requestedTaskId = requestedTaskIdInput?.trim().orEmpty()
         val resolvedTaskId = if (requestedTaskId.isNotEmpty()) {
             requestedTaskId
         } else {

@@ -529,6 +529,15 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 59
+- Extended generic Source Runtime Thunder runtime actions:
+  - `sourceRuntimeProbe(engine=thunder)` now returns structured Thunder runtime snapshot text,
+  - `sourceRuntimeExecute(engine=thunder)` now supports `options.action=status|parse|play|stop|release`,
+  - dedicated Thunder handlers now share internal logic with generic path for parse/play/stop.
+- This reduces dedicated-vs-generic behavior drift for Thunder task/runtime control and improves migration debug coverage.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -583,3 +592,4 @@ This document records the practical migration increments after the initial rever
 - Source Runtime generic bridge now supports GoProxy runtime `status/stop` actions.
 - Source Runtime generic bridge now supports full GoProxy `start/status/stop` action set.
 - Source Runtime generic bridge now supports PHP runtime `status/start/stop` actions with runtime snapshot probe output.
+- Source Runtime generic bridge now supports Thunder runtime `status/parse/play/stop/release` actions with runtime snapshot probe output.
