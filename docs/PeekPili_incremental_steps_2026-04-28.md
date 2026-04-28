@@ -395,6 +395,16 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 45
+- Made `setRecent` state materially effective in Android Jar runtime resolution:
+  - when spider business calls miss `key` but provide `jarPath`, bridge now attempts recent key fallback,
+  - when calls miss `jarPath` but provide `key`, bridge now attempts recent jar fallback,
+  - when only one recent entry exists and both are missing, bridge can use that single recent pair,
+  - runtime lookup now also falls back to latest loaded spider under same jar path.
+- This reduces migration call failures from incomplete call arguments and better aligns with reverse package "recent spider" semantics.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -435,3 +445,4 @@ This document records the practical migration increments after the initial rever
 - Jar runtime context now includes one-time init hook attempts (`init/initialize/setContext`) with runtime-state diagnostics.
 - Jar init-lifecycle diagnostics are now parsed and displayed in `/jarTest` runtime-state UI.
 - Jar business API now supports broader method-signature fallback combinations to improve cross-jar compatibility.
+- Jar runtime resolution now uses recent-key/recent-jar fallback semantics when business call arguments are incomplete.

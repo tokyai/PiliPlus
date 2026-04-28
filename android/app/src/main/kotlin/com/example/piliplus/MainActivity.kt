@@ -2324,25 +2324,34 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun resolveJarSpiderRuntime(call: MethodCall): JarSpiderRuntime? {
-        val identity = resolveJarSpiderIdentity(call)
+        val identity = resolveJarSpiderIdentity(call) ?: resolveRecentJarSpiderIdentity(call)
         if (identity != null) {
             synchronized(jarRuntimeLock) {
                 loadedJarSpiders[identity.id]?.let { return it }
+                loadedJarSpiders.values
+                    .filter { item -> item.jarPath == identity.jarPath }
+                    .maxByOrNull { item -> item.loadedAt }
+                    ?.let { return it }
+            }
+        }
+        val jarPath = resolveJarPathFromCall(call)
+        if (jarPath != null) {
+            synchronized(jarRuntimeLock) {
+                loadedJarSpiders.values
+                    .filter { item -> item.jarPath == jarPath }
+                    .maxByOrNull { item -> item.loadedAt }
+                    ?.let { return it }
             }
         }
         val entryClass = call.argument<String>("entryClass")?.trim().orEmpty()
         if (entryClass.isEmpty()) {
             return null
         }
-        val rawJarPath = sequenceOf(
-            call.argument<String>("jar"),
-            call.argument<String>("jarPath")
-        ).mapNotNull { it?.trim() }.firstOrNull { it.isNotEmpty() } ?: return null
-        val jarPath = resolveRuntimePath(rawJarPath).absolutePath
+        val dynamicJarPath = jarPath ?: return null
         return JarSpiderRuntime(
             key = entryClass,
-            jarPath = jarPath,
-            runtimeId = buildJarSpiderId(entryClass, jarPath),
+            jarPath = dynamicJarPath,
+            runtimeId = buildJarSpiderId(entryClass, dynamicJarPath),
             entryClass = entryClass,
             methodName = "dynamic",
             loadedAt = 0L
@@ -2570,21 +2579,68 @@ class MainActivity : AudioServiceActivity() {
         }
     }
 
-    private fun resolveJarSpiderIdentity(call: MethodCall): JarSpiderIdentity? {
-        val key = sequenceOf(
-            call.argument<String>("key"),
-            call.argument<String>("entryClass")
-        ).mapNotNull { it?.trim() }.firstOrNull { it.isNotEmpty() } ?: return null
-        val rawJarPath = sequenceOf(
-            call.argument<String>("jar"),
-            call.argument<String>("jarPath")
-        ).mapNotNull { it?.trim() }.firstOrNull { it.isNotEmpty() } ?: return null
-        val jarPath = resolveRuntimePath(rawJarPath).absolutePath
+    private fun resolveRecentJarSpiderIdentity(call: MethodCall): JarSpiderIdentity? {
+        val explicitKey = resolveJarKeyFromCall(call)
+        val explicitJarPath = resolveJarPathFromCall(call)
+        val resolvedPair = synchronized(jarRuntimeLock) {
+            when {
+                explicitJarPath != null && explicitKey == null -> {
+                    val recentKey = recentJarSpiders[explicitJarPath]
+                    if (recentKey.isNullOrEmpty()) {
+                        null
+                    } else {
+                        recentKey to explicitJarPath
+                    }
+                }
+
+                explicitJarPath == null && explicitKey != null -> {
+                    recentJarSpiders.entries
+                        .lastOrNull { item -> item.value == explicitKey }
+                        ?.let { it.value.orEmpty() to it.key }
+                }
+
+                explicitJarPath == null && explicitKey == null && recentJarSpiders.size == 1 -> {
+                    recentJarSpiders.entries.first().let { it.value.orEmpty() to it.key }
+                }
+
+                else -> null
+            }
+        } ?: return null
+        val key = resolvedPair.first.trim()
+        val jarPath = resolvedPair.second.trim()
+        if (key.isEmpty() || jarPath.isEmpty()) {
+            return null
+        }
         return JarSpiderIdentity(
             key = key,
             jarPath = jarPath,
             id = buildJarSpiderId(key, jarPath)
         )
+    }
+
+    private fun resolveJarSpiderIdentity(call: MethodCall): JarSpiderIdentity? {
+        val key = resolveJarKeyFromCall(call) ?: return null
+        val jarPath = resolveJarPathFromCall(call) ?: return null
+        return JarSpiderIdentity(
+            key = key,
+            jarPath = jarPath,
+            id = buildJarSpiderId(key, jarPath)
+        )
+    }
+
+    private fun resolveJarKeyFromCall(call: MethodCall): String? {
+        return sequenceOf(
+            call.argument<String>("key"),
+            call.argument<String>("entryClass")
+        ).mapNotNull { item -> item?.trim() }.firstOrNull { item -> item.isNotEmpty() }
+    }
+
+    private fun resolveJarPathFromCall(call: MethodCall): String? {
+        val rawJarPath = sequenceOf(
+            call.argument<String>("jar"),
+            call.argument<String>("jarPath")
+        ).mapNotNull { item -> item?.trim() }.firstOrNull { item -> item.isNotEmpty() } ?: return null
+        return resolveRuntimePath(rawJarPath).absolutePath
     }
 
     private fun buildJarSpiderId(key: String, jarPath: String): String {
