@@ -947,6 +947,18 @@ This document records the practical migration increments after the initial rever
     - `build\\runtime-smoke\\reverse-completion-report.md`,
     - `build\\runtime-smoke\\reverse-completion-report.json`.
 
+## Step 98
+- Added CI job-summary closure output for runtime-smoke workflows:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - both now append reverse completion summary (`overallReady` + pending blocker list) to `GITHUB_STEP_SUMMARY`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1039,3 +1051,4 @@ This document records the practical migration increments after the initial rever
 - Runtime smoke CI workflows now also publish reverse completion JSON artifacts for machine consumers.
 - Unified build flow now supports custom reverse completion JSON report path.
 - Reverse inventory snapshot now captures both human-readable and machine-readable closure artifacts.
+- Runtime-smoke workflow run summaries now directly expose closure readiness and pending blockers.
