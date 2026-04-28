@@ -19,6 +19,7 @@ class GoProxyForegroundService : Service() {
         private const val ACTION_STOP = "com.example.piliplus.action.GOPROXY_FG_STOP"
         private const val EXTRA_PROXY_URL = "proxy_url"
         private const val EXTRA_COMMAND_LINE = "command_line"
+        private const val EXTRA_PROCESS_PID = "process_pid"
         private const val CHANNEL_ID = "peekpili_goproxy_runtime"
         private const val CHANNEL_NAME = "GoProxy Runtime"
         private const val NOTIFICATION_ID = 30111
@@ -29,15 +30,19 @@ class GoProxyForegroundService : Service() {
         private var wakeLockHeld: Boolean = false
         @Volatile
         private var wifiLockHeld: Boolean = false
+        @Volatile
+        private var processPid: Int = -1
 
         fun buildStartIntent(
             context: Context,
             proxyUrl: String,
-            commandLine: String
+            commandLine: String,
+            processPid: Int
         ): Intent = Intent(context, GoProxyForegroundService::class.java).apply {
             action = ACTION_START
             putExtra(EXTRA_PROXY_URL, proxyUrl)
             putExtra(EXTRA_COMMAND_LINE, commandLine)
+            putExtra(EXTRA_PROCESS_PID, processPid)
         }
 
         fun buildStopIntent(context: Context): Intent =
@@ -48,6 +53,7 @@ class GoProxyForegroundService : Service() {
         fun isRunning(): Boolean = running
         fun isWakeLockHeld(): Boolean = wakeLockHeld
         fun isWifiLockHeld(): Boolean = wifiLockHeld
+        fun getTrackedProcessPid(): Int = processPid
     }
 
     private var wakeLock: PowerManager.WakeLock? = null
@@ -57,6 +63,7 @@ class GoProxyForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            stopTrackedProcess()
             releaseRuntimeLocks()
             stopForegroundCompat()
             stopSelf()
@@ -66,6 +73,7 @@ class GoProxyForegroundService : Service() {
 
         val proxyUrl = intent?.getStringExtra(EXTRA_PROXY_URL).orEmpty()
         val commandLine = intent?.getStringExtra(EXTRA_COMMAND_LINE).orEmpty()
+        processPid = intent?.getIntExtra(EXTRA_PROCESS_PID, -1) ?: -1
         createNotificationChannel()
         startForeground(
             NOTIFICATION_ID,
@@ -77,6 +85,7 @@ class GoProxyForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        processPid = -1
         releaseRuntimeLocks()
         running = false
         stopForegroundCompat()
@@ -162,6 +171,15 @@ class GoProxyForegroundService : Service() {
         }
         wifiLock = null
         wifiLockHeld = false
+    }
+
+    private fun stopTrackedProcess() {
+        val pid = processPid
+        if (pid <= 0) return
+        runCatching {
+            Runtime.getRuntime().exec(arrayOf("sh", "-c", "kill -TERM $pid"))
+        }
+        processPid = -1
     }
 
     private fun buildNotification(proxyUrl: String, commandLine: String) =

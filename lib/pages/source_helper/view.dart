@@ -1973,6 +1973,12 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                             'wifi=${_runtimeStateResult!.foregroundWifiLockHeld}',
                           ),
                         ),
+                        if (_runtimeStateResult!.foregroundTrackedPid > 0)
+                          Chip(
+                            label: Text(
+                              'fgPid=${_runtimeStateResult!.foregroundTrackedPid}',
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),

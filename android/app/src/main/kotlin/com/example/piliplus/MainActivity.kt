@@ -691,7 +691,8 @@ class MainActivity : AudioServiceActivity() {
                 "error" to "",
                 "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
                 "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
-                "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld()
+                "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
+                "foregroundTrackedPid" to GoProxyForegroundService.getTrackedProcessPid()
             )
         }
 
@@ -754,9 +755,11 @@ class MainActivity : AudioServiceActivity() {
             }
             goProxyLastError = ""
             goProxyStartedAtMs = System.currentTimeMillis()
+            val processPid = getProcessPidCompat(goProxyProcess)?.toInt() ?: -1
             goProxyForegroundLastError = startGoProxyForegroundService(
                 proxyUrl = goProxyUrl,
-                commandLine = commandLine.joinToString(" ")
+                commandLine = commandLine.joinToString(" "),
+                processPid = processPid
             )
             mapOf(
                 "success" to true,
@@ -772,6 +775,7 @@ class MainActivity : AudioServiceActivity() {
                 "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
                 "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
                 "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
+                "foregroundTrackedPid" to GoProxyForegroundService.getTrackedProcessPid(),
                 "foregroundServiceError" to goProxyForegroundLastError
             )
         } catch (e: Exception) {
@@ -804,6 +808,7 @@ class MainActivity : AudioServiceActivity() {
                 "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
                 "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
                 "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
+                "foregroundTrackedPid" to GoProxyForegroundService.getTrackedProcessPid(),
                 "foregroundServiceError" to fgError
             )
         }
@@ -825,6 +830,7 @@ class MainActivity : AudioServiceActivity() {
                 "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
                 "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
                 "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
+                "foregroundTrackedPid" to GoProxyForegroundService.getTrackedProcessPid(),
                 "foregroundServiceError" to fgError
             )
         } catch (e: Exception) {
@@ -865,18 +871,24 @@ class MainActivity : AudioServiceActivity() {
             "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
             "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
             "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
+            "foregroundTrackedPid" to GoProxyForegroundService.getTrackedProcessPid(),
             "foregroundServiceError" to goProxyForegroundLastError,
             "message" to "GoProxy runtime state snapshot loaded.",
             "error" to ""
         )
     }
 
-    private fun startGoProxyForegroundService(proxyUrl: String, commandLine: String): String {
+    private fun startGoProxyForegroundService(
+        proxyUrl: String,
+        commandLine: String,
+        processPid: Int
+    ): String {
         return runCatching {
             val intent = GoProxyForegroundService.buildStartIntent(
                 context = this,
                 proxyUrl = proxyUrl,
-                commandLine = commandLine
+                commandLine = commandLine,
+                processPid = processPid
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)

@@ -456,6 +456,16 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 51
+- Improved GoProxy foreground notification action routing baseline:
+  - foreground service now tracks GoProxy child pid passed from bridge startup,
+  - notification `Stop` action now attempts to terminate tracked pid (`kill -TERM`) before stopping service,
+  - runtime state now exposes `foregroundTrackedPid` for action-path observability.
+- This narrows reverse parity gap for notification-action control flow from UI-only service stop toward process-level stop routing.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -502,3 +512,4 @@ This document records the practical migration increments after the initial rever
 - GoProxy startup args now auto-align on `-port`/`-danmu-dir`, and runtime state exposes resolved values.
 - GoProxy now has a foreground-service baseline (notification + stop action) linked to process lifecycle.
 - GoProxy foreground-service runtime now includes wake/wifi lock baseline with state visibility.
+- GoProxy notification stop path now includes tracked child-pid termination attempt with runtime pid visibility.
