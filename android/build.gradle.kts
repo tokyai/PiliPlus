@@ -2,10 +2,15 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 allprojects {
     repositories {
+        maven("https://maven.aliyun.com/repository/google")
+        maven("https://maven.aliyun.com/repository/public")
         google()
         mavenCentral()
     }
 }
+
+fun Project.isOnSameDriveAsRootProject(): Boolean =
+    projectDir.toPath().root == rootProject.projectDir.toPath().root
 
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
@@ -14,8 +19,10 @@ val newBuildDir: Directory =
 rootProject.layout.buildDirectory.value(newBuildDir)
 
 subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
+    if (project.isOnSameDriveAsRootProject()) {
+        val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+        project.layout.buildDirectory.value(newSubprojectBuildDir)
+    }
 }
 
 subprojects {
@@ -54,7 +61,6 @@ subprojects {
             }
         }
 
-        project.buildDir = File(rootProject.buildDir, project.name)
     }
 }
 
