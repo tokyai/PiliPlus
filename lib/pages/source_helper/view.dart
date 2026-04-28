@@ -1077,10 +1077,10 @@ class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
     super.initState();
     _phpBridgeService = Get.find<PhpBridgeService>();
     _commandCtr = TextEditingController(text: 'php');
-    _candidatesCtr = TextEditingController(text: 'tools/php/php,php');
+    _candidatesCtr = TextEditingController(text: 'php/php,tools/php/php,php');
     _documentRootCtr = TextEditingController();
     _portCtr = TextEditingController(text: '9980');
-    _instancesCtr = TextEditingController(text: '1');
+    _instancesCtr = TextEditingController(text: '4');
     _timeoutCtr = TextEditingController(text: '15000');
     _codeCtr = TextEditingController(text: 'echo "php bridge ok\\n";');
     _refreshBasics();
@@ -1424,7 +1424,7 @@ class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
     setState(() => _loading = true);
     final status = await _phpBridgeService.startServer(
       port: int.tryParse(_portCtr.text.trim()) ?? 9980,
-      instances: int.tryParse(_instancesCtr.text.trim()) ?? 1,
+      instances: int.tryParse(_instancesCtr.text.trim()) ?? 4,
       command: _commandCtr.text.trim(),
       commandCandidates: _parseCsv(_candidatesCtr.text),
       documentRoot: _documentRootCtr.text.trim().isEmpty

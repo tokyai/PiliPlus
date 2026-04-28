@@ -140,7 +140,7 @@ class PhpBridgeService {
 
   Future<PhpServerStatus> startServer({
     int port = 9980,
-    int instances = 1,
+    int instances = 4,
     String? documentRoot,
     String? command,
     List<String> commandCandidates = const <String>[],
@@ -235,8 +235,9 @@ class PhpBridgeService {
 
   Future<PhpCommandResult> installPhp({
     String? downloadUrl,
-    String targetRelativePath = 'tools/php/php',
+    String targetRelativePath = 'php/php',
     List<String> assetCandidates = const <String>[
+      'php/php',
       'assets/runtime/php',
       'assets/php/php',
       'php',

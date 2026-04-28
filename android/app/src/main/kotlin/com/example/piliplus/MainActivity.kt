@@ -26,10 +26,15 @@ import io.flutter.plugin.common.MethodChannel
 import dalvik.system.DexClassLoader
 import kotlin.system.exitProcess
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.lang.reflect.Modifier
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Arrays
 import java.util.jar.JarFile
 import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPInputStream
 
 class MainActivity : AudioServiceActivity() {
     private lateinit var methodChannel: MethodChannel
@@ -252,7 +257,7 @@ class MainActivity : AudioServiceActivity() {
                     result.success(phpGetPhpDir())
                 }
                 "getDefaultDownloadUrl" -> {
-                    result.success("https://raw.githubusercontent.com/ingriddaleusag-dotcom/PeekPiliRelease/main/php/php-android-arm64.tar.gz")
+                    result.success(phpDefaultDownloadUrl())
                 }
                 "probeJarFile" -> {
                     result.success(probeJarFile(call))
@@ -587,6 +592,8 @@ class MainActivity : AudioServiceActivity() {
         )
 
         "php" -> listOf(
+            "php/php",
+            "php/bin/php",
             "tools/php/php",
             "tools/php",
             "/data/local/tmp/php",
@@ -884,7 +891,7 @@ class MainActivity : AudioServiceActivity() {
                 "error" to ""
             )
         }
-        val runtimeOptions = buildPhpRuntimeOptions(call)
+        val runtimeOptions = mergePhpRuntimeOptionsWithEnvironment(buildPhpRuntimeOptions(call))
         val command = resolvePhpCommand(runtimeOptions)
             ?: return mapOf(
                 "success" to false,
@@ -896,12 +903,13 @@ class MainActivity : AudioServiceActivity() {
                 "error" to "command_not_found"
             )
         val port = (call.argument<Int>("port") ?: 9980).coerceIn(1, 65500)
-        val instances = (call.argument<Int>("instances") ?: 1).coerceIn(1, 8)
+        val instances = (call.argument<Int>("instances") ?: 4).coerceIn(1, 8)
         val documentRoot = call.argument<String>("documentRoot")
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?: phpGetScriptsDir()
         val rootFile = File(documentRoot).apply { mkdirs() }
+        ensurePhpScripts(rootFile)
         val startedProcesses = mutableListOf<Process>()
         val startedPorts = mutableListOf<Int>()
         for (index in 0 until instances) {
@@ -914,7 +922,7 @@ class MainActivity : AudioServiceActivity() {
                     "-t",
                     rootFile.absolutePath
                 ).directory(rootFile)
-                val environment = parseStringMap(call.argument<Map<*, *>>("environment"))
+                val environment = parseStringMap(runtimeOptions["environment"])
                 if (environment.isNotEmpty()) {
                     processBuilder.environment().putAll(environment)
                 }
@@ -1003,6 +1011,233 @@ class MainActivity : AudioServiceActivity() {
         return running
     }
 
+    private fun phpRuntimeDir(): File = File(filesDir, "php")
+
+    private fun phpRuntimeBinary(): File = File(phpRuntimeDir(), "php")
+
+    private fun phpDefaultDownloadUrl(): String =
+        "https://raw.githubusercontent.com/ingriddaleusag-dotcom/PeekPiliRelease/main/php/php-android-arm64.tar.gz"
+
+    private fun phpRuntimeVersionOptions(): Map<String, Any> =
+        mapOf("environment" to buildPhpRuntimeEnvironment())
+
+    private fun mergePhpRuntimeOptionsWithEnvironment(options: Map<String, Any>): Map<String, Any> {
+        val merged = options.toMutableMap()
+        merged["environment"] = buildPhpRuntimeEnvironment(parseStringMap(options["environment"]))
+        return merged
+    }
+
+    private fun buildPhpRuntimeEnvironment(extra: Map<String, String> = emptyMap()): Map<String, String> {
+        val runtimeDir = phpRuntimeDir()
+        runtimeDir.mkdirs()
+        val confDir = File(runtimeDir, "conf.d")
+        confDir.mkdirs()
+        val libDir = File(runtimeDir, "libs")
+        libDir.mkdirs()
+        val environment = mutableMapOf<String, String>(
+            "PHPRC" to runtimeDir.absolutePath,
+            "PHP_INI_SCAN_DIR" to confDir.absolutePath,
+            "HOME" to runtimeDir.absolutePath,
+            "TMPDIR" to cacheDir.absolutePath
+        )
+        val ldParts = mutableListOf<String>()
+        if (libDir.exists()) {
+            ldParts.add(libDir.absolutePath)
+        }
+        val extraLd = extra["LD_LIBRARY_PATH"]?.trim().orEmpty()
+        if (extraLd.isNotEmpty()) {
+            ldParts.add(extraLd)
+        }
+        if (ldParts.isNotEmpty()) {
+            environment["LD_LIBRARY_PATH"] = ldParts.joinToString(":")
+        }
+        if (extra.isNotEmpty()) {
+            environment.putAll(extra)
+        }
+        return environment
+    }
+
+    private fun ensureWritableDirectory(directory: File): Boolean {
+        return try {
+            if (!directory.exists() && !directory.mkdirs()) {
+                return false
+            }
+            directory.exists() && directory.isDirectory && directory.canWrite()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun ensurePhpScripts(directory: File) {
+        try {
+            directory.mkdirs()
+            val scripts = assets.list("php/scripts") ?: emptyArray()
+            for (script in scripts) {
+                if (!script.endsWith(".php")) {
+                    continue
+                }
+                val target = File(directory, script)
+                if (target.exists() && target.length() > 0) {
+                    continue
+                }
+                try {
+                    assets.open("php/scripts/$script").use { input ->
+                        target.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+            }
+            val indexFile = File(directory, "index.php")
+            if (!indexFile.exists() || indexFile.length() == 0L) {
+                indexFile.writeText(
+                    """
+                    <?php
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode([
+                        'status' => 'ok',
+                        'message' => 'PHP server is running',
+                        'version' => PHP_VERSION,
+                        'platform' => 'Android',
+                        'time' => date('Y-m-d H:i:s')
+                    ], JSON_UNESCAPED_UNICODE);
+                    """.trimIndent()
+                )
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun downloadToFile(downloadUrl: String, targetFile: File) {
+        val connection = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 30000
+            readTimeout = 120000
+            instanceFollowRedirects = true
+        }
+        try {
+            connection.connect()
+            val responseCode = connection.responseCode
+            if (responseCode !in 200..299) {
+                throw IOException("HTTP $responseCode")
+            }
+            targetFile.parentFile?.mkdirs()
+            connection.inputStream.use { input ->
+                targetFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun extractPhpRuntimeArchive(archiveFile: File, runtimeDir: File): Boolean {
+        val unpackDir = File(cacheDir, "php_unpack_${System.currentTimeMillis()}")
+        unpackDir.mkdirs()
+        val tarExtracted = runCatching {
+            val process = ProcessBuilder(
+                "tar",
+                "-xzf",
+                archiveFile.absolutePath,
+                "-C",
+                unpackDir.absolutePath
+            ).redirectErrorStream(true).start()
+            process.inputStream.bufferedReader().use { it.readText() }
+            process.waitFor(30, TimeUnit.SECONDS) && process.exitValue() == 0
+        }.getOrDefault(false)
+
+        if (!tarExtracted) {
+            runCatching {
+                val fallbackBinary = File(unpackDir, "php")
+                GZIPInputStream(archiveFile.inputStream()).use { input ->
+                    FileOutputStream(fallbackBinary).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                fallbackBinary.setExecutable(true, false)
+            }
+        }
+
+        val binarySource = findPhpBinary(unpackDir)
+        if (binarySource == null) {
+            archiveFile.delete()
+            unpackDir.deleteRecursively()
+            return false
+        }
+
+        return runCatching {
+            runtimeDir.mkdirs()
+            val targetBinary = phpRuntimeBinary()
+            binarySource.copyTo(targetBinary, overwrite = true)
+            targetBinary.setExecutable(true, false)
+            copyPhpRuntimeSupplement(binarySource.parentFile, unpackDir, runtimeDir)
+            archiveFile.delete()
+            unpackDir.deleteRecursively()
+            targetBinary.exists() && targetBinary.canExecute()
+        }.getOrElse {
+            archiveFile.delete()
+            unpackDir.deleteRecursively()
+            false
+        }
+    }
+
+    private fun findPhpBinary(root: File): File? {
+        return root.walkTopDown()
+            .firstOrNull { item ->
+                item.isFile && item.name == "php" && item.length() > 0L
+            }
+    }
+
+    private fun copyPhpRuntimeSupplement(binaryParent: File?, unpackDir: File, runtimeDir: File) {
+        val roots = mutableListOf<File>()
+        binaryParent?.let { roots.add(it) }
+        roots.add(unpackDir)
+        for (root in roots.distinct()) {
+            val libsDir = root.walkTopDown().firstOrNull { item ->
+                item.isDirectory && item.name == "libs"
+            }
+            if (libsDir != null) {
+                copyDirectoryRecursively(libsDir, File(runtimeDir, "libs"))
+            }
+            val confDir = root.walkTopDown().firstOrNull { item ->
+                item.isDirectory && item.name == "conf.d"
+            }
+            if (confDir != null) {
+                copyDirectoryRecursively(confDir, File(runtimeDir, "conf.d"))
+            }
+            val iniFile = root.walkTopDown().firstOrNull { item ->
+                item.isFile && item.name == "php.ini"
+            }
+            if (iniFile != null) {
+                iniFile.copyTo(File(runtimeDir, "php.ini"), overwrite = true)
+            }
+        }
+    }
+
+    private fun copyDirectoryRecursively(source: File, target: File) {
+        if (!source.exists() || !source.isDirectory) {
+            return
+        }
+        target.mkdirs()
+        source.walkTopDown().forEach { file ->
+            if (file == source) {
+                return@forEach
+            }
+            val relative = file.relativeTo(source).path
+            val destination = File(target, relative)
+            if (file.isDirectory) {
+                destination.mkdirs()
+            } else {
+                destination.parentFile?.mkdirs()
+                file.copyTo(destination, overwrite = true)
+                if (file.canExecute()) {
+                    destination.setExecutable(true, false)
+                }
+            }
+        }
+    }
+
     private fun phpInstall(call: MethodCall): Map<String, Any?> {
         if (phpIsInstalled()) {
             return mapOf(
@@ -1013,63 +1248,109 @@ class MainActivity : AudioServiceActivity() {
                 "preparedFromAsset" to false
             )
         }
-        val targetRelativePath = call.argument<String>("targetRelativePath")
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?: "tools/php/php"
         val appRoot = filesDir.canonicalFile
-        val targetFile = File(appRoot, targetRelativePath).canonicalFile
-        if (!targetFile.absolutePath.startsWith(appRoot.absolutePath)) {
-            return mapOf(
-                "success" to false,
-                "message" to "Invalid targetRelativePath.",
-                "error" to "invalid_target_path",
-                "command" to "",
-                "preparedFromAsset" to false
-            )
-        }
+        val runtimeDir = phpRuntimeDir().canonicalFile
+        val runtimeBinary = phpRuntimeBinary().canonicalFile
+        runtimeDir.mkdirs()
+        var preparedFromAsset = false
+        var downloaded = false
+        var archivePath = ""
+        var extracted = false
         val assetCandidates = call.argument<List<String>>("assetCandidates")
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
             ?: listOf("assets/runtime/php", "assets/php/php", "php")
+        val downloadUrl = call.argument<String>("downloadUrl")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: phpDefaultDownloadUrl()
         val errors = mutableListOf<String>()
-        for (candidate in assetCandidates) {
-            val assetPath = candidate.removePrefix("/")
+        if (downloadUrl.isNotEmpty()) {
             try {
-                targetFile.parentFile?.mkdirs()
-                assets.open(assetPath).use { input ->
-                    targetFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
+                val archiveFile = File(cacheDir, "php_runtime_${System.currentTimeMillis()}.tar.gz")
+                downloadToFile(downloadUrl, archiveFile)
+                archivePath = archiveFile.absolutePath
+                extracted = extractPhpRuntimeArchive(archiveFile, runtimeDir)
+                downloaded = extracted
+                if (!extracted) {
+                    errors.add("extract failed: $archivePath")
                 }
-                targetFile.setExecutable(true, false)
-                return mapOf(
-                    "success" to true,
-                    "message" to "PHP runtime prepared from asset: $assetPath",
-                    "error" to "",
-                    "command" to targetFile.absolutePath,
-                    "preparedFromAsset" to true
-                )
             } catch (e: Exception) {
-                errors.add("$assetPath: ${e.message ?: e.toString()}")
+                errors.add("download failed: ${e.message ?: e.toString()}")
             }
         }
+
+        if (!downloaded) {
+            val targetRelativePath = call.argument<String>("targetRelativePath")
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: "php/php"
+            val targetFile = File(appRoot, targetRelativePath).canonicalFile
+            if (!targetFile.absolutePath.startsWith(appRoot.absolutePath)) {
+                return mapOf(
+                    "success" to false,
+                    "message" to "Invalid targetRelativePath.",
+                    "error" to "invalid_target_path",
+                    "command" to "",
+                    "preparedFromAsset" to false
+                )
+            }
+            for (candidate in assetCandidates) {
+                val assetPath = candidate.removePrefix("/")
+                try {
+                    targetFile.parentFile?.mkdirs()
+                    assets.open(assetPath).use { input ->
+                        targetFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    targetFile.setExecutable(true, false)
+                    if (targetFile.absolutePath != runtimeBinary.absolutePath) {
+                        runtimeBinary.parentFile?.mkdirs()
+                        targetFile.copyTo(runtimeBinary, overwrite = true)
+                        runtimeBinary.setExecutable(true, false)
+                    }
+                    preparedFromAsset = true
+                    break
+                } catch (e: Exception) {
+                    errors.add("$assetPath: ${e.message ?: e.toString()}")
+                }
+            }
+        }
+
+        if (runtimeBinary.exists()) {
+            runtimeBinary.setExecutable(true, false)
+        }
+        ensurePhpScripts(File(phpGetScriptsDir()))
+        val success = phpIsInstalled()
         return mapOf(
-            "success" to false,
-            "message" to "Failed to prepare PHP runtime from assets.",
-            "error" to errors.joinToString(" | "),
-            "command" to "",
-            "preparedFromAsset" to false
+            "success" to success,
+            "message" to when {
+                success && downloaded -> "PHP runtime installed from download archive."
+                success && preparedFromAsset -> "PHP runtime prepared from assets."
+                success -> "PHP runtime already installed."
+                else -> "Failed to install PHP runtime."
+            },
+            "error" to if (success) "" else errors.joinToString(" | "),
+            "command" to (resolvePhpCommand() ?: ""),
+            "preparedFromAsset" to preparedFromAsset,
+            "downloaded" to downloaded,
+            "archivePath" to archivePath,
+            "extracted" to extracted
         )
     }
 
     private fun phpIsInstalled(): Boolean {
-        val command = resolvePhpCommand() ?: return false
+        val runtimeBinary = phpRuntimeBinary()
+        if (runtimeBinary.exists() && runtimeBinary.canExecute()) {
+            return true
+        }
+        val command = resolvePhpCommand(phpRuntimeVersionOptions()) ?: return false
         val result = runRuntimeCommand(
             command = command,
             args = listOf("--version"),
             timeoutMs = 5000L,
-            options = emptyMap<Any?, Any?>(),
+            options = phpRuntimeVersionOptions(),
             engine = "php",
             action = "version"
         )
@@ -1077,12 +1358,12 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun phpGetVersion(): String {
-        val command = resolvePhpCommand() ?: return ""
+        val command = resolvePhpCommand(phpRuntimeVersionOptions()) ?: return ""
         val result = runRuntimeCommand(
             command = command,
             args = listOf("--version"),
             timeoutMs = 5000L,
-            options = emptyMap<Any?, Any?>(),
+            options = phpRuntimeVersionOptions(),
             engine = "php",
             action = "version"
         )
@@ -1093,12 +1374,12 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun phpGetExtensions(): List<String> {
-        val command = resolvePhpCommand() ?: return emptyList()
+        val command = resolvePhpCommand(phpRuntimeVersionOptions()) ?: return emptyList()
         val result = runRuntimeCommand(
             command = command,
             args = listOf("-m"),
             timeoutMs = 8000L,
-            options = emptyMap<Any?, Any?>(),
+            options = phpRuntimeVersionOptions(),
             engine = "php",
             action = "extensions"
         )
@@ -1114,21 +1395,19 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun phpGetScriptsDir(): String {
-        val directory = File(filesDir, "php/scripts")
-        directory.mkdirs()
-        return directory.absolutePath
+        val externalDirectory = File("/storage/emulated/0/peekpili/php-scripts")
+        if (ensureWritableDirectory(externalDirectory)) {
+            ensurePhpScripts(externalDirectory)
+            return externalDirectory.absolutePath
+        }
+        val internalDirectory = File(phpRuntimeDir(), "scripts")
+        internalDirectory.mkdirs()
+        ensurePhpScripts(internalDirectory)
+        return internalDirectory.absolutePath
     }
 
     private fun phpGetPhpDir(): String {
-        val command = resolvePhpCommand() ?: return File(filesDir, "tools/php").absolutePath
-        if (!command.startsWith("/")) {
-            return command
-        }
-        return try {
-            File(command).parentFile?.absolutePath ?: command
-        } catch (_: Exception) {
-            command
-        }
+        return phpRuntimeDir().absolutePath
     }
 
     private fun phpExecuteCode(call: MethodCall): Map<String, Any?> {
@@ -1141,7 +1420,7 @@ class MainActivity : AudioServiceActivity() {
                 "error" to "empty_code"
             )
         }
-        val runtimeOptions = buildPhpRuntimeOptions(call)
+        val runtimeOptions = mergePhpRuntimeOptionsWithEnvironment(buildPhpRuntimeOptions(call))
         val command = resolvePhpCommand(runtimeOptions)
             ?: return mapOf(
                 "success" to false,

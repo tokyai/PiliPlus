@@ -237,6 +237,22 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze` on updated Dart files passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 30
+- Upgraded Android PHP bridge install/runtime baseline closer to reverse plugin behavior:
+  - runtime root now converges to `files/php` with executable target `files/php/php`,
+  - `installPhp` now supports download + archive extraction (`tar -xzf` with gzip fallback) before asset fallback,
+  - runtime environment variables are now injected for PHP process launches (`PHPRC`, `PHP_INI_SCAN_DIR`, `HOME`, `TMPDIR`, `LD_LIBRARY_PATH`),
+  - `getScriptsDir` now prefers external `/storage/emulated/0/peekpili/php-scripts` with internal fallback,
+  - PHP script bootstrap now auto-copies `assets/php/scripts/*.php` and ensures `index.php`,
+  - default server instance count moved to `4` for reverse-aligned startup baseline.
+- Updated Flutter side defaults for PHP bridge diagnostics:
+  - `PhpBridgeService.startServer` default instances `1 -> 4`,
+  - `PhpBridgeService.installPhp` default target path `tools/php/php -> php/php`,
+  - `PHP Bridge Test` defaults updated to prioritize `php/php` command candidate and 4 instances.
+- Verified by checks:
+  - `flutter analyze` on updated Dart files passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -262,3 +278,4 @@ This document records the practical migration increments after the initial rever
 - Source Helper now includes direct `PHP Test` route for runtime/migration verification.
 - Android Jar business API now reuses per-spider runtime context/instance baseline instead of always re-instantiating.
 - PHP plugin-equivalent baseline bridge and debug UI are now available for migration validation on Android.
+- Android PHP bridge now includes baseline download/extract install orchestration, runtime env wiring, and scripts/bootstrap behavior closer to reverse plugin path.
