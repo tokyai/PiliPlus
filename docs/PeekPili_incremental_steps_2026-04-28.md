@@ -766,6 +766,27 @@ This document records the practical migration increments after the initial rever
   - Dry execution passed:
     - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -EmitRuntimeClosureStatus`.
 
+## Step 85
+- Enhanced runtime closure status script with policy/gating support:
+  - updated `tools/release/runtime_closure_status.ps1`,
+  - new options:
+    - `-MinWindowsSmokeReports`,
+    - `-MinAndroidSmokeLogs`,
+    - `-FailOnPending`,
+  - output now includes `schemaVersion=2` and explicit `criteria`.
+- Readiness calculation update:
+  - `overallReady` now also requires online Android device readiness.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/runtime_closure_status.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - Default status generation passed:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1`.
+  - Gate mode verified (pending expected in current environment):
+    - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1 -FailOnPending` returned non-zero as designed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -845,3 +866,4 @@ This document records the practical migration increments after the initial rever
 - Closure progress now has a machine-readable status snapshot with explicit pending blockers.
 - Runtime smoke CI workflows now publish per-run closure-status artifacts for audit traceability.
 - Unified build flow now can auto-generate closure status snapshots and supports explicit status output path.
+- Closure status script now supports threshold policies and optional CI gate failure on pending blockers.

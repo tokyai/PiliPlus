@@ -1,5 +1,8 @@
 param(
-    [string]$OutputPath = "build/runtime-smoke/closure-status.json"
+    [string]$OutputPath = "build/runtime-smoke/closure-status.json",
+    [int]$MinWindowsSmokeReports = 1,
+    [int]$MinAndroidSmokeLogs = 1,
+    [switch]$FailOnPending
 )
 
 $ErrorActionPreference = "Stop"
@@ -103,12 +106,12 @@ if ($adb) {
 
 $pending = [System.Collections.Generic.List[string]]::new()
 
-$androidRuntimeValidated = $androidSmokeLogs.Count -gt 0
+$androidRuntimeValidated = $androidSmokeLogs.Count -ge $MinAndroidSmokeLogs
 if (-not $androidRuntimeValidated) {
     $pending.Add("android_runtime_validation_pending")
 }
 
-$windowsRuntimeValidated = $windowsSmokeReports.Count -gt 0
+$windowsRuntimeValidated = $windowsSmokeReports.Count -ge $MinWindowsSmokeReports
 if (-not $windowsRuntimeValidated) {
     $pending.Add("windows_runtime_validation_pending")
 }
@@ -124,6 +127,7 @@ if (-not $androidDeviceReady) {
 }
 
 $status = [ordered]@{
+    schemaVersion = 2
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
     host = [ordered]@{
         isWindows = $isWindowsHost
@@ -137,6 +141,10 @@ $status = [ordered]@{
         windowsReportCount = $windowsSmokeReports.Count
         androidLogCount = $androidSmokeLogs.Count
     }
+    criteria = [ordered]@{
+        minWindowsSmokeReports = $MinWindowsSmokeReports
+        minAndroidSmokeLogs = $MinAndroidSmokeLogs
+    }
     environment = [ordered]@{
         adbFound = [bool]($adb)
         onlineAndroidDevices = $onlineAndroidDevices
@@ -145,7 +153,7 @@ $status = [ordered]@{
     closure = [ordered]@{
         androidRuntimeValidated = $androidRuntimeValidated
         windowsRuntimeValidated = $windowsRuntimeValidated
-        overallReady = ($androidRuntimeValidated -and $windowsRuntimeValidated -and $iosEnvironmentReady)
+        overallReady = ($androidRuntimeValidated -and $windowsRuntimeValidated -and $iosEnvironmentReady -and $androidDeviceReady)
         pending = @($pending)
     }
 }
@@ -158,3 +166,8 @@ if ($resolvedOutputDir -and -not (Test-Path $resolvedOutputDir)) {
 
 ($status | ConvertTo-Json -Depth 8) | Set-Content -Encoding UTF8 $resolvedOutputPath
 Write-Step ("Status written: " + $resolvedOutputPath)
+
+if ($FailOnPending -and $pending.Count -gt 0) {
+    Write-Step ("Pending blockers: " + (($pending | Select-Object -Unique) -join ", "))
+    exit 2
+}

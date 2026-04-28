@@ -96,6 +96,12 @@ Current closure status snapshot:
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1
 ```
 
+Closure gate mode (non-zero exit if pending blockers exist):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1 -FailOnPending
+```
+
 CI artifact snapshots:
 - Windows workflow uploads `windows-runtime-closure-status`.
 - Android workflow uploads `android-runtime-closure-status`.
