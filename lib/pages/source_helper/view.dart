@@ -1958,6 +1958,11 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                             'uptime=${_runtimeStateResult!.uptimeMs}ms',
                           ),
                         ),
+                        Chip(
+                          label: Text(
+                            'fg=${_runtimeStateResult!.foregroundServiceRunning}',
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -1978,6 +1983,12 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                     ),
                     const SizedBox(height: 4),
                     SelectableText('message: ${_runtimeStateResult!.message}'),
+                    if (_runtimeStateResult!.foregroundServiceError.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'foregroundServiceError: ${_runtimeStateResult!.foregroundServiceError}',
+                      ),
+                    ],
                     if (_runtimeStateResult!.lastError.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       SelectableText(

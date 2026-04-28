@@ -49,6 +49,7 @@ class MainActivity : AudioServiceActivity() {
     private var goProxyStartedAtMs: Long = 0L
     private var goProxyLastPort: Int = 9978
     private var goProxyLastDanmuDir: String = ""
+    private var goProxyForegroundLastError: String = ""
     private val phpServerProcesses = mutableListOf<Process>()
     private val phpServerPorts = mutableListOf<Int>()
     private var phpServerRunning: Boolean = false
@@ -687,7 +688,8 @@ class MainActivity : AudioServiceActivity() {
                 "running" to true,
                 "proxyUrl" to goProxyUrl,
                 "message" to "GoProxy is already running.",
-                "error" to ""
+                "error" to "",
+                "foregroundServiceRunning" to GoProxyForegroundService.isRunning()
             )
         }
 
@@ -750,18 +752,29 @@ class MainActivity : AudioServiceActivity() {
             }
             goProxyLastError = ""
             goProxyStartedAtMs = System.currentTimeMillis()
+            goProxyForegroundLastError = startGoProxyForegroundService(
+                proxyUrl = goProxyUrl,
+                commandLine = commandLine.joinToString(" ")
+            )
             mapOf(
                 "success" to true,
                 "running" to true,
                 "proxyUrl" to goProxyUrl,
-                "message" to "GoProxy process started.",
+                "message" to if (goProxyForegroundLastError.isEmpty()) {
+                    "GoProxy process started."
+                } else {
+                    "GoProxy process started, but foreground service failed."
+                },
                 "error" to "",
-                "command" to command
+                "command" to command,
+                "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+                "foregroundServiceError" to goProxyForegroundLastError
             )
         } catch (e: Exception) {
             goProxyProcess = null
             goProxyLastError = e.message ?: e.toString()
             goProxyStartedAtMs = 0L
+            stopGoProxyForegroundService()
             mapOf(
                 "success" to false,
                 "running" to false,
@@ -777,12 +790,15 @@ class MainActivity : AudioServiceActivity() {
         val process = goProxyProcess
         if (process == null) {
             goProxyStartedAtMs = 0L
+            val fgError = stopGoProxyForegroundService()
             return mapOf(
                 "success" to true,
                 "running" to false,
                 "proxyUrl" to goProxyUrl,
                 "message" to "GoProxy is not running.",
-                "error" to ""
+                "error" to "",
+                "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+                "foregroundServiceError" to fgError
             )
         }
         return try {
@@ -793,12 +809,15 @@ class MainActivity : AudioServiceActivity() {
             }
             goProxyProcess = null
             goProxyStartedAtMs = 0L
+            val fgError = stopGoProxyForegroundService()
             mapOf(
                 "success" to true,
                 "running" to false,
                 "proxyUrl" to goProxyUrl,
                 "message" to "GoProxy process stopped.",
-                "error" to ""
+                "error" to "",
+                "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+                "foregroundServiceError" to fgError
             )
         } catch (e: Exception) {
             goProxyLastError = e.message ?: e.toString()
@@ -835,9 +854,39 @@ class MainActivity : AudioServiceActivity() {
             "startedAtMs" to startedAt,
             "uptimeMs" to uptimeMs,
             "pid" to if (running) getProcessPidCompat(process) else null,
+            "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
+            "foregroundServiceError" to goProxyForegroundLastError,
             "message" to "GoProxy runtime state snapshot loaded.",
             "error" to ""
         )
+    }
+
+    private fun startGoProxyForegroundService(proxyUrl: String, commandLine: String): String {
+        return runCatching {
+            val intent = GoProxyForegroundService.buildStartIntent(
+                context = this,
+                proxyUrl = proxyUrl,
+                commandLine = commandLine
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            ""
+        }.getOrElse { error ->
+            error.message ?: error.toString()
+        }
+    }
+
+    private fun stopGoProxyForegroundService(): String {
+        val stopError = runCatching {
+            startService(GoProxyForegroundService.buildStopIntent(this))
+        }.exceptionOrNull()
+        stopService(Intent(this, GoProxyForegroundService::class.java))
+        val errorText = stopError?.let { it.message ?: it.toString() }.orEmpty()
+        goProxyForegroundLastError = errorText
+        return errorText
     }
 
     private data class GoProxyArgResolution(

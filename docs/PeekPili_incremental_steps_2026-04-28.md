@@ -435,6 +435,17 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 49
+- Added Android GoProxy foreground-service baseline and runtime visibility:
+  - introduced `GoProxyForegroundService` with persistent low-priority notification and stop action,
+  - `startGoProxy/stopGoProxy` now auto-link to foreground service lifecycle,
+  - runtime state now exposes `foregroundServiceRunning/foregroundServiceError`,
+  - `/goProxyTest` runtime card now shows foreground-service status/error.
+- This closes a major migration gap between pure process control and reverse package service-style runtime anchoring.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -479,3 +490,4 @@ This document records the practical migration increments after the initial rever
 - Thunder parse output now includes media snapshot structure (`mediaCount/medias`) for magnet diagnostics.
 - GoProxy runtime snapshot diagnostics are now available in bridge and `/goProxyTest`.
 - GoProxy startup args now auto-align on `-port`/`-danmu-dir`, and runtime state exposes resolved values.
+- GoProxy now has a foreground-service baseline (notification + stop action) linked to process lifecycle.

@@ -96,6 +96,8 @@ class GoProxyRuntimeStateResult {
     required this.startedAtMs,
     required this.uptimeMs,
     required this.pid,
+    required this.foregroundServiceRunning,
+    required this.foregroundServiceError,
     required this.message,
     required this.error,
   });
@@ -112,6 +114,8 @@ class GoProxyRuntimeStateResult {
   final int startedAtMs;
   final int uptimeMs;
   final int? pid;
+  final bool foregroundServiceRunning;
+  final String foregroundServiceError;
   final String message;
   final String error;
 
@@ -130,6 +134,8 @@ class GoProxyRuntimeStateResult {
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
+        foregroundServiceRunning: false,
+        foregroundServiceError: '',
         message: 'Empty platform response.',
         error: 'empty_response',
       );
@@ -162,6 +168,8 @@ class GoProxyRuntimeStateResult {
         String value => int.tryParse(value),
         _ => null,
       },
+      foregroundServiceRunning: map['foregroundServiceRunning'] == true,
+      foregroundServiceError: (map['foregroundServiceError'] ?? '').toString(),
       message: (map['message'] ?? '').toString(),
       error: (map['error'] ?? '').toString(),
     );
@@ -373,6 +381,8 @@ class GoProxyService {
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
+        foregroundServiceRunning: false,
+        foregroundServiceError: '',
         message: 'GoProxy native bridge is only implemented on Android now.',
         error: 'unsupported_platform',
       );
@@ -396,6 +406,8 @@ class GoProxyService {
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
+        foregroundServiceRunning: false,
+        foregroundServiceError: '',
         message: 'getGoProxyRuntimeState platform error',
         error: error.message ?? error.code,
       );
@@ -413,6 +425,8 @@ class GoProxyService {
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
+        foregroundServiceRunning: false,
+        foregroundServiceError: '',
         message: 'getGoProxyRuntimeState not implemented',
         error: error.toString(),
       );
