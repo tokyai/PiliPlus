@@ -31,6 +31,22 @@ function Resolve-PathRelativeToRoot {
     return Join-Path $Root $PathInput
 }
 
+function Convert-ToRelativePath {
+    param(
+        [string]$Root,
+        [string]$AbsolutePath
+    )
+    $normalizedRoot = [System.IO.Path]::GetFullPath($Root)
+    if (-not $normalizedRoot.EndsWith([System.IO.Path]::DirectorySeparatorChar.ToString())) {
+        $normalizedRoot += [System.IO.Path]::DirectorySeparatorChar
+    }
+    $normalizedPath = [System.IO.Path]::GetFullPath($AbsolutePath)
+    $rootUri = [System.Uri]$normalizedRoot
+    $pathUri = [System.Uri]$normalizedPath
+    $relativeUri = $rootUri.MakeRelativeUri($pathUri)
+    return [System.Uri]::UnescapeDataString($relativeUri.ToString()).Replace('\', '/')
+}
+
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..\")
 Set-Location $root
 
@@ -150,8 +166,13 @@ $jsonPayload = [ordered]@{
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
     overallReady = $overallReady
     summaryPath = $resolvedSummaryPath
+    summaryPathRelative = (Convert-ToRelativePath -Root $root -AbsolutePath $resolvedSummaryPath)
     statusPath = $resolvedStatusPath
+    statusPathRelative = (Convert-ToRelativePath -Root $root -AbsolutePath $resolvedStatusPath)
     markdownReportPath = $resolvedReportPath
+    markdownReportPathRelative = (Convert-ToRelativePath -Root $root -AbsolutePath $resolvedReportPath)
+    jsonReportPath = $resolvedJsonReportPath
+    jsonReportPathRelative = (Convert-ToRelativePath -Root $root -AbsolutePath $resolvedJsonReportPath)
     pending = @($pending)
     pendingWithCategory = @($pendingWithCategory)
     blockerCounts = [ordered]@{
