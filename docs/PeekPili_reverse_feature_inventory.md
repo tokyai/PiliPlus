@@ -293,6 +293,7 @@ Result:
   - `android_online_device_missing`
 - Generated report:
   - `build/runtime-smoke/reverse-completion-report.md`
+  - `build/runtime-smoke/reverse-completion-report.json`
 
 ## 8. Tools Installed During This Pass
 

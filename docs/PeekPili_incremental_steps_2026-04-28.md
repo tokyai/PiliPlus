@@ -937,6 +937,16 @@ This document records the practical migration increments after the initial rever
   - Dry execution passed:
     - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -EmitRuntimeClosureStatus -RunReverseCompletionCheck -ReverseCompletionJsonReportPath build/runtime-smoke/custom-reverse-completion.json`.
 
+## Step 97
+- Updated reverse feature inventory with JSON closure-evidence path:
+  - updated `docs/PeekPili_reverse_feature_inventory.md`,
+  - automated closure snapshot section now explicitly records both markdown/json report outputs.
+- Verified by checks:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
+  - both reports exist:
+    - `build\\runtime-smoke\\reverse-completion-report.md`,
+    - `build\\runtime-smoke\\reverse-completion-report.json`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1028,3 +1038,4 @@ This document records the practical migration increments after the initial rever
 - Reverse completion check now also emits a machine-readable JSON report for automation integration.
 - Runtime smoke CI workflows now also publish reverse completion JSON artifacts for machine consumers.
 - Unified build flow now supports custom reverse completion JSON report path.
+- Reverse inventory snapshot now captures both human-readable and machine-readable closure artifacts.
