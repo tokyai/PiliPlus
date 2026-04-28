@@ -102,6 +102,12 @@ Closure gate mode (non-zero exit if pending blockers exist):
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1 -FailOnPending
 ```
 
+One-command closure check report:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1
+```
+
 CI artifact snapshots:
 - Windows workflow uploads `windows-runtime-closure-status`.
 - Android workflow uploads `android-runtime-closure-status`.

@@ -800,6 +800,25 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 87
+- Added one-command reverse completion check helper:
+  - new script: `tools/release/reverse_completion_check.ps1`,
+  - orchestrates:
+    - runtime smoke summary refresh,
+    - closure status refresh with thresholds,
+    - machine-readable completion decision (`overallReady`) and pending blockers report.
+  - emits Markdown report: `build/runtime-smoke/reverse-completion-report.md`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/reverse_completion_check.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - Check command passed:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1`.
+  - Report generated:
+    - `build\\runtime-smoke\\reverse-completion-report.md`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -881,3 +900,4 @@ This document records the practical migration increments after the initial rever
 - Unified build flow now can auto-generate closure status snapshots and supports explicit status output path.
 - Closure status script now supports threshold policies and optional CI gate failure on pending blockers.
 - Runtime smoke workflows now support optional `fail_on_pending` gate for strict closure enforcement.
+- Reverse completion check now has a single command entry with explicit completion/incomplete decision output.
