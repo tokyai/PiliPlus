@@ -287,6 +287,9 @@ powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.
 
 Result:
 - `overallReady=false` (runtime closure incomplete).
+- blockerCounts:
+  - `environment=2`
+  - `runtimeValidation=1`
 - Pending blockers:
   - `android_runtime_validation_pending`
   - `ios_runtime_environment_missing_macos`
@@ -294,6 +297,11 @@ Result:
 - Generated report:
   - `build/runtime-smoke/reverse-completion-report.md`
   - `build/runtime-smoke/reverse-completion-report.json`
+  - relative paths recorded in JSON:
+    - `summaryPathRelative`
+    - `statusPathRelative`
+    - `markdownReportPathRelative`
+    - `jsonReportPathRelative`
 
 ## 8. Tools Installed During This Pass
 

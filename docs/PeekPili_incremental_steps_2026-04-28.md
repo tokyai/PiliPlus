@@ -1116,6 +1116,17 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
   - JSON report contains new `*PathRelative` fields.
 
+## Step 109
+- Updated reverse feature inventory closure snapshot with blocker category counts and relative-path evidence:
+  - updated `docs/PeekPili_reverse_feature_inventory.md`,
+  - snapshot now includes `blockerCounts(environment/runtimeValidation)` and JSON relative-path key list.
+- Verified by checks:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
+  - JSON report confirms:
+    - `blockerCounts.environment=2`,
+    - `blockerCounts.runtimeValidation=1`,
+    - `*PathRelative` fields present.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1219,3 +1230,4 @@ This document records the practical migration increments after the initial rever
 - Runtime-smoke workflows now allow threshold tuning with consistent closure/reverse evaluation logic.
 - Runtime-smoke workflow summaries now directly include actionable next steps.
 - Reverse completion JSON now provides repo-relative path metadata for portable automation.
+- Reverse inventory snapshot now includes blocker category counts aligned with machine-readable closure output.
