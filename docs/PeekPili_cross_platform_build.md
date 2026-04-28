@@ -123,6 +123,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - `-InstallAndroidApk` is best-effort: if `adb` or online devices are not available, script logs skip and still succeeds.
 - `adb` discovery sources: `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `local.properties`, `android/local.properties`, then PATH.
 - Default launch package is `com.example.piliplus`; override by `-AndroidApplicationId`.
+- Android launch now has fallback package candidates (`base`, `base.debug`, `base.dev`) for better debug/dev suffix compatibility.
 - Set `-ArtifactManifestPath` to export build metadata and artifact file paths in JSON.
 - Manifest `schemaVersion=2` includes both `artifacts` and `artifactDetails` (`path/sizeBytes/sha256`).
 - `-RunRuntimeSmoke` hooks target-specific smoke scripts (`android_runtime_smoke.ps1` / `windows_runtime_smoke.ps1`) into build flow.
@@ -148,6 +149,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/android_runtime_smoke.ps1
 Behavior:
 - If no online device is connected, script prints skip and exits successfully.
 - If device exists, script performs install + launch + logcat capture.
+- Launch step now auto-tries package candidates (`base`, `base.debug`, `base.dev`) based on APK mode.
 
 Windows runtime smoke helper:
 

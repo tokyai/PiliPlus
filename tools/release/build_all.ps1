@@ -247,6 +247,23 @@ function Get-AndroidApkPath {
     return Join-Path $RepositoryRoot ("build\app\outputs\flutter-apk\" + $apkName)
 }
 
+function Get-AndroidLaunchPackageCandidates {
+    param(
+        [string]$BaseApplicationId
+    )
+    $base = $BaseApplicationId.Trim()
+    if (-not $base) {
+        return @()
+    }
+    $debugCandidate = if ($base.EndsWith(".debug")) { $base } else { $base + ".debug" }
+    $devCandidate = if ($base.EndsWith(".dev")) { $base } else { $base + ".dev" }
+    return @(
+        @($base, $debugCandidate, $devCandidate) |
+        Where-Object { $_ } |
+        Select-Object -Unique
+    )
+}
+
 function Get-WindowsExePath {
     param(
         [string]$RepositoryRoot,
@@ -312,10 +329,19 @@ function Start-AndroidApp {
         Write-Step "Skip Android launch: adb not found."
         return
     }
-    Write-Step ("Launching app on {0}: {1}" -f $DeviceId, $ApplicationId)
-    & $adb "-s" $DeviceId "shell" "monkey" "-p" $ApplicationId "-c" "android.intent.category.LAUNCHER" "1"
-    if ($LASTEXITCODE -ne 0) {
-        throw ("adb launch failed for device {0}" -f $DeviceId)
+    $candidates = @(Get-AndroidLaunchPackageCandidates -BaseApplicationId $ApplicationId)
+    $launched = $false
+    foreach ($packageId in $candidates) {
+        Write-Step ("Launching app on {0}: {1}" -f $DeviceId, $packageId)
+        & $adb "-s" $DeviceId "shell" "monkey" "-p" $packageId "-c" "android.intent.category.LAUNCHER" "1"
+        if ($LASTEXITCODE -eq 0) {
+            $launched = $true
+            break
+        }
+        Write-Step ("Launch candidate failed on {0}: {1}" -f $DeviceId, $packageId)
+    }
+    if (-not $launched) {
+        throw ("adb launch failed for device {0}. candidates={1}" -f $DeviceId, ($candidates -join ", "))
     }
 }
 

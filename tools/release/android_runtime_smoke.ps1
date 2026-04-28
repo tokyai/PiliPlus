@@ -54,6 +54,37 @@ function Resolve-AdbCommand {
     return ""
 }
 
+function Get-LaunchPackageCandidates {
+    param(
+        [string]$BaseApplicationId,
+        [string]$ApkFilePath
+    )
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    $apkName = [System.IO.Path]::GetFileName($ApkFilePath).ToLowerInvariant()
+    $base = $BaseApplicationId.Trim()
+    if (-not $base) {
+        return @()
+    }
+
+    $debugCandidate = if ($base.EndsWith(".debug")) { $base } else { $base + ".debug" }
+    $devCandidate = if ($base.EndsWith(".dev")) { $base } else { $base + ".dev" }
+
+    if ($apkName -like "*debug*") {
+        $candidates.Add($debugCandidate)
+        $candidates.Add($base)
+        $candidates.Add($devCandidate)
+    } elseif ($apkName -like "*release*") {
+        $candidates.Add($base)
+        $candidates.Add($devCandidate)
+        $candidates.Add($debugCandidate)
+    } else {
+        $candidates.Add($base)
+        $candidates.Add($debugCandidate)
+        $candidates.Add($devCandidate)
+    }
+    return @($candidates | Where-Object { $_ } | Select-Object -Unique)
+}
+
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..\")
 Set-Location $root
 
@@ -99,10 +130,19 @@ foreach ($deviceId in $deviceIds) {
         throw ("adb logcat -c failed: " + $deviceId)
     }
 
-    Write-Step ("Launching app on device: " + $deviceId)
-    & $adb "-s" $deviceId "shell" "monkey" "-p" $ApplicationId "-c" "android.intent.category.LAUNCHER" "1"
-    if ($LASTEXITCODE -ne 0) {
-        throw ("adb launch failed: " + $deviceId)
+    $launchCandidates = @(Get-LaunchPackageCandidates -BaseApplicationId $ApplicationId -ApkFilePath $resolvedApkPath)
+    $launched = $false
+    foreach ($packageId in $launchCandidates) {
+        Write-Step ("Launching app on device {0} with package: {1}" -f $deviceId, $packageId)
+        & $adb "-s" $deviceId "shell" "monkey" "-p" $packageId "-c" "android.intent.category.LAUNCHER" "1"
+        if ($LASTEXITCODE -eq 0) {
+            $launched = $true
+            break
+        }
+        Write-Step ("Launch candidate failed: " + $packageId)
+    }
+    if (-not $launched) {
+        throw ("adb launch failed: {0}. candidates={1}" -f $deviceId, ($launchCandidates -join ", "))
     }
 
     Start-Sleep -Seconds $LaunchWaitSeconds

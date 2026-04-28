@@ -1213,6 +1213,21 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1 -MaxItems 5` passed.
   - Summary contains `Environment Readiness Snapshots` section.
 
+## Step 115
+- Fixed Android runtime launch package mismatch by adding package-candidate fallback:
+  - updated `tools/release/android_runtime_smoke.ps1`,
+  - updated `tools/release/build_all.ps1` (`Start-AndroidApp`),
+  - launch now tries candidates in order (`base`, `base.debug`, `base.dev`) to handle debug/dev suffix variants.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/android_runtime_smoke.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - Runtime smoke with base package id passed on connected device:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/android_runtime_smoke.ps1 -ApkPath build/app/outputs/flutter-apk/app-debug.apk -ApplicationId com.example.piliplus -LaunchWaitSeconds 10`.
+  - Reverse completion check now clears Android runtime blocker after device validation:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1322,3 +1337,4 @@ This document records the practical migration increments after the initial rever
 - Environment readiness checks now support profile-based requirements and machine-readable readiness reports.
 - Runtime-smoke workflows now execute and publish dedicated environment readiness evidence with profile-aware gate enforcement.
 - Runtime smoke summary now consolidates reverse completion and environment readiness evidence in one report.
+- Android device runtime smoke no longer fails on debug package suffix mismatch during launch.
