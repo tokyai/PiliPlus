@@ -151,3 +151,8 @@ One-command reverse completion check:
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1
 ```
+
+The generated report includes:
+- completion decision (`Overall ready`)
+- pending blockers
+- actionable next-step suggestions derived from blocker codes

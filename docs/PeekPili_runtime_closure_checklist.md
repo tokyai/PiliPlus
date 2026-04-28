@@ -108,6 +108,8 @@ One-command closure check report:
 powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1
 ```
 
+Report output now includes blocker-oriented next-action suggestions.
+
 CI artifact snapshots:
 - Windows workflow uploads `windows-runtime-closure-status`.
 - Android workflow uploads `android-runtime-closure-status`.

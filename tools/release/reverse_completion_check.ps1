@@ -69,6 +69,19 @@ $pending = @()
 if ($status.closure.pending) {
     $pending = @($status.closure.pending)
 }
+$pendingActionMap = @{
+    "android_runtime_validation_pending"   = "Connect an online Android device or emulator, then run: powershell -ExecutionPolicy Bypass -File tools/release/android_runtime_smoke.ps1 -ApkPath build/app/outputs/flutter-apk/app-debug.apk"
+    "android_online_device_missing"        = "Ensure adb reports at least one online device (adb devices) before running runtime smoke."
+    "ios_runtime_environment_missing_macos" = "Run iOS runtime validation on macOS host and execute iOS-targeted build/smoke checks."
+    "windows_runtime_validation_pending"   = "Run Windows runtime smoke: powershell -ExecutionPolicy Bypass -File tools/release/windows_runtime_smoke.ps1 -ExePath build/windows/x64/runner/Debug/piliplus.exe"
+}
+$nextActions = [System.Collections.Generic.List[string]]::new()
+foreach ($item in $pending) {
+    if ($pendingActionMap.ContainsKey($item)) {
+        $nextActions.Add($pendingActionMap[$item])
+    }
+}
+$nextActions = @($nextActions | Select-Object -Unique)
 
 $reportLines = [System.Collections.Generic.List[string]]::new()
 $reportLines.Add("# Reverse Completion Check")
@@ -86,6 +99,15 @@ if ($pending.Count -eq 0) {
         $reportLines.Add(("- " + $item))
     }
 }
+$reportLines.Add("")
+$reportLines.Add("## Next Actions")
+if ($nextActions.Count -eq 0) {
+    $reportLines.Add("- none")
+} else {
+    foreach ($item in $nextActions) {
+        $reportLines.Add(("- " + $item))
+    }
+}
 
 $reportDir = Split-Path -Parent $resolvedReportPath
 if ($reportDir -and -not (Test-Path $reportDir)) {
@@ -98,6 +120,9 @@ if ($overallReady) {
     Write-Step "Reverse runtime closure status: complete."
 } else {
     Write-Step ("Reverse runtime closure status: incomplete. Pending blockers: " + ($pending -join ", "))
+    foreach ($item in $nextActions) {
+        Write-Step ("Suggested action: " + $item)
+    }
 }
 
 if ($Strict -and -not $overallReady) {

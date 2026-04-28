@@ -840,6 +840,19 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
   - generated report confirms current state is still incomplete due environment/runtime blockers.
 
+## Step 90
+- Enhanced reverse completion check report with actionable remediation guidance:
+  - updated `tools/release/reverse_completion_check.ps1`,
+  - report now includes `Next Actions` section derived from pending blocker codes,
+  - console output now prints suggested actions when closure is incomplete.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/reverse_completion_check.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -924,3 +937,4 @@ This document records the practical migration increments after the initial rever
 - Reverse completion check now has a single command entry with explicit completion/incomplete decision output.
 - Runtime smoke workflows now also publish reverse completion report artifacts for each run.
 - Reverse inventory now contains a dated machine-assisted closure snapshot and concrete blocker list.
+- Reverse completion report now includes blocker-to-action guidance for direct next-step execution.
