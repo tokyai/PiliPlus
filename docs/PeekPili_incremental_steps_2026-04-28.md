@@ -331,6 +331,16 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/php_bridge_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 39
+- Improved Thunder stop-task compatibility closer to reverse plugin behavior:
+  - Android `thunderStopTask` now supports empty `taskId` by auto-stopping latest active task,
+  - fallback runtime path now mirrors the same empty-id latest-task stop semantics.
+- Extended `/thunderTest` diagnostics with `Stop Latest` action for direct verification.
+- This reduces API behavior drift where reverse plugin stop flow is current-task oriented instead of strict task-id required.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/thunder_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -365,3 +375,4 @@ This document records the practical migration increments after the initial rever
 - PHP install diagnostics now also expose archive format/extract-method (`tar/gzip/zip`) for reverse parity verification.
 - Jar crash markers now auto-synchronize with business invoke success/failure and reload lifecycle.
 - Thunder runtime snapshot diagnostics are now available in bridge and `/thunderTest` for active-task state checks.
+- Thunder stop flow now supports empty-id latest-task stop semantics for better reverse parity.

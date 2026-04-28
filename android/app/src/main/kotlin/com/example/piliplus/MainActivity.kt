@@ -2699,24 +2699,31 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun thunderStopTask(call: MethodCall): Map<String, Any?> {
-        val taskId = call.argument<String>("taskId")?.trim().orEmpty()
-        if (taskId.isEmpty()) {
+        val requestedTaskId = call.argument<String>("taskId")?.trim().orEmpty()
+        val resolvedTaskId = if (requestedTaskId.isNotEmpty()) {
+            requestedTaskId
+        } else {
+            synchronized(thunderRuntimeLock) {
+                thunderActiveTasks.values.maxByOrNull { it.createdAt }?.taskId
+            }
+        }
+        if (resolvedTaskId.isNullOrEmpty()) {
             return mapOf(
                 "success" to false,
-                "taskId" to "",
+                "taskId" to requestedTaskId,
                 "activeTaskCount" to thunderActiveTaskCount(),
-                "message" to "taskId is required.",
-                "error" to "missing_task_id"
+                "message" to "Thunder task not found.",
+                "error" to "task_not_found"
             )
         }
         val removed = synchronized(thunderRuntimeLock) {
-            thunderActiveTasks.remove(taskId)
+            thunderActiveTasks.remove(resolvedTaskId)
         }
         val activeTaskCount = thunderActiveTaskCount()
         if (removed == null) {
             return mapOf(
                 "success" to false,
-                "taskId" to taskId,
+                "taskId" to resolvedTaskId,
                 "activeTaskCount" to activeTaskCount,
                 "message" to "Thunder task not found.",
                 "error" to "task_not_found"
@@ -2724,9 +2731,13 @@ class MainActivity : AudioServiceActivity() {
         }
         return mapOf(
             "success" to true,
-            "taskId" to taskId,
+            "taskId" to resolvedTaskId,
             "activeTaskCount" to activeTaskCount,
-            "message" to "Thunder task stopped.",
+            "message" to if (requestedTaskId.isNotEmpty()) {
+                "Thunder task stopped."
+            } else {
+                "Latest thunder task stopped."
+            },
             "error" to ""
         )
     }

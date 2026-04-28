@@ -2043,6 +2043,11 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
                 label: const Text('Stop Task'),
               ),
               OutlinedButton.icon(
+                onPressed: _loading ? null : _stopLatestTask,
+                icon: const Icon(Icons.stop_outlined),
+                label: const Text('Stop Latest'),
+              ),
+              OutlinedButton.icon(
                 onPressed: _loading ? null : _release,
                 icon: const Icon(Icons.power_settings_new_outlined),
                 label: const Text('Release'),
@@ -2244,6 +2249,16 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
   Future<void> _stopTask() async {
     setState(() => _loading = true);
     final result = await _thunderService.stopTask(_taskIdCtr.text.trim());
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _statusResult = result;
+    });
+  }
+
+  Future<void> _stopLatestTask() async {
+    setState(() => _loading = true);
+    final result = await _thunderService.stopTask('');
     if (!mounted) return;
     setState(() {
       _loading = false;

@@ -376,23 +376,28 @@ class ThunderService {
   Future<ThunderStatusResult> stopTask(String taskId) async {
     if (!Platform.isAndroid) {
       final normalized = taskId.trim();
-      if (normalized.isEmpty) {
+      final resolvedTaskId = normalized.isNotEmpty
+          ? normalized
+          : _resolveFallbackLatestTaskId();
+      if (resolvedTaskId == null || resolvedTaskId.isEmpty) {
         return ThunderStatusResult(
           success: false,
-          taskId: '',
+          taskId: normalized,
           activeTaskCount: _fallbackTasks.length,
-          message: 'taskId is required.',
-          error: 'missing_task_id',
+          message: 'Thunder fallback task not found.',
+          error: 'task_not_found',
         );
       }
-      final removed = _fallbackTasks.remove(normalized);
-      _fallbackTaskCreatedAt.remove(normalized);
+      final removed = _fallbackTasks.remove(resolvedTaskId);
+      _fallbackTaskCreatedAt.remove(resolvedTaskId);
       return ThunderStatusResult(
         success: removed != null,
-        taskId: normalized,
+        taskId: resolvedTaskId,
         activeTaskCount: _fallbackTasks.length,
         message: removed != null
-            ? 'Thunder fallback task stopped.'
+            ? normalized.isNotEmpty
+                  ? 'Thunder fallback task stopped.'
+                  : 'Thunder fallback latest task stopped.'
             : 'Thunder fallback task not found.',
         error: removed != null ? '' : 'task_not_found',
       );
@@ -519,6 +524,19 @@ class ThunderService {
     _fallbackTasks[taskId] = playUrl;
     _fallbackTaskCreatedAt[taskId] = DateTime.now().millisecondsSinceEpoch;
     return taskId;
+  }
+
+  String? _resolveFallbackLatestTaskId() {
+    String? resolved;
+    var latestCreatedAt = -1;
+    for (final entry in _fallbackTasks.entries) {
+      final createdAt = _fallbackTaskCreatedAt[entry.key] ?? 0;
+      if (resolved == null || createdAt >= latestCreatedAt) {
+        latestCreatedAt = createdAt;
+        resolved = entry.key;
+      }
+    }
+    return resolved;
   }
 
   ThunderParseResult _parseFallback(String url) {
