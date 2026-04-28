@@ -44,6 +44,12 @@ powershell -ExecutionPolicy Bypass -File tools/release/android_runtime_smoke.ps1
 
 ## 3) Windows Runtime Confirmation
 
+Suggested automation entry:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/windows_runtime_smoke.ps1 -ExePath build/windows/x64/runner/Debug/piliplus.exe
+```
+
 - Confirm thunder markers are UI-only and not backed by hidden local runtime bridge.
 - Confirm current migration behavior is consistent with packaged app expectations.
 

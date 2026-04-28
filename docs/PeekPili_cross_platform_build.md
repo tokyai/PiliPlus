@@ -85,3 +85,13 @@ powershell -ExecutionPolicy Bypass -File tools/release/android_runtime_smoke.ps1
 Behavior:
 - If no online device is connected, script prints skip and exits successfully.
 - If device exists, script performs install + launch + logcat capture.
+
+Windows runtime smoke helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/windows_runtime_smoke.ps1 -ExePath build/windows/x64/runner/Debug/piliplus.exe
+```
+
+Behavior:
+- Starts built app process, waits, writes JSON report, and stops process by default.
+- Use `-LeaveRunning` to keep process alive after smoke check.
