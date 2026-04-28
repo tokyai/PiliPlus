@@ -566,6 +566,15 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 63
+- Extended Flutter GoProxy runtime diagnostics surface:
+  - `GoProxyRuntimeStateResult` now parses/exposes `lastStopStrategy`,
+  - `/goProxyTest` runtime card now displays stop strategy in both chip and detail text.
+- This closes Dart/UI visibility gap for newly added native stop-strategy diagnostics.
+- Verified by checks:
+  - `flutter analyze --no-pub lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -624,3 +633,4 @@ This document records the practical migration increments after the initial rever
 - Source Runtime generic bridge now supports Jar runtime `status/crash_count/clear_marks/clear_all` actions with runtime snapshot probe output.
 - Cross-platform packaging baseline now has a unified PowerShell build orchestrator for Android/iOS/Windows.
 - GoProxy stop flow now uses staged signal escalation with stop-strategy diagnostics (`lastStopStrategy`).
+- GoProxy stop-strategy diagnostics are now visible end-to-end in Flutter runtime model and `/goProxyTest` UI.

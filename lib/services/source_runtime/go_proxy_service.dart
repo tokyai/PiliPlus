@@ -98,6 +98,7 @@ class GoProxyRuntimeStateResult {
     required this.pid,
     required this.lastExitCode,
     required this.lastExitedAtMs,
+    required this.lastStopStrategy,
     required this.foregroundServiceRunning,
     required this.foregroundWakeLockHeld,
     required this.foregroundWifiLockHeld,
@@ -121,6 +122,7 @@ class GoProxyRuntimeStateResult {
   final int? pid;
   final int? lastExitCode;
   final int lastExitedAtMs;
+  final String lastStopStrategy;
   final bool foregroundServiceRunning;
   final bool foregroundWakeLockHeld;
   final bool foregroundWifiLockHeld;
@@ -146,6 +148,7 @@ class GoProxyRuntimeStateResult {
         pid: null,
         lastExitCode: null,
         lastExitedAtMs: 0,
+        lastStopStrategy: '',
         foregroundServiceRunning: false,
         foregroundWakeLockHeld: false,
         foregroundWifiLockHeld: false,
@@ -190,6 +193,7 @@ class GoProxyRuntimeStateResult {
         _ => null,
       },
       lastExitedAtMs: parseInt(map['lastExitedAtMs']),
+      lastStopStrategy: (map['lastStopStrategy'] ?? '').toString(),
       foregroundServiceRunning: map['foregroundServiceRunning'] == true,
       foregroundWakeLockHeld: map['foregroundWakeLockHeld'] == true,
       foregroundWifiLockHeld: map['foregroundWifiLockHeld'] == true,
@@ -408,6 +412,7 @@ class GoProxyService {
         pid: null,
         lastExitCode: null,
         lastExitedAtMs: 0,
+        lastStopStrategy: '',
         foregroundServiceRunning: false,
         foregroundWakeLockHeld: false,
         foregroundWifiLockHeld: false,
@@ -438,6 +443,7 @@ class GoProxyService {
         pid: null,
         lastExitCode: null,
         lastExitedAtMs: 0,
+        lastStopStrategy: '',
         foregroundServiceRunning: false,
         foregroundWakeLockHeld: false,
         foregroundWifiLockHeld: false,
@@ -462,6 +468,7 @@ class GoProxyService {
         pid: null,
         lastExitCode: null,
         lastExitedAtMs: 0,
+        lastStopStrategy: '',
         foregroundServiceRunning: false,
         foregroundWakeLockHeld: false,
         foregroundWifiLockHeld: false,

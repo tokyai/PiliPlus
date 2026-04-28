@@ -1959,6 +1959,12 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                               'exit=${_runtimeStateResult!.lastExitCode}',
                             ),
                           ),
+                        if (_runtimeStateResult!.lastStopStrategy.isNotEmpty)
+                          Chip(
+                            label: Text(
+                              'stop=${_runtimeStateResult!.lastStopStrategy}',
+                            ),
+                          ),
                         Chip(
                           label: Text(
                             'uptime=${_runtimeStateResult!.uptimeMs}ms',
@@ -2009,6 +2015,12 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                       const SizedBox(height: 4),
                       SelectableText(
                         'lastExitedAtMs: ${_runtimeStateResult!.lastExitedAtMs}',
+                      ),
+                    ],
+                    if (_runtimeStateResult!.lastStopStrategy.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'lastStopStrategy: ${_runtimeStateResult!.lastStopStrategy}',
                       ),
                     ],
                     if (_runtimeStateResult!.foregroundServiceError.isNotEmpty) ...[
