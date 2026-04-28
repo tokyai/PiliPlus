@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:PiliPlus/models/peekpili/t4_api_config.dart';
+import 'package:PiliPlus/services/source_runtime/source_config_service.dart';
 import 'package:PiliPlus/utils/peekpili_config_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -22,7 +23,9 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
   late final TextEditingController _sourceConfigUrlCtr;
   late final TextEditingController _currentApiConfigIdCtr;
   late final TextEditingController _apiConfigsJsonCtr;
+  final _sourceConfigService = SourceConfigService();
   late bool _isLocalConfig;
+  bool _isFetching = false;
 
   @override
   void initState() {
@@ -91,6 +94,17 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
           const SizedBox(height: 16),
           Row(
             children: [
+              FilledButton.icon(
+                onPressed: _isFetching ? null : _fetchFromUrl,
+                icon: _isFetching
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_download_outlined),
+                label: const Text('Fetch URL'),
+              ),
+              const SizedBox(width: 12),
               FilledButton.tonalIcon(
                 onPressed: _loadSampleConfigs,
                 icon: const Icon(Icons.auto_fix_high),
@@ -156,6 +170,28 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
     } catch (error) {
       SmartDialog.showToast('Invalid JSON: $error');
     }
+  }
+
+  Future<void> _fetchFromUrl() async {
+    final url = _sourceConfigUrlCtr.text.trim();
+    if (url.isEmpty) {
+      SmartDialog.showToast('Source Config URL is empty');
+      return;
+    }
+    setState(() => _isFetching = true);
+    final result = await _sourceConfigService.fetchT4Configs(url);
+    if (!mounted) return;
+    setState(() => _isFetching = false);
+    if (!result.success) {
+      SmartDialog.showToast('${result.message}: ${result.error}');
+      return;
+    }
+    _apiConfigsJsonCtr.text = result.prettyConfigsJson;
+    if (_currentApiConfigIdCtr.text.trim().isEmpty &&
+        result.configs.isNotEmpty) {
+      _currentApiConfigIdCtr.text = result.configs.first.id;
+    }
+    SmartDialog.showToast(result.message);
   }
 
   Future<void> _save() async {
