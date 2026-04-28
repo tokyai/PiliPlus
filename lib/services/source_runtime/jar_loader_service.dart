@@ -161,8 +161,10 @@ class JarLoaderService {
   Future<JarInvokeResult> loadJar({
     required String jarPath,
     String entryClass = '',
+    String mainClass = '',
     String methodName = '',
     List<String> args = const <String>[],
+    bool staticOnly = false,
   }) async {
     if (!Platform.isAndroid) {
       return const JarInvokeResult(
@@ -183,6 +185,10 @@ class JarLoaderService {
           'entryClass': entryClass.trim(),
           'methodName': methodName.trim(),
           'args': args,
+          'options': <String, dynamic>{
+            'mainClass': mainClass.trim(),
+            'staticOnly': staticOnly,
+          },
         },
       );
       return JarInvokeResult.fromMap(map);

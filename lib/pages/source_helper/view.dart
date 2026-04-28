@@ -299,8 +299,10 @@ class _JarTestPageState extends State<JarTestPage> {
   late final JarLoaderService _jarLoaderService;
   late final TextEditingController _jarPathCtr;
   late final TextEditingController _entryClassCtr;
+  late final TextEditingController _mainClassCtr;
   late final TextEditingController _methodCtr;
   late final TextEditingController _argsCtr;
+  bool _staticOnly = false;
 
   JarProbeResult? _probeResult;
   JarInvokeResult? _invokeResult;
@@ -312,6 +314,7 @@ class _JarTestPageState extends State<JarTestPage> {
     _jarLoaderService = Get.find<JarLoaderService>();
     _jarPathCtr = TextEditingController(text: Pref.jarTestPath);
     _entryClassCtr = TextEditingController(text: Pref.jarTestEntryClass);
+    _mainClassCtr = TextEditingController();
     _methodCtr = TextEditingController(text: Pref.jarTestMethod);
     _argsCtr = TextEditingController(text: Pref.jarTestArgs);
   }
@@ -320,6 +323,7 @@ class _JarTestPageState extends State<JarTestPage> {
   void dispose() {
     _jarPathCtr.dispose();
     _entryClassCtr.dispose();
+    _mainClassCtr.dispose();
     _methodCtr.dispose();
     _argsCtr.dispose();
     super.dispose();
@@ -363,6 +367,24 @@ class _JarTestPageState extends State<JarTestPage> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _mainClassCtr,
+            decoration: const InputDecoration(
+              labelText: 'Main Class (optional override)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Static Method Only'),
+            subtitle: const Text(
+              'When enabled, only static target methods are considered.',
+            ),
+            value: _staticOnly,
+            onChanged: (value) => setState(() => _staticOnly = value),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -501,8 +523,10 @@ class _JarTestPageState extends State<JarTestPage> {
     final result = await _jarLoaderService.loadJar(
       jarPath: _jarPathCtr.text.trim(),
       entryClass: _entryClassCtr.text.trim(),
+      mainClass: _mainClassCtr.text.trim(),
       methodName: _methodCtr.text.trim(),
       args: _parseCsv(_argsCtr.text),
+      staticOnly: _staticOnly,
     );
     if (!mounted) return;
     setState(() {
