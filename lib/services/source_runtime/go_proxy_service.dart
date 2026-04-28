@@ -96,6 +96,8 @@ class GoProxyRuntimeStateResult {
     required this.startedAtMs,
     required this.uptimeMs,
     required this.pid,
+    required this.lastExitCode,
+    required this.lastExitedAtMs,
     required this.foregroundServiceRunning,
     required this.foregroundWakeLockHeld,
     required this.foregroundWifiLockHeld,
@@ -117,6 +119,8 @@ class GoProxyRuntimeStateResult {
   final int startedAtMs;
   final int uptimeMs;
   final int? pid;
+  final int? lastExitCode;
+  final int lastExitedAtMs;
   final bool foregroundServiceRunning;
   final bool foregroundWakeLockHeld;
   final bool foregroundWifiLockHeld;
@@ -140,6 +144,8 @@ class GoProxyRuntimeStateResult {
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
+        lastExitCode: null,
+        lastExitedAtMs: 0,
         foregroundServiceRunning: false,
         foregroundWakeLockHeld: false,
         foregroundWifiLockHeld: false,
@@ -177,6 +183,13 @@ class GoProxyRuntimeStateResult {
         String value => int.tryParse(value),
         _ => null,
       },
+      lastExitCode: switch (map['lastExitCode']) {
+        int value => value,
+        num value => value.toInt(),
+        String value => int.tryParse(value),
+        _ => null,
+      },
+      lastExitedAtMs: parseInt(map['lastExitedAtMs']),
       foregroundServiceRunning: map['foregroundServiceRunning'] == true,
       foregroundWakeLockHeld: map['foregroundWakeLockHeld'] == true,
       foregroundWifiLockHeld: map['foregroundWifiLockHeld'] == true,
@@ -393,6 +406,8 @@ class GoProxyService {
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
+        lastExitCode: null,
+        lastExitedAtMs: 0,
         foregroundServiceRunning: false,
         foregroundWakeLockHeld: false,
         foregroundWifiLockHeld: false,
@@ -421,6 +436,8 @@ class GoProxyService {
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
+        lastExitCode: null,
+        lastExitedAtMs: 0,
         foregroundServiceRunning: false,
         foregroundWakeLockHeld: false,
         foregroundWifiLockHeld: false,
@@ -443,6 +460,8 @@ class GoProxyService {
         startedAtMs: 0,
         uptimeMs: 0,
         pid: null,
+        lastExitCode: null,
+        lastExitedAtMs: 0,
         foregroundServiceRunning: false,
         foregroundWakeLockHeld: false,
         foregroundWifiLockHeld: false,

@@ -1953,6 +1953,12 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                         ),
                         if (_runtimeStateResult!.pid != null)
                           Chip(label: Text('pid=${_runtimeStateResult!.pid}')),
+                        if (_runtimeStateResult!.lastExitCode != null)
+                          Chip(
+                            label: Text(
+                              'exit=${_runtimeStateResult!.lastExitCode}',
+                            ),
+                          ),
                         Chip(
                           label: Text(
                             'uptime=${_runtimeStateResult!.uptimeMs}ms',
@@ -1999,6 +2005,12 @@ class _GoProxyTestPageState extends State<GoProxyTestPage> {
                     ),
                     const SizedBox(height: 4),
                     SelectableText('message: ${_runtimeStateResult!.message}'),
+                    if (_runtimeStateResult!.lastExitedAtMs > 0) ...[
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'lastExitedAtMs: ${_runtimeStateResult!.lastExitedAtMs}',
+                      ),
+                    ],
                     if (_runtimeStateResult!.foregroundServiceError.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       SelectableText(

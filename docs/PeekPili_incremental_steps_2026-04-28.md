@@ -493,6 +493,16 @@ This document records the practical migration increments after the initial rever
 - Verified by checks:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 55
+- Added GoProxy exit-state diagnostics:
+  - Android runtime state now includes `lastExitCode/lastExitedAtMs`,
+  - bridge captures exit code/timestamp on normal stop and on detected unexpected exit,
+  - Flutter `GoProxyRuntimeStateResult` and `/goProxyTest` runtime card now display exit diagnostics.
+- This improves reverse migration triage for process death causes and lifecycle verification.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -543,3 +553,4 @@ This document records the practical migration increments after the initial rever
 - Thunder parse-media snapshot now covers both magnet and canonical ed2k file links.
 - Thunder parse now also emits `infoHash` for canonical ed2k links.
 - GoProxy runtime now auto-reconciles process/service state to reduce stale-running markers.
+- GoProxy runtime diagnostics now include last exit code/time snapshot fields.

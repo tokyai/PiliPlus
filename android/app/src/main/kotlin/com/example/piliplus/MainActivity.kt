@@ -50,6 +50,8 @@ class MainActivity : AudioServiceActivity() {
     private var goProxyLastPort: Int = 9978
     private var goProxyLastDanmuDir: String = ""
     private var goProxyForegroundLastError: String = ""
+    private var goProxyLastExitCode: Int? = null
+    private var goProxyLastExitedAtMs: Long = 0L
     private val phpServerProcesses = mutableListOf<Process>()
     private val phpServerPorts = mutableListOf<Int>()
     private var phpServerRunning: Boolean = false
@@ -754,6 +756,8 @@ class MainActivity : AudioServiceActivity() {
                 "http://127.0.0.1:${argResolution.port}"
             }
             goProxyLastError = ""
+            goProxyLastExitCode = null
+            goProxyLastExitedAtMs = 0L
             goProxyStartedAtMs = System.currentTimeMillis()
             val processPid = getProcessPidCompat(goProxyProcess)?.toInt() ?: -1
             goProxyForegroundLastError = startGoProxyForegroundService(
@@ -818,6 +822,8 @@ class MainActivity : AudioServiceActivity() {
             if (process.isAlive) {
                 process.destroyForcibly()
             }
+            goProxyLastExitCode = runCatching { process.exitValue() }.getOrNull()
+            goProxyLastExitedAtMs = System.currentTimeMillis()
             goProxyProcess = null
             goProxyStartedAtMs = 0L
             val fgError = stopGoProxyForegroundService()
@@ -868,6 +874,8 @@ class MainActivity : AudioServiceActivity() {
             "startedAtMs" to startedAt,
             "uptimeMs" to uptimeMs,
             "pid" to if (running) getProcessPidCompat(process) else null,
+            "lastExitCode" to goProxyLastExitCode,
+            "lastExitedAtMs" to goProxyLastExitedAtMs,
             "foregroundServiceRunning" to GoProxyForegroundService.isRunning(),
             "foregroundWakeLockHeld" to GoProxyForegroundService.isWakeLockHeld(),
             "foregroundWifiLockHeld" to GoProxyForegroundService.isWifiLockHeld(),
@@ -883,6 +891,8 @@ class MainActivity : AudioServiceActivity() {
         val running = process?.isAlive == true
         if (!running) {
             if (process != null) {
+                goProxyLastExitCode = runCatching { process.exitValue() }.getOrNull()
+                goProxyLastExitedAtMs = System.currentTimeMillis()
                 goProxyProcess = null
                 if (goProxyLastError.isEmpty()) {
                     goProxyLastError = "GoProxy process exited."
