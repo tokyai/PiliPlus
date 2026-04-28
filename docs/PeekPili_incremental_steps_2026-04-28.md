@@ -89,6 +89,14 @@ This document records the practical migration increments after the initial rever
 - Verified by Android build compile task:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 18
+- Enhanced Android `loadJar` entry resolution:
+  - if `entryClass` is empty, it now attempts to read `MANIFEST.MF -> Main-Class`,
+  - supports optional `options.mainClass` override.
+- This improves direct execution compatibility for standard runnable jars without forcing manual class entry.
+- Verified by Android build compile task:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -102,3 +110,4 @@ This document records the practical migration increments after the initial rever
 - Desktop Source Helper execute path is no longer global stub for Python/Node/PHP.
 - Android Source Helper generic bridge is no longer pure placeholder for Python/Node/PHP.
 - Android Jar helper no longer file-check stub and now has real reflective invoke capability.
+- Android Jar helper now supports `Main-Class` auto-discovery for runnable jars.

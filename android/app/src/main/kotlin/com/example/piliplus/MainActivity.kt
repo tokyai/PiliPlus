@@ -27,6 +27,7 @@ import kotlin.system.exitProcess
 import java.io.File
 import java.lang.reflect.Modifier
 import java.util.Arrays
+import java.util.jar.JarFile
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AudioServiceActivity() {
@@ -832,22 +833,34 @@ class MainActivity : AudioServiceActivity() {
             )
         }
 
-        if (entryClass.isEmpty()) {
+        val options = call.argument<Map<*, *>>("options") ?: emptyMap<Any?, Any?>()
+        val optionMainClass = options["mainClass"]?.toString()?.trim().orEmpty()
+        val inferredMainClass = if (optionMainClass.isNotEmpty()) {
+            optionMainClass
+        } else {
+            resolveJarMainClass(resolvedJarFile).orEmpty()
+        }
+        val resolvedEntryClass = when {
+            entryClass.isNotEmpty() -> entryClass
+            inferredMainClass.isNotEmpty() -> inferredMainClass
+            else -> ""
+        }
+
+        if (resolvedEntryClass.isEmpty()) {
             return mapOf(
                 "success" to false,
                 "stdout" to "",
                 "stderr" to "",
                 "exitCode" to -1,
-                "message" to "entryClass is required for real jar execution.",
+                "message" to "entryClass is required, or jar MANIFEST must provide Main-Class.",
                 "error" to "empty_entry_class",
                 "isStub" to false
             )
         }
 
-        val options = call.argument<Map<*, *>>("options") ?: emptyMap<Any?, Any?>()
         val invoke = invokeJarMethod(
             jarFile = resolvedJarFile,
-            entryClass = entryClass,
+            entryClass = resolvedEntryClass,
             methodName = if (methodName.isEmpty()) "main" else methodName,
             args = args,
             staticOnly = (options["staticOnly"] as? Boolean) == true
@@ -861,6 +874,16 @@ class MainActivity : AudioServiceActivity() {
             "error" to invoke.error,
             "isStub" to false
         )
+    }
+
+    private fun resolveJarMainClass(jarFile: File): String? {
+        return try {
+            JarFile(jarFile).use { jar ->
+                jar.manifest?.mainAttributes?.getValue("Main-Class")?.trim()?.takeIf { it.isNotEmpty() }
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun invokeJarMethod(
