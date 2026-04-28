@@ -175,6 +175,7 @@ abstract final class SettingBoxKey {
       t4CurrentApiConfigId = 't4CurrentApiConfigId',
       t4SourceConfigUrl = 't4_source_config_url',
       t4IsLocalConfig = 't4_is_local_config',
+      t4NavAutoApply = 't4_nav_auto_apply',
       t4TrendingViewMode = 't4_trending_view_mode',
       tmdbAccessToken = 'tmdbAccessToken',
       tmdbIntegrationEnabled = 'tmdbIntegrationEnabled',

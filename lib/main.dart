@@ -100,6 +100,12 @@ List<String> _parseGoProxyArgs(String raw) {
   return source.split(RegExp(r'\s+')).where((item) => item.isNotEmpty).toList();
 }
 
+Future<void> _autoApplyT4NavigationIfEnabled() async {
+  if (!Pref.t4NavAutoApply) return;
+  final service = Get.find<T4NavigationConfigService>();
+  await service.applyFromActive(allowRemoteFetch: false);
+}
+
 Future<void> _autoStartGoProxyIfEnabled() async {
   if (!Platform.isAndroid || !Pref.goProxyAutoStart) return;
   final service = Get.find<GoProxyService>();
@@ -132,6 +138,7 @@ void main() async {
     ..lazyPut(SourceRuntimeService.new)
     ..lazyPut(T4ActiveConfigService.new)
     ..lazyPut(T4NavigationConfigService.new);
+  await _autoApplyT4NavigationIfEnabled();
   await _autoStartGoProxyIfEnabled();
   HttpOverrides.global = _CustomHttpOverrides();
 

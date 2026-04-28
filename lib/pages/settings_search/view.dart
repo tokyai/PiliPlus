@@ -35,7 +35,7 @@ class _SettingsSearchPageState
     ...styleSettings,
     NormalModel(
       title: 'Source Config',
-      subtitle: 't4_source_config_url / t4ApiConfigs',
+      subtitle: 't4_source_config_url / t4ApiConfigs / t4_nav_auto_apply',
       onTap: (context, setState) => Get.toNamed('/sourceConfig'),
     ),
     NormalModel(

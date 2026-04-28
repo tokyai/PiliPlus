@@ -51,6 +51,7 @@ class T4ActiveConfigService {
   Future<T4ActiveConfigState> resolve({
     bool forceRemote = false,
     bool persistRemoteSnapshot = false,
+    bool allowRemoteFetch = true,
   }) async {
     final sourceUrl = PeekPiliConfigStore.t4SourceConfigUrl.trim();
     final localJson = PeekPiliConfigStore.t4ApiConfigsJson;
@@ -65,6 +66,18 @@ class T4ActiveConfigService {
         sourceUrl: sourceUrl,
         usedLocalMode: true,
         messageOnSuccess: 'Using local t4ApiConfigs.',
+      );
+    }
+
+    if (!allowRemoteFetch && !forceRemote) {
+      return _resolveFromJson(
+        configsJson: localJson,
+        currentId: currentId,
+        source: T4ActiveConfigSource.fallbackLocal,
+        sourceUrl: sourceUrl,
+        usedLocalMode: isLocalMode,
+        messageOnSuccess:
+            'Remote fetch is disabled; fallback to local t4ApiConfigs snapshot.',
       );
     }
 
@@ -101,6 +114,7 @@ class T4ActiveConfigService {
             isLocalConfig: isLocalMode,
             currentApiConfigId: resolved.currentId,
             apiConfigs: resolved.configs,
+            navAutoApply: PeekPiliConfigStore.t4NavAutoApply,
           );
         }
       }

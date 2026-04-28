@@ -31,6 +31,7 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
   List<T4ApiConfig> _configs = const <T4ApiConfig>[];
   String? _configParseError;
   late bool _isLocalConfig;
+  late bool _navAutoApply;
   bool _isFetching = false;
 
   @override
@@ -46,6 +47,7 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
       text: PeekPiliConfigStore.t4ApiConfigsJson,
     );
     _isLocalConfig = PeekPiliConfigStore.t4IsLocalConfig;
+    _navAutoApply = PeekPiliConfigStore.t4NavAutoApply;
     _syncResolvedConfigs();
   }
 
@@ -87,6 +89,15 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
             title: const Text('Use local config'),
             subtitle: const Text(
               'Enabled: read local t4ApiConfigs; Disabled: fetch from URL.',
+            ),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _navAutoApply,
+            onChanged: (value) => setState(() => _navAutoApply = value),
+            title: const Text('Auto apply nav config'),
+            subtitle: const Text(
+              'Startup applies active config bottom-nav mapping from local snapshot.',
             ),
           ),
           const SizedBox(height: 16),
@@ -257,6 +268,7 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
       isLocalConfig: _isLocalConfig,
       currentApiConfigId: runtimeState.currentId,
       apiConfigs: runtimeState.configs,
+      navAutoApply: _navAutoApply,
     );
     _currentApiConfigIdCtr.text = runtimeState.currentId;
     setState(_syncResolvedConfigs);

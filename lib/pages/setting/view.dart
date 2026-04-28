@@ -192,7 +192,7 @@ class _SettingPageState extends State<SettingPage> {
           onTap: () => Get.toNamed('/sourceConfig'),
           title: Text('Source Config', style: titleStyle),
           subtitle: Text(
-            't4_source_config_url / t4ApiConfigs',
+            't4_source_config_url / t4ApiConfigs / t4_nav_auto_apply',
             style: subTitleStyle,
           ),
         ),

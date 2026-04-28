@@ -13,6 +13,11 @@ abstract final class PeekPiliConfigStore {
     defaultValue: false,
   );
 
+  static bool get t4NavAutoApply => GStorage.setting.get(
+    SettingBoxKey.t4NavAutoApply,
+    defaultValue: false,
+  );
+
   static String get t4CurrentApiConfigId => GStorage.setting.get(
     SettingBoxKey.t4CurrentApiConfigId,
     defaultValue: '',
@@ -52,11 +57,13 @@ abstract final class PeekPiliConfigStore {
     required bool isLocalConfig,
     required String currentApiConfigId,
     required List<T4ApiConfig> apiConfigs,
+    required bool navAutoApply,
   }) => GStorage.setting.putAll(<String, dynamic>{
     SettingBoxKey.t4SourceConfigUrl: sourceConfigUrl.trim(),
     SettingBoxKey.t4IsLocalConfig: isLocalConfig,
     SettingBoxKey.t4CurrentApiConfigId: currentApiConfigId.trim(),
     SettingBoxKey.t4ApiConfigs: T4ApiConfig.encodeList(apiConfigs),
+    SettingBoxKey.t4NavAutoApply: navAutoApply,
   });
 
   static Future<void> saveTmdbConfig({

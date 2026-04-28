@@ -37,9 +37,11 @@ class T4NavigationConfigService {
 
   Future<T4NavigationApplyResult> previewFromActive({
     bool forceRemote = false,
+    bool allowRemoteFetch = true,
   }) async {
     final activeState = await _activeConfigService.resolve(
       forceRemote: forceRemote,
+      allowRemoteFetch: allowRemoteFetch,
     );
     if (!activeState.success || activeState.currentConfig == null) {
       return T4NavigationApplyResult(
@@ -79,8 +81,12 @@ class T4NavigationConfigService {
 
   Future<T4NavigationApplyResult> applyFromActive({
     bool forceRemote = false,
+    bool allowRemoteFetch = true,
   }) async {
-    final preview = await previewFromActive(forceRemote: forceRemote);
+    final preview = await previewFromActive(
+      forceRemote: forceRemote,
+      allowRemoteFetch: allowRemoteFetch,
+    );
     if (!preview.success) return preview;
 
     await GStorage.setting.putAll(<String, dynamic>{

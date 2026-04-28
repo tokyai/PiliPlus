@@ -583,6 +583,9 @@ abstract final class Pref {
   static bool get t4IsLocalConfig =>
       _setting.get(SettingBoxKey.t4IsLocalConfig, defaultValue: false);
 
+  static bool get t4NavAutoApply =>
+      _setting.get(SettingBoxKey.t4NavAutoApply, defaultValue: false);
+
   static String get t4CurrentApiConfigId =>
       _setting.get(SettingBoxKey.t4CurrentApiConfigId, defaultValue: '');
 
