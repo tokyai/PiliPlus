@@ -591,6 +591,15 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -SkipPubGet` passed,
   - artifact produced: `build\\windows\\x64\\runner\\Debug\\piliplus.exe`.
 
+## Step 66
+- Android packaging smoke verification via unified script:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -SkipPubGet` passed,
+  - artifact produced: `build\\app\\outputs\\flutter-apk\\app-debug.apk`.
+
+## Step 67
+- iOS host-skip behavior verification on Windows:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -NoCodesign` passed with expected skip output (`host is not macOS`).
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -652,3 +661,5 @@ This document records the practical migration increments after the initial rever
 - GoProxy stop-strategy diagnostics are now visible end-to-end in Flutter runtime model and `/goProxyTest` UI.
 - Remaining reverse/migration closure tasks are now explicitly operationalized in `docs/PeekPili_runtime_closure_checklist.md`.
 - Windows local packaging flow has been smoke-validated via the unified build script.
+- Android local packaging flow has been smoke-validated via the unified build script.
+- iOS non-macOS skip path has been validated to be explicit and non-failing.
