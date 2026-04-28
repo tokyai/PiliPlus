@@ -25,6 +25,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import dalvik.system.DexClassLoader
 import kotlin.system.exitProcess
+import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -35,6 +36,7 @@ import java.util.Arrays
 import java.util.jar.JarFile
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
+import java.util.zip.ZipInputStream
 
 class MainActivity : AudioServiceActivity() {
     private lateinit var methodChannel: MethodChannel
@@ -1153,38 +1155,87 @@ class MainActivity : AudioServiceActivity() {
         }
     }
 
-    private fun extractPhpRuntimeArchive(archiveFile: File, runtimeDir: File): Boolean {
+    private data class PhpArchiveExtractResult(
+        val success: Boolean,
+        val archiveFormat: String,
+        val extractMethod: String,
+        val error: String
+    )
+
+    private fun extractPhpRuntimeArchive(
+        archiveFile: File,
+        runtimeDir: File,
+        downloadUrl: String
+    ): PhpArchiveExtractResult {
         val unpackDir = File(cacheDir, "php_unpack_${System.currentTimeMillis()}")
         unpackDir.mkdirs()
-        val tarExtracted = runCatching {
-            val process = ProcessBuilder(
-                "tar",
-                "-xzf",
-                archiveFile.absolutePath,
-                "-C",
-                unpackDir.absolutePath
-            ).redirectErrorStream(true).start()
-            process.inputStream.bufferedReader().use { it.readText() }
-            process.waitFor(30, TimeUnit.SECONDS) && process.exitValue() == 0
-        }.getOrDefault(false)
-
-        if (!tarExtracted) {
-            runCatching {
-                val fallbackBinary = File(unpackDir, "php")
-                GZIPInputStream(archiveFile.inputStream()).use { input ->
-                    FileOutputStream(fallbackBinary).use { output ->
-                        input.copyTo(output)
+        val archiveFormat = detectPhpArchiveFormat(archiveFile, downloadUrl)
+        var extractMethod = ""
+        val extracted = when (archiveFormat) {
+            "tar.gz" -> {
+                when {
+                    extractTarArchive(archiveFile, unpackDir) -> {
+                        extractMethod = "tar_cmd"
+                        true
                     }
+
+                    extractGzipBinary(archiveFile, unpackDir) -> {
+                        extractMethod = "gzip_stream_fallback"
+                        true
+                    }
+
+                    else -> false
                 }
-                fallbackBinary.setExecutable(true, false)
+            }
+
+            "zip" -> {
+                val success = extractZipArchive(archiveFile, unpackDir)
+                if (success) {
+                    extractMethod = "zip_stream"
+                }
+                success
+            }
+
+            "gzip" -> {
+                val success = extractGzipBinary(archiveFile, unpackDir)
+                if (success) {
+                    extractMethod = "gzip_stream"
+                }
+                success
+            }
+
+            else -> {
+                when {
+                    extractTarArchive(archiveFile, unpackDir) -> {
+                        extractMethod = "tar_cmd_fallback"
+                        true
+                    }
+
+                    extractZipArchive(archiveFile, unpackDir) -> {
+                        extractMethod = "zip_stream_fallback"
+                        true
+                    }
+
+                    extractGzipBinary(archiveFile, unpackDir) -> {
+                        extractMethod = "gzip_stream_fallback"
+                        true
+                    }
+
+                    else -> false
+                }
             }
         }
 
-        val binarySource = findPhpBinary(unpackDir)
+        val binarySource = if (extracted) findPhpBinary(unpackDir) else null
         if (binarySource == null) {
             archiveFile.delete()
             unpackDir.deleteRecursively()
-            return false
+            return PhpArchiveExtractResult(
+                success = false,
+                archiveFormat = archiveFormat,
+                extractMethod = extractMethod,
+                error = if (extracted) "php_binary_not_found" else "extract_failed"
+            )
         }
 
         return runCatching {
@@ -1195,11 +1246,124 @@ class MainActivity : AudioServiceActivity() {
             copyPhpRuntimeSupplement(binarySource.parentFile, unpackDir, runtimeDir)
             archiveFile.delete()
             unpackDir.deleteRecursively()
-            targetBinary.exists() && targetBinary.canExecute()
-        }.getOrElse {
+            PhpArchiveExtractResult(
+                success = targetBinary.exists() && targetBinary.canExecute(),
+                archiveFormat = archiveFormat,
+                extractMethod = extractMethod,
+                error = ""
+            )
+        }.getOrElse { error ->
             archiveFile.delete()
             unpackDir.deleteRecursively()
-            false
+            PhpArchiveExtractResult(
+                success = false,
+                archiveFormat = archiveFormat,
+                extractMethod = extractMethod,
+                error = error.message ?: error.toString()
+            )
+        }
+    }
+
+    private fun detectPhpArchiveFormat(archiveFile: File, downloadUrl: String): String {
+        val url = downloadUrl.lowercase()
+        val name = archiveFile.name.lowercase()
+        if (url.endsWith(".tar.gz") || url.endsWith(".tgz") || name.endsWith(".tar.gz") || name.endsWith(".tgz")) {
+            return "tar.gz"
+        }
+        if (url.endsWith(".zip") || name.endsWith(".zip")) {
+            return "zip"
+        }
+        if (url.endsWith(".gz") || name.endsWith(".gz")) {
+            return "gzip"
+        }
+        val header = ByteArray(4)
+        val read = runCatching {
+            archiveFile.inputStream().use { input ->
+                input.read(header)
+            }
+        }.getOrDefault(-1)
+        if (
+            read >= 4 &&
+            header[0] == 0x50.toByte() &&
+            header[1] == 0x4B.toByte() &&
+            (header[2] == 0x03.toByte() || header[2] == 0x05.toByte() || header[2] == 0x07.toByte()) &&
+            (header[3] == 0x04.toByte() || header[3] == 0x06.toByte() || header[3] == 0x08.toByte())
+        ) {
+            return "zip"
+        }
+        if (read >= 2 && header[0] == 0x1F.toByte() && header[1] == 0x8B.toByte()) {
+            return "gzip"
+        }
+        return "unknown"
+    }
+
+    private fun extractTarArchive(archiveFile: File, unpackDir: File): Boolean {
+        return runCatching {
+            val process = ProcessBuilder(
+                "tar",
+                "-xzf",
+                archiveFile.absolutePath,
+                "-C",
+                unpackDir.absolutePath
+            ).redirectErrorStream(true).start()
+            process.inputStream.bufferedReader().use { it.readText() }
+            process.waitFor(30, TimeUnit.SECONDS) && process.exitValue() == 0
+        }.getOrDefault(false)
+    }
+
+    private fun extractGzipBinary(archiveFile: File, unpackDir: File): Boolean {
+        return runCatching {
+            val fallbackBinary = File(unpackDir, "php")
+            GZIPInputStream(archiveFile.inputStream()).use { input ->
+                FileOutputStream(fallbackBinary).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            fallbackBinary.setExecutable(true, false)
+            fallbackBinary.exists() && fallbackBinary.length() > 0L
+        }.getOrDefault(false)
+    }
+
+    private fun extractZipArchive(archiveFile: File, unpackDir: File): Boolean {
+        return runCatching {
+            val unpackPathPrefix = unpackDir.canonicalPath + File.separator
+            ZipInputStream(BufferedInputStream(archiveFile.inputStream())).use { input ->
+                var entry = input.nextEntry
+                while (entry != null) {
+                    val outFile = File(unpackDir, entry.name).canonicalFile
+                    if (
+                        outFile.path != unpackDir.canonicalPath &&
+                        !outFile.path.startsWith(unpackPathPrefix)
+                    ) {
+                        throw IOException("Illegal zip entry path: ${entry.name}")
+                    }
+                    if (entry.isDirectory) {
+                        outFile.mkdirs()
+                    } else {
+                        outFile.parentFile?.mkdirs()
+                        FileOutputStream(outFile).use { output ->
+                            input.copyTo(output)
+                        }
+                        if (outFile.name == "php" || outFile.extension == "so") {
+                            outFile.setExecutable(true, false)
+                        }
+                    }
+                    input.closeEntry()
+                    entry = input.nextEntry
+                }
+            }
+            true
+        }.getOrDefault(false)
+    }
+
+    private fun downloadArchiveExtension(downloadUrl: String): String {
+        val lower = downloadUrl.lowercase()
+        return when {
+            lower.endsWith(".tar.gz") -> ".tar.gz"
+            lower.endsWith(".tgz") -> ".tgz"
+            lower.endsWith(".zip") -> ".zip"
+            lower.endsWith(".gz") -> ".gz"
+            else -> ".bin"
         }
     }
 
@@ -1266,7 +1430,12 @@ class MainActivity : AudioServiceActivity() {
                 "message" to "PHP runtime already installed.",
                 "error" to "",
                 "command" to (resolvePhpCommand() ?: ""),
-                "preparedFromAsset" to false
+                "preparedFromAsset" to false,
+                "downloaded" to false,
+                "archivePath" to "",
+                "extracted" to false,
+                "archiveFormat" to "",
+                "extractMethod" to ""
             )
         }
         val appRoot = filesDir.canonicalFile
@@ -1277,6 +1446,8 @@ class MainActivity : AudioServiceActivity() {
         var downloaded = false
         var archivePath = ""
         var extracted = false
+        var archiveFormat = ""
+        var extractMethod = ""
         val assetCandidates = call.argument<List<String>>("assetCandidates")
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
@@ -1288,13 +1459,22 @@ class MainActivity : AudioServiceActivity() {
         val errors = mutableListOf<String>()
         if (downloadUrl.isNotEmpty()) {
             try {
-                val archiveFile = File(cacheDir, "php_runtime_${System.currentTimeMillis()}.tar.gz")
+                val archiveFile = File(
+                    cacheDir,
+                    "php_runtime_${System.currentTimeMillis()}${downloadArchiveExtension(downloadUrl)}"
+                )
                 downloadToFile(downloadUrl, archiveFile)
                 archivePath = archiveFile.absolutePath
-                extracted = extractPhpRuntimeArchive(archiveFile, runtimeDir)
-                downloaded = extracted
-                if (!extracted) {
-                    errors.add("extract failed: $archivePath")
+                val extractResult = extractPhpRuntimeArchive(archiveFile, runtimeDir, downloadUrl)
+                extracted = extractResult.success
+                archiveFormat = extractResult.archiveFormat
+                extractMethod = extractResult.extractMethod
+                downloaded = extractResult.success
+                if (!extractResult.success) {
+                    val suffix = extractResult.error.takeIf { it.isNotEmpty() }?.let { " ($it)" } ?: ""
+                    errors.add(
+                        "extract failed[$archiveFormat/${extractMethod.ifEmpty { "unknown" }}]: $archivePath$suffix"
+                    )
                 }
             } catch (e: Exception) {
                 errors.add("download failed: ${e.message ?: e.toString()}")
@@ -1313,7 +1493,12 @@ class MainActivity : AudioServiceActivity() {
                     "message" to "Invalid targetRelativePath.",
                     "error" to "invalid_target_path",
                     "command" to "",
-                    "preparedFromAsset" to false
+                    "preparedFromAsset" to false,
+                    "downloaded" to downloaded,
+                    "archivePath" to archivePath,
+                    "extracted" to extracted,
+                    "archiveFormat" to archiveFormat,
+                    "extractMethod" to extractMethod
                 )
             }
             for (candidate in assetCandidates) {
@@ -1357,7 +1542,9 @@ class MainActivity : AudioServiceActivity() {
             "preparedFromAsset" to preparedFromAsset,
             "downloaded" to downloaded,
             "archivePath" to archivePath,
-            "extracted" to extracted
+            "extracted" to extracted,
+            "archiveFormat" to archiveFormat,
+            "extractMethod" to extractMethod
         )
     }
 

@@ -1383,6 +1383,18 @@ class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
                           const Chip(label: Text('DOWNLOADED')),
                         if (_commandResult!.extracted)
                           const Chip(label: Text('EXTRACTED')),
+                        if (_commandResult!.archiveFormat.isNotEmpty)
+                          Chip(
+                            label: Text(
+                              'ARCHIVE=${_commandResult!.archiveFormat}',
+                            ),
+                          ),
+                        if (_commandResult!.extractMethod.isNotEmpty)
+                          Chip(
+                            label: Text(
+                              'METHOD=${_commandResult!.extractMethod}',
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -1391,6 +1403,18 @@ class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
                       const SizedBox(height: 4),
                       SelectableText(
                         'archivePath: ${_commandResult!.archivePath}',
+                      ),
+                    ],
+                    if (_commandResult!.archiveFormat.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'archiveFormat: ${_commandResult!.archiveFormat}',
+                      ),
+                    ],
+                    if (_commandResult!.extractMethod.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'extractMethod: ${_commandResult!.extractMethod}',
                       ),
                     ],
                     const SizedBox(height: 4),

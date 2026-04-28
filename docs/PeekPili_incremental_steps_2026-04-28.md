@@ -318,6 +318,19 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/thunder_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 38
+- Expanded Android PHP install archive compatibility and diagnostics:
+  - `installPhp` download path now detects archive variants (`tar.gz` / `tgz` / `zip` / `gzip`) using URL + file signature,
+  - added zip extraction path with zip-slip path safety checks,
+  - extraction now reports `archiveFormat` + `extractMethod` for migration diagnostics.
+- Extended Flutter PHP bridge and `/phpBridgeTest` UI:
+  - `PhpCommandResult` now parses `archiveFormat` and `extractMethod`,
+  - install result card now shows archive format and extraction method chips/details.
+- This closes a key archive-variant migration gap for reverse PHP runtime package handling.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/php_bridge_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -349,5 +362,6 @@ This document records the practical migration increments after the initial rever
 - Android Jar lifecycle bridge now triggers common plugin lifecycle methods (`destroy/release/close`) during destroy/clear flows when available.
 - Jar runtime snapshot diagnostics are now available in bridge and `/jarTest` for loaded/crashed/context state checks.
 - PHP install diagnostics now expose download/extract/archive details in typed bridge model and test UI.
+- PHP install diagnostics now also expose archive format/extract-method (`tar/gzip/zip`) for reverse parity verification.
 - Jar crash markers now auto-synchronize with business invoke success/failure and reload lifecycle.
 - Thunder runtime snapshot diagnostics are now available in bridge and `/thunderTest` for active-task state checks.

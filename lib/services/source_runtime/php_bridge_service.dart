@@ -73,6 +73,8 @@ class PhpCommandResult {
     required this.downloaded,
     required this.extracted,
     required this.archivePath,
+    required this.archiveFormat,
+    required this.extractMethod,
     required this.message,
     required this.error,
   });
@@ -83,6 +85,8 @@ class PhpCommandResult {
   final bool downloaded;
   final bool extracted;
   final String archivePath;
+  final String archiveFormat;
+  final String extractMethod;
   final String message;
   final String error;
 
@@ -95,6 +99,8 @@ class PhpCommandResult {
         downloaded: false,
         extracted: false,
         archivePath: '',
+        archiveFormat: '',
+        extractMethod: '',
         message: 'Empty platform response.',
         error: 'empty_response',
       );
@@ -106,6 +112,8 @@ class PhpCommandResult {
       downloaded: map['downloaded'] == true,
       extracted: map['extracted'] == true,
       archivePath: (map['archivePath'] ?? '').toString(),
+      archiveFormat: (map['archiveFormat'] ?? '').toString(),
+      extractMethod: (map['extractMethod'] ?? '').toString(),
       message: (map['message'] ?? '').toString(),
       error: (map['error'] ?? '').toString(),
     );
@@ -263,6 +271,8 @@ class PhpBridgeService {
         downloaded: false,
         extracted: false,
         archivePath: '',
+        archiveFormat: '',
+        extractMethod: '',
         message: 'PHP bridge is only implemented on Android now.',
         error: 'unsupported_platform',
       );
@@ -285,6 +295,8 @@ class PhpBridgeService {
         downloaded: false,
         extracted: false,
         archivePath: '',
+        archiveFormat: '',
+        extractMethod: '',
         message: 'installPhp platform error',
         error: error.message ?? error.code,
       );
@@ -296,6 +308,8 @@ class PhpBridgeService {
         downloaded: false,
         extracted: false,
         archivePath: '',
+        archiveFormat: '',
+        extractMethod: '',
         message: 'installPhp not implemented',
         error: error.toString(),
       );
