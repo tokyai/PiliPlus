@@ -1156,6 +1156,7 @@ class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
   PhpServerStatus? _serverStatus;
   PhpCommandResult? _commandResult;
   PhpExecutionResult? _executionResult;
+  PhpRuntimeStateResult? _runtimeStateResult;
 
   @override
   void initState() {
@@ -1304,6 +1305,11 @@ class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
                 onPressed: _loading ? null : _executeCode,
                 icon: const Icon(Icons.code_outlined),
                 label: const Text('Execute Code'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _getRuntimeState,
+                icon: const Icon(Icons.storage_outlined),
+                label: const Text('Runtime State'),
               ),
             ],
           ),
@@ -1467,6 +1473,65 @@ class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
               ),
             ),
           const SizedBox(height: 8),
+          if (_runtimeStateResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _runtimeStateResult!.success
+                                ? 'RUNTIME OK'
+                                : 'RUNTIME FAIL',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'installed=${_runtimeStateResult!.installed}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text('running=${_runtimeStateResult!.running}'),
+                        ),
+                        Chip(
+                          label: Text(
+                            'alive=${_runtimeStateResult!.aliveProcessCount}/${_runtimeStateResult!.processCount}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text('uptime=${_runtimeStateResult!.serverUptimeMs}ms'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('ports: ${_runtimeStateResult!.ports.join(', ')}'),
+                    const SizedBox(height: 4),
+                    SelectableText('phpBinary: ${_runtimeStateResult!.phpBinary}'),
+                    const SizedBox(height: 4),
+                    SelectableText('command: ${_runtimeStateResult!.command}'),
+                    const SizedBox(height: 4),
+                    SelectableText('version: ${_runtimeStateResult!.version}'),
+                    const SizedBox(height: 4),
+                    SelectableText('documentRoot: ${_runtimeStateResult!.documentRoot}'),
+                    const SizedBox(height: 4),
+                    SelectableText('scriptsDir: ${_runtimeStateResult!.scriptsDir}'),
+                    const SizedBox(height: 4),
+                    SelectableText('message: ${_runtimeStateResult!.message}'),
+                    if (_runtimeStateResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_runtimeStateResult!.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
           if (_executionResult != null)
             Card(
               child: Padding(
@@ -1593,6 +1658,16 @@ class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
     setState(() {
       _loading = false;
       _executionResult = result;
+    });
+  }
+
+  Future<void> _getRuntimeState() async {
+    setState(() => _loading = true);
+    final result = await _phpBridgeService.getRuntimeState();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _runtimeStateResult = result;
     });
   }
 

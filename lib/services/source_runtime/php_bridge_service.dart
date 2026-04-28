@@ -151,6 +151,124 @@ class PhpExecutionResult {
   }
 }
 
+class PhpRuntimeStateResult {
+  const PhpRuntimeStateResult({
+    required this.success,
+    required this.installed,
+    required this.running,
+    required this.runningFlag,
+    required this.processCount,
+    required this.aliveProcessCount,
+    required this.port,
+    required this.ports,
+    required this.documentRoot,
+    required this.serverStartedAtMs,
+    required this.serverUptimeMs,
+    required this.phpDir,
+    required this.phpBinary,
+    required this.phpBinaryExists,
+    required this.phpBinaryExecutable,
+    required this.scriptsDir,
+    required this.runtimeDirExists,
+    required this.command,
+    required this.version,
+    required this.message,
+    required this.error,
+  });
+
+  final bool success;
+  final bool installed;
+  final bool running;
+  final bool runningFlag;
+  final int processCount;
+  final int aliveProcessCount;
+  final int port;
+  final List<int> ports;
+  final String documentRoot;
+  final int serverStartedAtMs;
+  final int serverUptimeMs;
+  final String phpDir;
+  final String phpBinary;
+  final bool phpBinaryExists;
+  final bool phpBinaryExecutable;
+  final String scriptsDir;
+  final bool runtimeDirExists;
+  final String command;
+  final String version;
+  final String message;
+  final String error;
+
+  static PhpRuntimeStateResult fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const PhpRuntimeStateResult(
+        success: false,
+        installed: false,
+        running: false,
+        runningFlag: false,
+        processCount: 0,
+        aliveProcessCount: 0,
+        port: 0,
+        ports: <int>[],
+        documentRoot: '',
+        serverStartedAtMs: 0,
+        serverUptimeMs: 0,
+        phpDir: '',
+        phpBinary: '',
+        phpBinaryExists: false,
+        phpBinaryExecutable: false,
+        scriptsDir: '',
+        runtimeDirExists: false,
+        command: '',
+        version: '',
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+    int parseInt(Object? value) => switch (value) {
+      int item => item,
+      num item => item.toInt(),
+      String item => int.tryParse(item) ?? 0,
+      _ => 0,
+    };
+    final rawPorts = map['ports'];
+    return PhpRuntimeStateResult(
+      success: map['success'] == true,
+      installed: map['installed'] == true,
+      running: map['running'] == true,
+      runningFlag: map['runningFlag'] == true,
+      processCount: parseInt(map['processCount']),
+      aliveProcessCount: parseInt(map['aliveProcessCount']),
+      port: parseInt(map['port']),
+      ports: rawPorts is List
+          ? rawPorts
+                .map(
+                  (item) => switch (item) {
+                    int value => value,
+                    num value => value.toInt(),
+                    String value => int.tryParse(value),
+                    _ => null,
+                  },
+                )
+                .whereType<int>()
+                .toList()
+          : const <int>[],
+      documentRoot: (map['documentRoot'] ?? '').toString(),
+      serverStartedAtMs: parseInt(map['serverStartedAtMs']),
+      serverUptimeMs: parseInt(map['serverUptimeMs']),
+      phpDir: (map['phpDir'] ?? '').toString(),
+      phpBinary: (map['phpBinary'] ?? '').toString(),
+      phpBinaryExists: map['phpBinaryExists'] == true,
+      phpBinaryExecutable: map['phpBinaryExecutable'] == true,
+      scriptsDir: (map['scriptsDir'] ?? '').toString(),
+      runtimeDirExists: map['runtimeDirExists'] == true,
+      command: (map['command'] ?? '').toString(),
+      version: (map['version'] ?? '').toString(),
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+    );
+  }
+}
+
 class PhpBridgeService {
   PhpBridgeService({
     MethodChannel? channel,
@@ -455,6 +573,88 @@ class PhpBridgeService {
       return '';
     } on MissingPluginException {
       return '';
+    }
+  }
+
+  Future<PhpRuntimeStateResult> getRuntimeState() async {
+    if (!Platform.isAndroid) {
+      return const PhpRuntimeStateResult(
+        success: false,
+        installed: false,
+        running: false,
+        runningFlag: false,
+        processCount: 0,
+        aliveProcessCount: 0,
+        port: 0,
+        ports: <int>[],
+        documentRoot: '',
+        serverStartedAtMs: 0,
+        serverUptimeMs: 0,
+        phpDir: '',
+        phpBinary: '',
+        phpBinaryExists: false,
+        phpBinaryExecutable: false,
+        scriptsDir: '',
+        runtimeDirExists: false,
+        command: '',
+        version: '',
+        message: 'PHP bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'getPhpRuntimeState',
+      );
+      return PhpRuntimeStateResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return PhpRuntimeStateResult(
+        success: false,
+        installed: false,
+        running: false,
+        runningFlag: false,
+        processCount: 0,
+        aliveProcessCount: 0,
+        port: 0,
+        ports: const <int>[],
+        documentRoot: '',
+        serverStartedAtMs: 0,
+        serverUptimeMs: 0,
+        phpDir: '',
+        phpBinary: '',
+        phpBinaryExists: false,
+        phpBinaryExecutable: false,
+        scriptsDir: '',
+        runtimeDirExists: false,
+        command: '',
+        version: '',
+        message: 'getPhpRuntimeState platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return PhpRuntimeStateResult(
+        success: false,
+        installed: false,
+        running: false,
+        runningFlag: false,
+        processCount: 0,
+        aliveProcessCount: 0,
+        port: 0,
+        ports: const <int>[],
+        documentRoot: '',
+        serverStartedAtMs: 0,
+        serverUptimeMs: 0,
+        phpDir: '',
+        phpBinary: '',
+        phpBinaryExists: false,
+        phpBinaryExecutable: false,
+        scriptsDir: '',
+        runtimeDirExists: false,
+        command: '',
+        version: '',
+        message: 'getPhpRuntimeState not implemented',
+        error: error.toString(),
+      );
     }
   }
 }

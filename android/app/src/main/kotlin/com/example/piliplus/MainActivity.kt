@@ -48,6 +48,7 @@ class MainActivity : AudioServiceActivity() {
     private var phpServerRunning: Boolean = false
     private var phpServerPort: Int = 9980
     private var phpServerDocumentRoot: String = ""
+    private var phpServerStartedAtMs: Long = 0L
     private val jarRuntimeLock = Any()
     private val loadedJarSpiders = linkedMapOf<String, JarSpiderRuntime>()
     private val crashedJarSpiders = linkedSetOf<String>()
@@ -260,6 +261,9 @@ class MainActivity : AudioServiceActivity() {
                 }
                 "getDefaultDownloadUrl" -> {
                     result.success(phpDefaultDownloadUrl())
+                }
+                "getPhpRuntimeState" -> {
+                    result.success(getPhpRuntimeState())
                 }
                 "probeJarFile" -> {
                     result.success(probeJarFile(call))
@@ -973,6 +977,7 @@ class MainActivity : AudioServiceActivity() {
         phpServerPort = startedPorts.first()
         phpServerDocumentRoot = rootFile.absolutePath
         phpServerRunning = true
+        phpServerStartedAtMs = System.currentTimeMillis()
         return mapOf(
             "success" to true,
             "running" to true,
@@ -988,6 +993,7 @@ class MainActivity : AudioServiceActivity() {
         if (phpServerProcesses.isEmpty()) {
             phpServerRunning = false
             phpServerPorts.clear()
+            phpServerStartedAtMs = 0L
             return mapOf(
                 "success" to true,
                 "running" to false,
@@ -1011,6 +1017,7 @@ class MainActivity : AudioServiceActivity() {
         phpServerProcesses.clear()
         phpServerPorts.clear()
         phpServerRunning = false
+        phpServerStartedAtMs = 0L
         return mapOf(
             "success" to true,
             "running" to false,
@@ -1028,6 +1035,7 @@ class MainActivity : AudioServiceActivity() {
             phpServerProcesses.clear()
             phpServerPorts.clear()
             phpServerRunning = false
+            phpServerStartedAtMs = 0L
         } else {
             phpServerRunning = true
         }
@@ -1616,6 +1624,43 @@ class MainActivity : AudioServiceActivity() {
 
     private fun phpGetPhpDir(): String {
         return phpRuntimeDir().absolutePath
+    }
+
+    private fun getPhpRuntimeState(): Map<String, Any?> {
+        val running = phpIsServerRunning()
+        val now = System.currentTimeMillis()
+        val runtimeDir = phpRuntimeDir()
+        val runtimeBinary = phpRuntimeBinary()
+        val startedAtMs = if (running) phpServerStartedAtMs else 0L
+        val uptimeMs = if (running && startedAtMs > 0L) {
+            (now - startedAtMs).coerceAtLeast(0L)
+        } else {
+            0L
+        }
+        val installed = phpIsInstalled()
+        return mapOf(
+            "success" to true,
+            "installed" to installed,
+            "running" to running,
+            "runningFlag" to phpServerRunning,
+            "processCount" to phpServerProcesses.size,
+            "aliveProcessCount" to phpServerProcesses.count { it.isAlive },
+            "port" to phpServerPort,
+            "ports" to phpServerPorts.toList(),
+            "documentRoot" to phpServerDocumentRoot,
+            "serverStartedAtMs" to startedAtMs,
+            "serverUptimeMs" to uptimeMs,
+            "phpDir" to runtimeDir.absolutePath,
+            "phpBinary" to runtimeBinary.absolutePath,
+            "phpBinaryExists" to runtimeBinary.exists(),
+            "phpBinaryExecutable" to runtimeBinary.canExecute(),
+            "scriptsDir" to phpGetScriptsDir(),
+            "runtimeDirExists" to runtimeDir.exists(),
+            "command" to (resolvePhpCommand(phpRuntimeVersionOptions()) ?: ""),
+            "version" to if (installed) phpGetVersion() else "",
+            "message" to "PHP runtime state snapshot loaded.",
+            "error" to ""
+        )
     }
 
     private fun phpExecuteCode(call: MethodCall): Map<String, Any?> {

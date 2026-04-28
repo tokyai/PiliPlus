@@ -349,6 +349,16 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 41
+- Added PHP runtime-state snapshot bridge and diagnostics:
+  - Android bridge adds `getPhpRuntimeState` with install/server/process/runtime-path snapshot fields,
+  - Flutter `PhpBridgeService` adds typed `PhpRuntimeStateResult`,
+  - `/phpBridgeTest` adds `Runtime State` action and runtime snapshot card display.
+- This improves migration runtime verification for PHP multi-instance status and runtime path consistency.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/php_bridge_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -385,3 +395,4 @@ This document records the practical migration increments after the initial rever
 - Thunder runtime snapshot diagnostics are now available in bridge and `/thunderTest` for active-task state checks.
 - Thunder stop flow now supports empty-id latest-task stop semantics for better reverse parity.
 - PHP install diagnostics now separate `downloaded` vs `extracted` states for clearer failure triage.
+- PHP runtime snapshot diagnostics are now available in bridge and `/phpBridgeTest` for install/server/process state checks.
