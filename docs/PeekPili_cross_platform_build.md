@@ -173,6 +173,12 @@ Closure status gating example (fail when blockers remain):
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1 -FailOnPending
 ```
 
+Runtime environment readiness check:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1
+```
+
 One-command reverse completion check:
 
 ```powershell

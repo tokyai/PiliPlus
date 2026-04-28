@@ -1127,6 +1127,24 @@ This document records the practical migration increments after the initial rever
     - `blockerCounts.runtimeValidation=1`,
     - `*PathRelative` fields present.
 
+## Step 110
+- Added runtime environment readiness quick-check helper:
+  - new script: `tools/release/runtime_environment_readiness.ps1`,
+  - executes closure snapshot with smoke thresholds forced to zero (environment-focused),
+  - reports:
+    - `adbFound`,
+    - `onlineAndroidDevices`,
+    - `iosEnvironmentReady`,
+    - aggregate readiness result.
+  - supports strict mode `-FailIfNotReady`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/runtime_environment_readiness.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1231,3 +1249,4 @@ This document records the practical migration increments after the initial rever
 - Runtime-smoke workflow summaries now directly include actionable next steps.
 - Reverse completion JSON now provides repo-relative path metadata for portable automation.
 - Reverse inventory snapshot now includes blocker category counts aligned with machine-readable closure output.
+- Environment readiness now has a dedicated quick-check script for pre-flight validation.

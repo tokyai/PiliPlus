@@ -128,6 +128,12 @@ Closure gate mode (non-zero exit if pending blockers exist):
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1 -FailOnPending
 ```
 
+Environment readiness quick check:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1
+```
+
 One-command closure check report:
 
 ```powershell
