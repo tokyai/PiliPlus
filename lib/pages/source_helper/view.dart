@@ -7,6 +7,7 @@ import 'package:PiliPlus/services/source_runtime/source_engine.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_models.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
 import 'package:PiliPlus/services/source_runtime/t4_active_config_service.dart';
+import 'package:PiliPlus/services/source_runtime/t4_navigation_config_service.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -860,9 +861,11 @@ class T4ActiveConfigTestPage extends StatefulWidget {
 }
 
 class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
-  late final T4ActiveConfigService _service;
+  late final T4ActiveConfigService _activeConfigService;
+  late final T4NavigationConfigService _navigationConfigService;
 
   T4ActiveConfigState? _state;
+  T4NavigationApplyResult? _navigationResult;
   bool _loading = false;
   bool _forceRemote = false;
   bool _persistRemoteSnapshot = false;
@@ -870,7 +873,8 @@ class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
   @override
   void initState() {
     super.initState();
-    _service = Get.find<T4ActiveConfigService>();
+    _activeConfigService = Get.find<T4ActiveConfigService>();
+    _navigationConfigService = Get.find<T4NavigationConfigService>();
     _resolve();
   }
 
@@ -926,6 +930,16 @@ class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
                 icon: const Icon(Icons.copy_all_outlined),
                 label: const Text('Copy Summary'),
               ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _previewNavigation,
+                icon: const Icon(Icons.visibility_outlined),
+                label: const Text('Preview Nav'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _applyNavigation,
+                icon: const Icon(Icons.publish_outlined),
+                label: const Text('Apply Nav'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -975,6 +989,60 @@ class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
                 ),
               ),
             ),
+          const SizedBox(height: 8),
+          if (_navigationResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _navigationResult!.success
+                                ? 'NAV READY'
+                                : 'NAV FAILED',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'source=${_navigationResult!.source.name}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'items=${_navigationResult!.navigationBars.length}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'default=${_navigationResult!.selectedIndex}',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      'fromConfigId: ${_navigationResult!.fromConfigId}',
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText('message: ${_navigationResult!.message}'),
+                    if (_navigationResult!.hasError) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_navigationResult!.error}'),
+                    ],
+                    const Divider(height: 16),
+                    SelectableText(
+                      'navBarSort: ${_navigationResult!.navigationBars.map((item) => item.name).join(', ')}',
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -982,7 +1050,7 @@ class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
 
   Future<void> _resolve() async {
     setState(() => _loading = true);
-    final state = await _service.resolve(
+    final state = await _activeConfigService.resolve(
       forceRemote: _forceRemote,
       persistRemoteSnapshot: _persistRemoteSnapshot,
     );
@@ -991,6 +1059,42 @@ class _T4ActiveConfigTestPageState extends State<T4ActiveConfigTestPage> {
       _loading = false;
       _state = state;
     });
+  }
+
+  Future<void> _previewNavigation() async {
+    setState(() => _loading = true);
+    final result = await _navigationConfigService.previewFromActive(
+      forceRemote: _forceRemote,
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _navigationResult = result;
+    });
+    if (result.success) {
+      SmartDialog.showToast('Navigation parsed from active config');
+    } else {
+      SmartDialog.showToast('Navigation parse failed: ${result.error}');
+    }
+  }
+
+  Future<void> _applyNavigation() async {
+    setState(() => _loading = true);
+    final result = await _navigationConfigService.applyFromActive(
+      forceRemote: _forceRemote,
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _navigationResult = result;
+    });
+    if (result.success) {
+      SmartDialog.showToast(
+        'Applied navBarSort/defaultHomePage. Restart main page to take effect.',
+      );
+    } else {
+      SmartDialog.showToast('Apply navigation failed: ${result.error}');
+    }
   }
 
   String _debugSummary(T4ActiveConfigState state) {
