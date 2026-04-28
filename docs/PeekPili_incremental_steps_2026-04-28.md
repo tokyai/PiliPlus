@@ -538,6 +538,15 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 60
+- Extended generic Source Runtime Jar runtime control actions:
+  - `sourceRuntimeProbe(engine=jar)` now falls back to Jar runtime snapshot when `options.jarPath` is absent,
+  - `sourceRuntimeExecute(engine=jar)` now supports runtime-control actions `status|crash_count|clear_marks|clear_all`,
+  - these generic actions reuse existing Jar runtime/crash management internals.
+- This adds a lightweight generic Jar control plane for migration scripts without replacing dedicated business invoke flow.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -593,3 +602,4 @@ This document records the practical migration increments after the initial rever
 - Source Runtime generic bridge now supports full GoProxy `start/status/stop` action set.
 - Source Runtime generic bridge now supports PHP runtime `status/start/stop` actions with runtime snapshot probe output.
 - Source Runtime generic bridge now supports Thunder runtime `status/parse/play/stop/release` actions with runtime snapshot probe output.
+- Source Runtime generic bridge now supports Jar runtime `status/crash_count/clear_marks/clear_all` actions with runtime snapshot probe output.

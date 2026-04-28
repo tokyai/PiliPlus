@@ -412,10 +412,16 @@ class MainActivity : AudioServiceActivity() {
         if (engine == "jar") {
             val jarPath = options["jarPath"]?.toString()?.trim().orEmpty()
             if (jarPath.isEmpty()) {
-                return sourceRuntimeFailure(
-                    message = "Jar probe requires options.jarPath on Android.",
-                    error = "empty_jar_path",
-                    isStub = true
+                val state = getJarRuntimeState()
+                val success = state["success"] == true
+                return mapOf(
+                    "success" to success,
+                    "stdout" to formatJarRuntimeStateSnapshot(state),
+                    "stderr" to if (success) "" else (state["error"]?.toString().orEmpty()),
+                    "elapsedMs" to 0,
+                    "exitCode" to if (success) 0 else -1,
+                    "isStub" to false,
+                    "message" to (state["message"]?.toString() ?: "Jar runtime probe finished.")
                 )
             }
             val probe = probeJarFileInternal(jarPath)
@@ -470,11 +476,70 @@ class MainActivity : AudioServiceActivity() {
         val useCodeMode = (options["executeAsCode"] as? Boolean) == true
 
         if (engine == "jar") {
-            return sourceRuntimeFailure(
-                message = "Engine=$engine uses dedicated bridge. Use /jarTest or /goProxyTest.",
-                error = "dedicated_bridge_required",
-                isStub = true
-            )
+            val action = options["action"]?.toString()?.trim()?.lowercase().orEmpty().ifEmpty { "status" }
+            return when (action) {
+                "status", "state", "runtime", "probe" -> {
+                    val state = getJarRuntimeState()
+                    val success = state["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatJarRuntimeStateSnapshot(state),
+                        "stderr" to if (success) "" else (state["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (state["message"]?.toString() ?: "Jar runtime state collected.")
+                    )
+                }
+
+                "crash_count", "count_crashed", "crashed_count" -> {
+                    val result = getCrashedSpiderCount()
+                    val success = result["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatJarOperationResult(result),
+                        "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (result["message"]?.toString() ?: "Jar crash count finished.")
+                    )
+                }
+
+                "clear_marks", "clear_crash_marks", "clear_crashed" -> {
+                    val result = clearCrashedSpiders()
+                    val success = result["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatJarOperationResult(result),
+                        "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (result["message"]?.toString() ?: "Jar crashed marks clear finished.")
+                    )
+                }
+
+                "clear_all", "clear_spiders", "release" -> {
+                    val result = clearAllJarSpiders()
+                    val success = result["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatJarOperationResult(result),
+                        "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (result["message"]?.toString() ?: "Jar runtime clear finished.")
+                    )
+                }
+
+                else -> sourceRuntimeFailure(
+                    message = "Unsupported jar action=$action. Supported: status, crash_count, clear_marks, clear_all.",
+                    error = "unsupported_action",
+                    isStub = true
+                )
+            }
         }
 
         if (engine == "goproxy") {
@@ -910,6 +975,34 @@ class MainActivity : AudioServiceActivity() {
         lines += "activeTaskCount=${result["activeTaskCount"]}"
         lines += "mediaCount=${result["mediaCount"]}"
         lines += "medias=${result["medias"]}"
+        lines += "message=${result["message"]}"
+        lines += "error=${result["error"]}"
+        return lines.joinToString("\n")
+    }
+
+    private fun formatJarRuntimeStateSnapshot(state: Map<String, Any?>): String {
+        val lines = mutableListOf<String>()
+        lines += "success=${state["success"]}"
+        lines += "loadedCount=${state["loadedCount"]}"
+        lines += "crashedCount=${state["crashedCount"]}"
+        lines += "contextCount=${state["contextCount"]}"
+        lines += "initializedContextCount=${state["initializedContextCount"]}"
+        lines += "recentCount=${state["recentCount"]}"
+        lines += "loadedIds=${state["loadedIds"]}"
+        lines += "crashedIds=${state["crashedIds"]}"
+        lines += "contextIds=${state["contextIds"]}"
+        lines += "contextItems=${state["contextItems"]}"
+        lines += "recentItems=${state["recentItems"]}"
+        lines += "message=${state["message"]}"
+        lines += "error=${state["error"]}"
+        return lines.joinToString("\n")
+    }
+
+    private fun formatJarOperationResult(result: Map<String, Any?>): String {
+        val lines = mutableListOf<String>()
+        lines += "success=${result["success"]}"
+        lines += "count=${result["count"]}"
+        lines += "lifecycleInvoked=${result["lifecycleInvoked"]}"
         lines += "message=${result["message"]}"
         lines += "error=${result["error"]}"
         return lines.joinToString("\n")
