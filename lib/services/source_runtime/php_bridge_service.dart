@@ -70,6 +70,9 @@ class PhpCommandResult {
     required this.success,
     required this.command,
     required this.preparedFromAsset,
+    required this.downloaded,
+    required this.extracted,
+    required this.archivePath,
     required this.message,
     required this.error,
   });
@@ -77,6 +80,9 @@ class PhpCommandResult {
   final bool success;
   final String command;
   final bool preparedFromAsset;
+  final bool downloaded;
+  final bool extracted;
+  final String archivePath;
   final String message;
   final String error;
 
@@ -86,6 +92,9 @@ class PhpCommandResult {
         success: false,
         command: '',
         preparedFromAsset: false,
+        downloaded: false,
+        extracted: false,
+        archivePath: '',
         message: 'Empty platform response.',
         error: 'empty_response',
       );
@@ -94,6 +103,9 @@ class PhpCommandResult {
       success: map['success'] == true,
       command: (map['command'] ?? '').toString(),
       preparedFromAsset: map['preparedFromAsset'] == true,
+      downloaded: map['downloaded'] == true,
+      extracted: map['extracted'] == true,
+      archivePath: (map['archivePath'] ?? '').toString(),
       message: (map['message'] ?? '').toString(),
       error: (map['error'] ?? '').toString(),
     );
@@ -248,6 +260,9 @@ class PhpBridgeService {
         success: false,
         command: '',
         preparedFromAsset: false,
+        downloaded: false,
+        extracted: false,
+        archivePath: '',
         message: 'PHP bridge is only implemented on Android now.',
         error: 'unsupported_platform',
       );
@@ -267,6 +282,9 @@ class PhpBridgeService {
         success: false,
         command: '',
         preparedFromAsset: false,
+        downloaded: false,
+        extracted: false,
+        archivePath: '',
         message: 'installPhp platform error',
         error: error.message ?? error.code,
       );
@@ -275,6 +293,9 @@ class PhpBridgeService {
         success: false,
         command: '',
         preparedFromAsset: false,
+        downloaded: false,
+        extracted: false,
+        archivePath: '',
         message: 'installPhp not implemented',
         error: error.toString(),
       );

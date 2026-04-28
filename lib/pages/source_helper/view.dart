@@ -1379,10 +1379,20 @@ class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
                         ),
                         if (_commandResult!.preparedFromAsset)
                           const Chip(label: Text('FROM ASSET')),
+                        if (_commandResult!.downloaded)
+                          const Chip(label: Text('DOWNLOADED')),
+                        if (_commandResult!.extracted)
+                          const Chip(label: Text('EXTRACTED')),
                       ],
                     ),
                     const SizedBox(height: 8),
                     SelectableText('command: ${_commandResult!.command}'),
+                    if (_commandResult!.archivePath.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'archivePath: ${_commandResult!.archivePath}',
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     SelectableText('message: ${_commandResult!.message}'),
                     if (_commandResult!.error.isNotEmpty) ...[
