@@ -62,6 +62,12 @@ Unified flow can also set explicit closure output path:
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RuntimeClosureStatusPath build/runtime-smoke/windows-closure-status.json
 ```
 
+Unified flow can also emit reverse completion report directly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RunReverseCompletionCheck
+```
+
 - Confirm thunder markers are UI-only and not backed by hidden local runtime bridge.
 - Confirm current migration behavior is consistent with packaged app expectations.
 

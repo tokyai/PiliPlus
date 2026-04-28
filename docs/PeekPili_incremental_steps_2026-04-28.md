@@ -867,6 +867,23 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 92
+- Extended unified build orchestrator with reverse completion report support:
+  - updated `tools/release/build_all.ps1`,
+  - new options:
+    - `-RunReverseCompletionCheck`,
+    - `-ReverseCompletionReportPath`,
+    - `-StrictReverseCompletion`,
+  - when closure status was already generated in the same flow, reverse-check step reuses it via `-SkipStatus`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/build_all.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - Dry execution passed:
+    - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -EmitRuntimeClosureStatus -RunReverseCompletionCheck`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -953,3 +970,4 @@ This document records the practical migration increments after the initial rever
 - Reverse inventory now contains a dated machine-assisted closure snapshot and concrete blocker list.
 - Reverse completion report now includes blocker-to-action guidance for direct next-step execution.
 - Strict closure gating now preserves diagnostic artifacts before failing workflow result.
+- Unified build flow now can optionally emit reverse completion report (and strict-fail by closure state) in one run.

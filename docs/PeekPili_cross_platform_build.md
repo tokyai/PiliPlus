@@ -74,6 +74,12 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RuntimeClosureStatusPath build/runtime-smoke/windows-closure-status.json
 ```
 
+### Build and emit reverse completion report in one flow
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RunReverseCompletionCheck
+```
+
 ### GitHub Actions runtime smoke (Windows)
 
 - workflow: `.github/workflows/runtime_smoke_windows.yml`
@@ -107,6 +113,9 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - `-RunRuntimeSmoke` now also triggers closure status generation via `tools/release/runtime_closure_status.ps1`.
 - Use `-EmitRuntimeClosureStatus` to generate closure status even when runtime smoke is not executed.
 - Override closure status path with `-RuntimeClosureStatusPath`.
+- `-RunReverseCompletionCheck` invokes `tools/release/reverse_completion_check.ps1` and writes report markdown.
+- Use `-ReverseCompletionReportPath` to override report path.
+- Use `-StrictReverseCompletion` to fail build flow when closure is still incomplete.
 
 ## Runtime Smoke
 

@@ -12,7 +12,10 @@ param(
     [switch]$RunRuntimeSmoke,
     [int]$RuntimeSmokeWaitSeconds = 8,
     [switch]$EmitRuntimeClosureStatus,
-    [string]$RuntimeClosureStatusPath = "build/runtime-smoke/closure-status.json"
+    [string]$RuntimeClosureStatusPath = "build/runtime-smoke/closure-status.json",
+    [switch]$RunReverseCompletionCheck,
+    [string]$ReverseCompletionReportPath = "build/runtime-smoke/reverse-completion-report.md",
+    [switch]$StrictReverseCompletion
 )
 
 $ErrorActionPreference = "Stop"
@@ -335,6 +338,30 @@ function Invoke-RuntimeClosureStatusSnapshot {
     Invoke-CommandChecked -Command $command
 }
 
+function Invoke-ReverseCompletionReport {
+    param(
+        [string]$RepositoryRoot,
+        [string]$ReportPath,
+        [switch]$SkipStatusRefresh,
+        [switch]$StrictCheck
+    )
+    $scriptPath = Join-Path $RepositoryRoot "tools/release/reverse_completion_check.ps1"
+    if (-not (Test-Path $scriptPath)) {
+        throw ("Reverse completion check script not found: " + $scriptPath)
+    }
+    $command = @(
+        "powershell", "-ExecutionPolicy", "Bypass", "-File", $scriptPath,
+        "-ReportPath", $ReportPath
+    )
+    if ($SkipStatusRefresh) {
+        $command += "-SkipStatus"
+    }
+    if ($StrictCheck) {
+        $command += "-Strict"
+    }
+    Invoke-CommandChecked -Command $command
+}
+
 function Get-ArtifactMetadata {
     param(
         [string]$ArtifactPath
@@ -425,9 +452,16 @@ if ($ArtifactManifestPath.Trim()) {
     Write-Step ("Artifact manifest generated: " + $manifestFile)
 }
 
+$closureStatusGenerated = $false
 if ($EmitRuntimeClosureStatus -or $RunRuntimeSmoke) {
     Write-Step "Generating runtime closure status snapshot..."
     Invoke-RuntimeClosureStatusSnapshot -RepositoryRoot $root -OutputPath $RuntimeClosureStatusPath
+    $closureStatusGenerated = $true
+}
+
+if ($RunReverseCompletionCheck) {
+    Write-Step "Generating reverse completion check report..."
+    Invoke-ReverseCompletionReport -RepositoryRoot $root -ReportPath $ReverseCompletionReportPath -SkipStatusRefresh:$closureStatusGenerated -StrictCheck:$StrictReverseCompletion
 }
 
 Write-Step "Build flow finished."
