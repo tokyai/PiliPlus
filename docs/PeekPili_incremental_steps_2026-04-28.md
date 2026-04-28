@@ -686,6 +686,14 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -SkipPubGet -RunRuntimeSmoke -RuntimeSmokeWaitSeconds 2` passed.
   - runtime smoke report generated via integrated flow: `build\\runtime-smoke\\windows_runtime_smoke_*.json`.
 
+## Step 78
+- Added CI-ready Windows runtime smoke workflow:
+  - new workflow: `.github/workflows/runtime_smoke_windows.yml`,
+  - supports manual dispatch with `mode` and smoke wait inputs,
+  - executes unified build script with integrated runtime smoke and uploads smoke reports + artifact manifest.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -758,3 +766,4 @@ This document records the practical migration increments after the initial rever
 - Android runtime closure now has an executable smoke script entrypoint ready for device-connected validation.
 - Windows runtime closure now has an executable smoke script entrypoint ready for packaged-app launch validation.
 - Unified build flow can now directly execute post-build runtime smoke for supported targets.
+- Windows runtime smoke now has a dedicated GitHub Actions entry for repeatable CI execution.

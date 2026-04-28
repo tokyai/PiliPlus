@@ -1,0 +1,62 @@
+name: Runtime Smoke Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Build mode
+        required: false
+        default: debug
+        type: choice
+        options:
+          - debug
+          - profile
+          - release
+      smoke_wait_seconds:
+        description: Runtime smoke wait seconds
+        required: false
+        default: "3"
+        type: string
+
+jobs:
+  runtime-smoke-windows:
+    name: Build + Runtime Smoke (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+
+      - name: Apply Patch
+        shell: pwsh
+        run: lib/scripts/patch.ps1 windows
+        continue-on-error: true
+
+      - name: Build with integrated runtime smoke
+        shell: pwsh
+        run: >
+          powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1
+          -Targets windows
+          -Mode ${{ github.event.inputs.mode || 'debug' }}
+          -RunRuntimeSmoke
+          -RuntimeSmokeWaitSeconds ${{ github.event.inputs.smoke_wait_seconds || '3' }}
+          -ArtifactManifestPath build/artifacts/windows-runtime-smoke-manifest.json
+
+      - name: Upload runtime smoke reports
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: windows-runtime-smoke-reports
+          path: build/runtime-smoke/*.json
+
+      - name: Upload build artifact manifest
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: windows-runtime-smoke-manifest
+          path: build/artifacts/windows-runtime-smoke-manifest.json

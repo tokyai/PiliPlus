@@ -68,6 +68,11 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RuntimeSmokeWaitSeconds 2
 ```
 
+### GitHub Actions runtime smoke (Windows)
+
+- workflow: `.github/workflows/runtime_smoke_windows.yml`
+- trigger: `workflow_dispatch`
+
 ## Notes
 
 - On non-macOS hosts, iOS build is skipped with a clear message.
