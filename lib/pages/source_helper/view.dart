@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -303,13 +305,26 @@ class _JarTestPageState extends State<JarTestPage> {
   late final TextEditingController _mainClassCtr;
   late final TextEditingController _methodCtr;
   late final TextEditingController _argsCtr;
+  late final TextEditingController _spiderApiPayloadCtr;
   bool _staticOnly = false;
+  String _spiderApiMethod = 'homeContent';
+
+  static const List<String> _spiderApiMethods = <String>[
+    'homeContent',
+    'homeVideoContent',
+    'categoryContent',
+    'searchContent',
+    'detailContent',
+    'playerContent',
+    'action',
+  ];
 
   JarProbeResult? _probeResult;
   JarInvokeResult? _invokeResult;
   JarLifecycleActionResult? _lifecycleResult;
   JarSpiderCrashStateResult? _crashStateResult;
   JarSpiderCrashCountResult? _crashCountResult;
+  JarDataResult? _spiderDataResult;
   bool _loading = false;
 
   @override
@@ -322,6 +337,7 @@ class _JarTestPageState extends State<JarTestPage> {
     _mainClassCtr = TextEditingController();
     _methodCtr = TextEditingController(text: Pref.jarTestMethod);
     _argsCtr = TextEditingController(text: Pref.jarTestArgs);
+    _spiderApiPayloadCtr = TextEditingController(text: '{"filter": true}');
   }
 
   @override
@@ -332,6 +348,7 @@ class _JarTestPageState extends State<JarTestPage> {
     _mainClassCtr.dispose();
     _methodCtr.dispose();
     _argsCtr.dispose();
+    _spiderApiPayloadCtr.dispose();
     super.dispose();
   }
 
@@ -475,6 +492,70 @@ class _JarTestPageState extends State<JarTestPage> {
                 onPressed: _loading ? null : _clearAllSpiders,
                 icon: const Icon(Icons.layers_clear_outlined),
                 label: const Text('Clear All'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Spider API Quick Call',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            initialValue: _spiderApiMethod,
+            decoration: const InputDecoration(
+              labelText: 'API Method',
+              border: OutlineInputBorder(),
+            ),
+            items: _spiderApiMethods
+                .map(
+                  (method) => DropdownMenuItem<String>(
+                    value: method,
+                    child: Text(method),
+                  ),
+                )
+                .toList(),
+            onChanged: _loading
+                ? null
+                : (value) {
+                    if (value == null) return;
+                    setState(() => _spiderApiMethod = value);
+                  },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _spiderApiPayloadCtr,
+            minLines: 3,
+            maxLines: 6,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontFamily: 'monospace',
+            ),
+            decoration: const InputDecoration(
+              labelText: 'JSON Payload',
+              hintText: '{"keyword":"test","pg":"1","quick":false}',
+              alignLabelWithHint: true,
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.icon(
+                onPressed: _loading ? null : _callSpiderApi,
+                icon: const Icon(Icons.api_outlined),
+                label: const Text('Call Spider API'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _spiderDataResult == null
+                    ? null
+                    : () => Utils.copyText(
+                        _spiderDataResult!.data,
+                        toastText: 'Data copied',
+                      ),
+                icon: const Icon(Icons.copy_all_outlined),
+                label: const Text('Copy API Data'),
               ),
             ],
           ),
@@ -642,6 +723,45 @@ class _JarTestPageState extends State<JarTestPage> {
                 ),
               ),
             ),
+          const SizedBox(height: 8),
+          if (_spiderDataResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _spiderDataResult!.success
+                                ? 'SPIDER API OK'
+                                : 'SPIDER API FAIL',
+                          ),
+                        ),
+                        Chip(label: Text('method=$_spiderApiMethod')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('message: ${_spiderDataResult!.message}'),
+                    if (_spiderDataResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_spiderDataResult!.error}'),
+                    ],
+                    const Divider(height: 16),
+                    SelectableText(
+                      _spiderDataResult!.data,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -753,6 +873,86 @@ class _JarTestPageState extends State<JarTestPage> {
     });
   }
 
+  Future<void> _callSpiderApi() async {
+    final args = _resolveLifecycleArgs();
+    if (args == null) return;
+    final payload = _parseSpiderApiPayload();
+    if (payload == null) return;
+
+    setState(() => _loading = true);
+    JarDataResult result;
+    switch (_spiderApiMethod) {
+      case 'homeContent':
+        result = await _jarLoaderService.homeContent(
+          key: args['key']!,
+          jarPath: args['jarPath']!,
+          filter: payload['filter'] is bool ? payload['filter'] as bool : true,
+        );
+        break;
+      case 'homeVideoContent':
+        result = await _jarLoaderService.homeVideoContent(
+          key: args['key']!,
+          jarPath: args['jarPath']!,
+        );
+        break;
+      case 'categoryContent':
+        result = await _jarLoaderService.categoryContent(
+          key: args['key']!,
+          jarPath: args['jarPath']!,
+          tid: (payload['tid'] ?? '').toString(),
+          pg: (payload['pg'] ?? '1').toString(),
+          filter: payload['filter'] is bool ? payload['filter'] as bool : true,
+          extend: _asStringMap(payload['extend']),
+        );
+        break;
+      case 'searchContent':
+        result = await _jarLoaderService.searchContent(
+          key: args['key']!,
+          jarPath: args['jarPath']!,
+          keyword: (payload['keyword'] ?? '').toString(),
+          quick: payload['quick'] is bool ? payload['quick'] as bool : false,
+          pg: (payload['pg'] ?? '1').toString(),
+        );
+        break;
+      case 'detailContent':
+        result = await _jarLoaderService.detailContent(
+          key: args['key']!,
+          jarPath: args['jarPath']!,
+          ids: _asStringList(payload['ids']),
+        );
+        break;
+      case 'playerContent':
+        result = await _jarLoaderService.playerContent(
+          key: args['key']!,
+          jarPath: args['jarPath']!,
+          flag: (payload['flag'] ?? '').toString(),
+          id: (payload['id'] ?? '').toString(),
+          vipFlags: _asStringList(payload['vipFlags']),
+        );
+        break;
+      case 'action':
+        result = await _jarLoaderService.actionContent(
+          key: args['key']!,
+          jarPath: args['jarPath']!,
+          action: (payload['action'] ?? '').toString(),
+        );
+        break;
+      default:
+        result = const JarDataResult(
+          success: false,
+          data: '',
+          message: 'Unsupported method.',
+          error: 'unsupported_method',
+        );
+        break;
+    }
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _spiderDataResult = result;
+    });
+  }
+
   List<String> _parseCsv(String raw) {
     final text = raw.trim();
     if (text.isEmpty) return const <String>[];
@@ -761,6 +961,43 @@ class _JarTestPageState extends State<JarTestPage> {
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
         .toList();
+  }
+
+  Map<String, dynamic>? _parseSpiderApiPayload() {
+    final text = _spiderApiPayloadCtr.text.trim();
+    if (text.isEmpty) return <String, dynamic>{};
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return decoded.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+      }
+      SmartDialog.showToast('JSON payload must be an object');
+      return null;
+    } catch (error) {
+      SmartDialog.showToast('Invalid JSON payload: $error');
+      return null;
+    }
+  }
+
+  List<String> _asStringList(dynamic value) {
+    if (value is List) {
+      return value.map((item) => item.toString()).toList();
+    }
+    return const <String>[];
+  }
+
+  Map<String, String> _asStringMap(dynamic value) {
+    if (value is Map) {
+      return value.map(
+        (key, item) => MapEntry(key.toString(), item.toString()),
+      );
+    }
+    return const <String, String>{};
   }
 
   Map<String, String>? _resolveLifecycleArgs() {

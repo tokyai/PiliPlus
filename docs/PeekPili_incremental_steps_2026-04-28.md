@@ -191,6 +191,16 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/thunder_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 26
+- Extended `/jarTest` with `Spider API Quick Call` debug section:
+  - selectable method: `homeContent/homeVideoContent/categoryContent/searchContent/detailContent/playerContent/action`,
+  - JSON payload input for runtime arguments,
+  - direct invoke via `JarLoaderService` business wrappers,
+  - result card for `message/error/data` and copy-data action.
+- This provides an in-app runtime harness for validating reflective Jar spider business API migration behavior.
+- Verified by check:
+  - `flutter analyze lib/pages/source_helper/view.dart` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -212,3 +222,4 @@ This document records the practical migration increments after the initial rever
 - Android Jar lifecycle baseline method surface is now callable from Flutter (`destroy/mark/is/count/clear`), but deep spider API parity is still pending.
 - Android Jar business method surface (`home/search/detail/player/action/setRecent`) now has a reflective baseline bridge for migration integration.
 - Thunder bridge now has baseline task lifecycle behavior (`taskId` tracking + stop/release state management) on Android and fallback platforms.
+- Jar business API baseline now has an integrated UI validation entry in Source Helper (`/jarTest`).
