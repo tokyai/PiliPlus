@@ -575,6 +575,11 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze --no-pub lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 64
+- Added migration closure execution checklist:
+  - new document `docs/PeekPili_runtime_closure_checklist.md` captures remaining runtime validation work across Android/iOS/Windows and cross-platform packaging acceptance criteria.
+- Reverse inventory now links to this checklist from pending-runtime section for traceable closure tracking.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -634,3 +639,4 @@ This document records the practical migration increments after the initial rever
 - Cross-platform packaging baseline now has a unified PowerShell build orchestrator for Android/iOS/Windows.
 - GoProxy stop flow now uses staged signal escalation with stop-strategy diagnostics (`lastStopStrategy`).
 - GoProxy stop-strategy diagnostics are now visible end-to-end in Flutter runtime model and `/goProxyTest` UI.
+- Remaining reverse/migration closure tasks are now explicitly operationalized in `docs/PeekPili_runtime_closure_checklist.md`.
