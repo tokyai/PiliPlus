@@ -382,6 +382,19 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/jar_loader_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 44
+- Improved Android Jar business API signature compatibility:
+  - `homeContent` now tries both `(filter)` and `()`,
+  - `homeVideoContent` now tries both `(filter)` and `()`,
+  - `categoryContent` now supports degraded candidates `(tid,pg,filter,extend)` -> `(tid,pg,filter)` -> `(tid,pg)` -> `(tid)`,
+  - `searchContent` adds `(keyword)` fallback,
+  - `detailContent` adds single-id string fallback,
+  - `playerContent` adds `(flag,id)` fallback,
+  - `action` now tries both `(action)` and `()`.
+- This reduces reverse migration failures caused by signature drift across different spider jar implementations.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -421,3 +434,4 @@ This document records the practical migration increments after the initial rever
 - PHP runtime snapshot diagnostics are now available in bridge and `/phpBridgeTest` for install/server/process state checks.
 - Jar runtime context now includes one-time init hook attempts (`init/initialize/setContext`) with runtime-state diagnostics.
 - Jar init-lifecycle diagnostics are now parsed and displayed in `/jarTest` runtime-state UI.
+- Jar business API now supports broader method-signature fallback combinations to improve cross-jar compatibility.

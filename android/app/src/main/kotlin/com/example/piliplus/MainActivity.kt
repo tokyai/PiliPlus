@@ -2155,16 +2155,23 @@ class MainActivity : AudioServiceActivity() {
         return invokeJarSpiderDataMethod(
             call = call,
             methodName = "homeContent",
-            argumentCandidates = listOf(listOf(filter)),
+            argumentCandidates = listOf(
+                listOf(filter),
+                emptyList()
+            ),
             failureMessage = "homeContent error"
         )
     }
 
     private fun homeVideoContent(call: MethodCall): Map<String, Any?> {
+        val filter = call.argument<Boolean>("filter") ?: true
         return invokeJarSpiderDataMethod(
             call = call,
             methodName = "homeVideoContent",
-            argumentCandidates = listOf(emptyList()),
+            argumentCandidates = listOf(
+                listOf(filter),
+                emptyList()
+            ),
             failureMessage = "homeVideoContent error"
         )
     }
@@ -2183,7 +2190,12 @@ class MainActivity : AudioServiceActivity() {
         return invokeJarSpiderDataMethod(
             call = call,
             methodName = "categoryContent",
-            argumentCandidates = listOf(listOf(tid, pg, filter, extend)),
+            argumentCandidates = listOf(
+                listOf(tid, pg, filter, extend),
+                listOf(tid, pg, filter),
+                listOf(tid, pg),
+                listOf(tid)
+            ),
             failureMessage = "categoryContent error"
         )
     }
@@ -2199,7 +2211,8 @@ class MainActivity : AudioServiceActivity() {
             methodName = "searchContent",
             argumentCandidates = listOf(
                 listOf(keyword, quick, pg),
-                listOf(keyword, quick)
+                listOf(keyword, quick),
+                listOf(keyword)
             ),
             failureMessage = "searchContent error"
         )
@@ -2207,10 +2220,14 @@ class MainActivity : AudioServiceActivity() {
 
     private fun detailContent(call: MethodCall): Map<String, Any?> {
         val ids = call.argument<List<String>>("ids") ?: emptyList()
+        val firstId = ids.firstOrNull().orEmpty()
         return invokeJarSpiderDataMethod(
             call = call,
             methodName = "detailContent",
-            argumentCandidates = listOf(listOf(ids)),
+            argumentCandidates = listOf(
+                listOf(ids),
+                listOf(firstId)
+            ),
             failureMessage = "detailContent error"
         )
     }
@@ -2222,7 +2239,10 @@ class MainActivity : AudioServiceActivity() {
         return invokeJarSpiderDataMethod(
             call = call,
             methodName = "playerContent",
-            argumentCandidates = listOf(listOf(flag, id, vipFlags)),
+            argumentCandidates = listOf(
+                listOf(flag, id, vipFlags),
+                listOf(flag, id)
+            ),
             failureMessage = "playerContent error"
         )
     }
@@ -2232,7 +2252,10 @@ class MainActivity : AudioServiceActivity() {
         return invokeJarSpiderDataMethod(
             call = call,
             methodName = "action",
-            argumentCandidates = listOf(listOf(action)),
+            argumentCandidates = listOf(
+                listOf(action),
+                emptyList()
+            ),
             failureMessage = "action error"
         )
     }
