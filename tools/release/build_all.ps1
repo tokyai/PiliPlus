@@ -10,7 +10,9 @@ param(
     [string]$AndroidApplicationId = "com.example.piliplus",
     [string]$ArtifactManifestPath = "",
     [switch]$RunRuntimeSmoke,
-    [int]$RuntimeSmokeWaitSeconds = 8
+    [int]$RuntimeSmokeWaitSeconds = 8,
+    [switch]$EmitRuntimeClosureStatus,
+    [string]$RuntimeClosureStatusPath = "build/runtime-smoke/closure-status.json"
 )
 
 $ErrorActionPreference = "Stop"
@@ -317,6 +319,22 @@ function Invoke-RuntimeSmokeScript {
     Invoke-CommandChecked -Command $command
 }
 
+function Invoke-RuntimeClosureStatusSnapshot {
+    param(
+        [string]$RepositoryRoot,
+        [string]$OutputPath
+    )
+    $scriptPath = Join-Path $RepositoryRoot "tools/release/runtime_closure_status.ps1"
+    if (-not (Test-Path $scriptPath)) {
+        throw ("Runtime closure status script not found: " + $scriptPath)
+    }
+    $command = @(
+        "powershell", "-ExecutionPolicy", "Bypass", "-File", $scriptPath,
+        "-OutputPath", $OutputPath
+    )
+    Invoke-CommandChecked -Command $command
+}
+
 function Get-ArtifactMetadata {
     param(
         [string]$ArtifactPath
@@ -405,6 +423,11 @@ if ($ArtifactManifestPath.Trim()) {
     }
     ($manifestPayload | ConvertTo-Json -Depth 6) | Set-Content -Encoding UTF8 $manifestFile
     Write-Step ("Artifact manifest generated: " + $manifestFile)
+}
+
+if ($EmitRuntimeClosureStatus -or $RunRuntimeSmoke) {
+    Write-Step "Generating runtime closure status snapshot..."
+    Invoke-RuntimeClosureStatusSnapshot -RepositoryRoot $root -OutputPath $RuntimeClosureStatusPath
 }
 
 Write-Step "Build flow finished."

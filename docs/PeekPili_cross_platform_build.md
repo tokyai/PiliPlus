@@ -68,6 +68,12 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RuntimeSmokeWaitSeconds 2
 ```
 
+### Build, runtime smoke, and explicit closure status output
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RuntimeClosureStatusPath build/runtime-smoke/windows-closure-status.json
+```
+
 ### GitHub Actions runtime smoke (Windows)
 
 - workflow: `.github/workflows/runtime_smoke_windows.yml`
@@ -92,6 +98,9 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - Set `-ArtifactManifestPath` to export build metadata and artifact file paths in JSON.
 - Manifest `schemaVersion=2` includes both `artifacts` and `artifactDetails` (`path/sizeBytes/sha256`).
 - `-RunRuntimeSmoke` hooks target-specific smoke scripts (`android_runtime_smoke.ps1` / `windows_runtime_smoke.ps1`) into build flow.
+- `-RunRuntimeSmoke` now also triggers closure status generation via `tools/release/runtime_closure_status.ps1`.
+- Use `-EmitRuntimeClosureStatus` to generate closure status even when runtime smoke is not executed.
+- Override closure status path with `-RuntimeClosureStatusPath`.
 
 ## Runtime Smoke
 
