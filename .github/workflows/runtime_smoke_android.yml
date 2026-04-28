@@ -122,6 +122,15 @@ jobs:
           name: android-reverse-completion-report
           path: build/runtime-smoke/reverse-completion-report.md
 
+      - name: Upload reverse completion report JSON
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          if-no-files-found: ignore
+          name: android-reverse-completion-report-json
+          path: build/runtime-smoke/reverse-completion-report.json
+
       - name: Upload runtime smoke summary
         if: always()
         uses: actions/upload-artifact@v7
