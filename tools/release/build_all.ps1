@@ -4,7 +4,8 @@ param(
     [string]$Mode = "release",
     [switch]$SkipPubGet,
     [switch]$BuildAab,
-    [switch]$NoCodesign
+    [switch]$NoCodesign,
+    [switch]$InstallAndroidApk
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,13 +52,18 @@ function Build-Android {
     param(
         [string[]]$FlutterCommand,
         [string]$BuildMode,
-        [switch]$NeedAab
+        [switch]$NeedAab,
+        [switch]$NeedInstall,
+        [string]$RepositoryRoot
     )
     Write-Step "Building Android APK..."
     Invoke-CommandChecked -Command ($FlutterCommand + @("build", "apk", "--$BuildMode"))
     if ($NeedAab) {
         Write-Step "Building Android App Bundle..."
         Invoke-CommandChecked -Command ($FlutterCommand + @("build", "appbundle", "--$BuildMode"))
+    }
+    if ($NeedInstall) {
+        Install-AndroidApk -RepositoryRoot $RepositoryRoot -BuildMode $BuildMode
     }
 }
 
@@ -113,6 +119,102 @@ function Ensure-NuGetCli {
     }
 }
 
+function Find-AdbCommand {
+    param(
+        [string]$RepositoryRoot
+    )
+    $sdkCandidates = @()
+    if ($env:ANDROID_SDK_ROOT) { $sdkCandidates += $env:ANDROID_SDK_ROOT }
+    if ($env:ANDROID_HOME) { $sdkCandidates += $env:ANDROID_HOME }
+    $propertiesCandidates = @(
+        (Join-Path $RepositoryRoot "local.properties"),
+        (Join-Path $RepositoryRoot "android\local.properties")
+    )
+    foreach ($propertiesPath in $propertiesCandidates) {
+        if (-not (Test-Path $propertiesPath)) {
+            continue
+        }
+        $sdkLine = Get-Content $propertiesPath | Where-Object { $_ -match '^sdk\.dir=' } | Select-Object -First 1
+        if (-not $sdkLine) {
+            continue
+        }
+        $rawValue = $sdkLine.Substring(8).Trim()
+        if ($rawValue) {
+            $resolvedValue = $rawValue.Replace('\\', '\')
+            $sdkCandidates += $resolvedValue
+        }
+    }
+    $sdkCandidates += (Join-Path $env:LOCALAPPDATA "Android\Sdk")
+    foreach ($sdk in ($sdkCandidates | Where-Object { $_ } | Select-Object -Unique)) {
+        $adbExe = Join-Path $sdk "platform-tools\adb.exe"
+        $adbBin = Join-Path $sdk "platform-tools\adb"
+        if (Test-Path $adbExe) {
+            return $adbExe
+        }
+        if (Test-Path $adbBin) {
+            return $adbBin
+        }
+    }
+    $adbCommand = Get-Command adb -ErrorAction SilentlyContinue
+    if ($adbCommand) {
+        return $adbCommand.Source
+    }
+    return ""
+}
+
+function Get-AndroidApkPath {
+    param(
+        [string]$RepositoryRoot,
+        [string]$BuildMode
+    )
+    $apkName = switch ($BuildMode) {
+        "debug" { "app-debug.apk" }
+        "profile" { "app-profile.apk" }
+        default { "app-release.apk" }
+    }
+    return Join-Path $RepositoryRoot ("build\app\outputs\flutter-apk\" + $apkName)
+}
+
+function Install-AndroidApk {
+    param(
+        [string]$RepositoryRoot,
+        [string]$BuildMode
+    )
+    $adb = Find-AdbCommand -RepositoryRoot $RepositoryRoot
+    if (-not $adb) {
+        Write-Step "Skip Android APK install: adb not found."
+        return
+    }
+    $apkPath = Get-AndroidApkPath -RepositoryRoot $RepositoryRoot -BuildMode $BuildMode
+    if (-not (Test-Path $apkPath)) {
+        Write-Step ("Skip Android APK install: apk not found at " + $apkPath)
+        return
+    }
+    Write-Step ("Detect Android devices via: " + $adb)
+    $deviceLines = & $adb "devices"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Step "Skip Android APK install: adb devices failed."
+        return
+    }
+    $deviceIds = @()
+    foreach ($line in $deviceLines) {
+        if ($line -match '^\s*([^\s]+)\s+device\s*$') {
+            $deviceIds += $matches[1]
+        }
+    }
+    if ($deviceIds.Count -eq 0) {
+        Write-Step "Skip Android APK install: no online Android devices."
+        return
+    }
+    foreach ($deviceId in $deviceIds) {
+        Write-Step ("Installing APK to device: " + $deviceId)
+        & $adb "-s" $deviceId "install" "-r" $apkPath
+        if ($LASTEXITCODE -ne 0) {
+            throw ("adb install failed for device {0}" -f $deviceId)
+        }
+    }
+}
+
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..\")
 Set-Location $root
 Ensure-NuGetCli -RepositoryRoot $root
@@ -139,7 +241,7 @@ if (-not $SkipPubGet) {
 foreach ($target in $normalizedTargets) {
     switch ($target) {
         "android" {
-            Build-Android -FlutterCommand $flutterCommand -BuildMode $Mode -NeedAab:$BuildAab
+            Build-Android -FlutterCommand $flutterCommand -BuildMode $Mode -NeedAab:$BuildAab -NeedInstall:$InstallAndroidApk -RepositoryRoot $root
         }
         "ios" {
             Build-Ios -FlutterCommand $flutterCommand -BuildMode $Mode -DisableCodesign:$NoCodesign

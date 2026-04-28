@@ -32,6 +32,12 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets an
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -BuildAab
 ```
 
+### Android: build then auto-install APK to connected devices
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -InstallAndroidApk
+```
+
 ### iOS: disable codesign for CI-like validation
 
 ```powershell
@@ -50,3 +56,5 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -SkipPubGet
 - On non-Windows hosts, Windows build is skipped with a clear message.
 - Any failed build command stops the script with non-zero exit.
 - On Windows, script auto-prepares `tools/nuget/nuget.exe` if missing (required by some Windows plugins).
+- `-InstallAndroidApk` is best-effort: if `adb` or online devices are not available, script logs skip and still succeeds.
+- `adb` discovery sources: `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `local.properties`, `android/local.properties`, then PATH.

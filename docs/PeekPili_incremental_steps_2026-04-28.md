@@ -618,6 +618,15 @@ This document records the practical migration increments after the initial rever
   - current connected devices are desktop/web only (`windows/chrome/edge`),
   - no Android physical/emulator target and no macOS host in current environment, so iOS/Android runtime-equivalence closure items remain pending.
 
+## Step 71
+- Extended unified build script with optional Android post-build install flow:
+  - new flag: `-InstallAndroidApk`,
+  - script now auto-discovers `adb` from `ANDROID_SDK_ROOT` / `ANDROID_HOME` / `local.properties` / `android/local.properties` / PATH,
+  - if no online Android device is connected, install step is skipped explicitly and build remains successful.
+- Verified by checks:
+  - PowerShell script syntax parse passed.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -SkipPubGet -InstallAndroidApk` passed (detected adb, skipped install due no online devices).
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -683,3 +692,4 @@ This document records the practical migration increments after the initial rever
 - iOS non-macOS skip path has been validated to be explicit and non-failing.
 - Windows and Android release-mode packaging flows have been smoke-validated.
 - Toolchain is ready (`flutter doctor` clean), but mobile runtime closure still depends on Android device/emulator and macOS iOS runtime validation environment.
+- Unified build flow now supports optional Android auto-install with robust adb discovery and graceful no-device skip.
