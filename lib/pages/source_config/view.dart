@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:PiliPlus/models/peekpili/t4_api_config.dart';
 import 'package:PiliPlus/services/source_runtime/source_config_service.dart';
+import 'package:PiliPlus/services/source_runtime/t4_config_runtime_service.dart';
 import 'package:PiliPlus/utils/peekpili_config_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -23,7 +24,12 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
   late final TextEditingController _sourceConfigUrlCtr;
   late final TextEditingController _currentApiConfigIdCtr;
   late final TextEditingController _apiConfigsJsonCtr;
+
   final _sourceConfigService = SourceConfigService();
+  final _t4RuntimeService = const T4ConfigRuntimeService();
+
+  List<T4ApiConfig> _configs = const <T4ApiConfig>[];
+  String? _configParseError;
   late bool _isLocalConfig;
   bool _isFetching = false;
 
@@ -40,6 +46,7 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
       text: PeekPiliConfigStore.t4ApiConfigsJson,
     );
     _isLocalConfig = PeekPiliConfigStore.t4IsLocalConfig;
+    _syncResolvedConfigs();
   }
 
   @override
@@ -91,6 +98,40 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
               border: OutlineInputBorder(),
             ),
           ),
+          if (_configParseError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Config parse error: $_configParseError',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          if (_configs.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _dropdownCurrentId(),
+              decoration: const InputDecoration(
+                labelText: 'Select Current Config',
+                border: OutlineInputBorder(),
+              ),
+              items: _configs
+                  .map(
+                    (item) => DropdownMenuItem<String>(
+                      value: item.id,
+                      child: Text('${item.name} (${item.id})'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _currentApiConfigIdCtr.text = value);
+              },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _buildCurrentConfigSummary(),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [
@@ -154,12 +195,14 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
     _apiConfigsJsonCtr.text = const JsonEncoder.withIndent(
       '  ',
     ).convert(sample);
+    setState(_syncResolvedConfigs);
   }
 
   void _formatJson() {
     final source = _apiConfigsJsonCtr.text.trim();
     if (source.isEmpty) {
       _apiConfigsJsonCtr.text = '[]';
+      setState(_syncResolvedConfigs);
       return;
     }
     try {
@@ -167,6 +210,7 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
       _apiConfigsJsonCtr.text = const JsonEncoder.withIndent(
         '  ',
       ).convert(parsed);
+      setState(_syncResolvedConfigs);
     } catch (error) {
       SmartDialog.showToast('Invalid JSON: $error');
     }
@@ -187,23 +231,20 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
       return;
     }
     _apiConfigsJsonCtr.text = result.prettyConfigsJson;
-    if (_currentApiConfigIdCtr.text.trim().isEmpty &&
-        result.configs.isNotEmpty) {
-      _currentApiConfigIdCtr.text = result.configs.first.id;
-    }
+    setState(_syncResolvedConfigs);
     SmartDialog.showToast(result.message);
   }
 
   Future<void> _save() async {
-    List<T4ApiConfig> apiConfigs;
-    try {
-      apiConfigs = T4ApiConfig.listFromDynamic(_apiConfigsJsonCtr.text.trim());
-    } catch (error) {
-      SmartDialog.showToast('t4ApiConfigs parse failed: $error');
+    final runtimeState = _t4RuntimeService.resolve(
+      configsJson: _apiConfigsJsonCtr.text.trim(),
+      currentId: _currentApiConfigIdCtr.text.trim(),
+    );
+    if (runtimeState.hasError) {
+      SmartDialog.showToast('t4ApiConfigs parse failed: ${runtimeState.error}');
       return;
     }
-
-    final hasInvalidItem = apiConfigs.any(
+    final hasInvalidItem = runtimeState.configs.any(
       (item) => item.id.isEmpty || item.name.isEmpty || item.apiUrl.isEmpty,
     );
     if (hasInvalidItem) {
@@ -214,9 +255,42 @@ class _SourceConfigSettingPageState extends State<SourceConfigSettingPage> {
     await PeekPiliConfigStore.saveT4Config(
       sourceConfigUrl: _sourceConfigUrlCtr.text,
       isLocalConfig: _isLocalConfig,
-      currentApiConfigId: _currentApiConfigIdCtr.text,
-      apiConfigs: apiConfigs,
+      currentApiConfigId: runtimeState.currentId,
+      apiConfigs: runtimeState.configs,
     );
+    _currentApiConfigIdCtr.text = runtimeState.currentId;
+    setState(_syncResolvedConfigs);
     SmartDialog.showToast('Source config saved');
+  }
+
+  void _syncResolvedConfigs() {
+    final runtimeState = _t4RuntimeService.resolve(
+      configsJson: _apiConfigsJsonCtr.text.trim(),
+      currentId: _currentApiConfigIdCtr.text.trim(),
+    );
+    _configs = runtimeState.configs;
+    _configParseError = runtimeState.error;
+    if (runtimeState.currentId.isNotEmpty &&
+        runtimeState.currentId != _currentApiConfigIdCtr.text.trim()) {
+      _currentApiConfigIdCtr.text = runtimeState.currentId;
+    }
+  }
+
+  String? _dropdownCurrentId() {
+    final currentId = _currentApiConfigIdCtr.text.trim();
+    for (final item in _configs) {
+      if (item.id == currentId) return currentId;
+    }
+    return _configs.isEmpty ? null : _configs.first.id;
+  }
+
+  String _buildCurrentConfigSummary() {
+    final currentId = _currentApiConfigIdCtr.text.trim();
+    for (final item in _configs) {
+      if (item.id == currentId) {
+        return 'Current: ${item.name} (${item.id})\nAPI: ${item.apiUrl}';
+      }
+    }
+    return 'Current: (none)';
   }
 }
