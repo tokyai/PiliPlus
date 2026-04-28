@@ -208,6 +208,14 @@ class Routes {
         engine: SourceEngine.nodeJs,
       ),
     ),
+    GetPage(
+      name: '/phpTest',
+      page: () => const SourceHelperToolPage(
+        title: 'PHP Test',
+        routeName: '/phpTest',
+        engine: SourceEngine.php,
+      ),
+    ),
     GetPage(name: '/jarTest', page: () => const JarTestPage()),
     GetPage(name: '/goProxyTest', page: () => const GoProxyTestPage()),
     GetPage(name: '/thunderTest', page: () => const ThunderTestPage()),

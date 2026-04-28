@@ -50,6 +50,12 @@ class SourceHelperSettingPage extends StatelessWidget {
             icon: Icons.terminal_outlined,
           ),
           _HelperRouteTile(
+            title: 'PHP Test',
+            subtitle: '/phpTest',
+            route: '/phpTest',
+            icon: Icons.php_outlined,
+          ),
+          _HelperRouteTile(
             title: 'Jar Test',
             subtitle: '/jarTest',
             route: '/jarTest',

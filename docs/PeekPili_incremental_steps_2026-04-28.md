@@ -201,6 +201,14 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `flutter analyze lib/pages/source_helper/view.dart` passed.
 
+## Step 27
+- Added Source Helper `PHP Test` entry (`/phpTest`) in:
+  - Source Helper menu page
+  - router page map
+- `PHP Test` reuses `SourceHelperToolPage` + `SourceEngine.php`, so Android/desktop PHP runtime probing and execute-as-code paths are now directly accessible in debug UI.
+- Verified by check:
+  - `flutter analyze lib/pages/source_helper/view.dart lib/router/app_pages.dart` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -223,3 +231,4 @@ This document records the practical migration increments after the initial rever
 - Android Jar business method surface (`home/search/detail/player/action/setRecent`) now has a reflective baseline bridge for migration integration.
 - Thunder bridge now has baseline task lifecycle behavior (`taskId` tracking + stop/release state management) on Android and fallback platforms.
 - Jar business API baseline now has an integrated UI validation entry in Source Helper (`/jarTest`).
+- Source Helper now includes direct `PHP Test` route for runtime/migration verification.
