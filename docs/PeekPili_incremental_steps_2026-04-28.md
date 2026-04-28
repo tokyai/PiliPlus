@@ -694,6 +694,14 @@ This document records the practical migration increments after the initial rever
 - Documentation linked in:
   - `docs/PeekPili_cross_platform_build.md`.
 
+## Step 79
+- Added CI-ready Android runtime smoke workflow:
+  - new workflow: `.github/workflows/runtime_smoke_android.yml`,
+  - supports manual dispatch with `mode/smoke_wait_seconds/application_id`,
+  - executes unified build flow (`build + install + launch + runtime smoke + manifest`) and uploads APK/manifest/smoke logs.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -767,3 +775,4 @@ This document records the practical migration increments after the initial rever
 - Windows runtime closure now has an executable smoke script entrypoint ready for packaged-app launch validation.
 - Unified build flow can now directly execute post-build runtime smoke for supported targets.
 - Windows runtime smoke now has a dedicated GitHub Actions entry for repeatable CI execution.
+- Android runtime smoke now has a dedicated GitHub Actions entry for device-enabled runners.

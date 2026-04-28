@@ -1,0 +1,85 @@
+name: Runtime Smoke Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Build mode
+        required: false
+        default: debug
+        type: choice
+        options:
+          - debug
+          - profile
+          - release
+      smoke_wait_seconds:
+        description: Runtime smoke wait seconds
+        required: false
+        default: "5"
+        type: string
+      application_id:
+        description: Android applicationId
+        required: false
+        default: com.example.piliplus
+        type: string
+
+jobs:
+  runtime-smoke-android:
+    name: Build + Runtime Smoke (Android)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: "17"
+
+      - name: Setup flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+
+      - name: Apply Patch
+        shell: pwsh
+        run: lib/scripts/patch.ps1 android
+        continue-on-error: true
+
+      - name: Build with integrated runtime smoke
+        shell: pwsh
+        run: >
+          powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1
+          -Targets android
+          -Mode ${{ github.event.inputs.mode || 'debug' }}
+          -InstallAndroidApk
+          -LaunchAndroidAfterInstall
+          -AndroidApplicationId "${{ github.event.inputs.application_id || 'com.example.piliplus' }}"
+          -RunRuntimeSmoke
+          -RuntimeSmokeWaitSeconds ${{ github.event.inputs.smoke_wait_seconds || '5' }}
+          -ArtifactManifestPath build/artifacts/android-runtime-smoke-manifest.json
+
+      - name: Upload runtime smoke reports
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          if-no-files-found: ignore
+          name: android-runtime-smoke-reports
+          path: build/runtime-smoke/*.log
+
+      - name: Upload build artifact manifest
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: android-runtime-smoke-manifest
+          path: build/artifacts/android-runtime-smoke-manifest.json
+
+      - name: Upload built APK
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          if-no-files-found: ignore
+          name: android-runtime-smoke-apk
+          path: build/app/outputs/flutter-apk/app-*.apk

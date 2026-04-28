@@ -73,6 +73,11 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - workflow: `.github/workflows/runtime_smoke_windows.yml`
 - trigger: `workflow_dispatch`
 
+### GitHub Actions runtime smoke (Android)
+
+- workflow: `.github/workflows/runtime_smoke_android.yml`
+- trigger: `workflow_dispatch`
+
 ## Notes
 
 - On non-macOS hosts, iOS build is skipped with a clear message.
