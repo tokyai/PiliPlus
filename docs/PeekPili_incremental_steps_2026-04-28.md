@@ -992,6 +992,18 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
   - JSON report contains `pendingWithCategory` and `blockerCounts`.
 
+## Step 101
+- Extended runtime-smoke workflow summaries with blocker category counts:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - run summary now additionally prints `blockerCounts.environment` and `blockerCounts.runtimeValidation`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1087,3 +1099,4 @@ This document records the practical migration increments after the initial rever
 - Runtime-smoke workflow run summaries now directly expose closure readiness and pending blockers.
 - Unified build manifest now includes closure/report artifacts for end-to-end auditability.
 - Closure reports now separate environment blockers from runtime-validation blockers for clearer triage.
+- Runtime-smoke workflow summaries now also display blocker category counts for quicker diagnosis.

@@ -90,7 +90,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - outputs: `windows-runtime-smoke-summary` artifact (`build/runtime-smoke/summary.md`)
 - optional input: `fail_on_pending=true` enables closure gate failure mode
   - gate is enforced at workflow tail; closure/report artifacts are still uploaded for diagnosis
-  - workflow run summary now includes reverse completion `overallReady` and pending blocker list
+  - workflow run summary now includes reverse completion `overallReady`, blocker category counts, and pending blocker list
 
 ### GitHub Actions runtime smoke (Android)
 
@@ -102,7 +102,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - outputs: `android-runtime-smoke-summary` artifact (`build/runtime-smoke/summary.md`)
 - optional input: `fail_on_pending=true` enables closure gate failure mode
   - gate is enforced at workflow tail; closure/report artifacts are still uploaded for diagnosis
-  - workflow run summary now includes reverse completion `overallReady` and pending blocker list
+  - workflow run summary now includes reverse completion `overallReady`, blocker category counts, and pending blocker list
 
 ## Notes
 
