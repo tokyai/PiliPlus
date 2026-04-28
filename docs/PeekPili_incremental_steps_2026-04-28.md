@@ -723,6 +723,21 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1 -MaxItems 5` passed.
   - summary now lists legacy manifest artifacts without parse errors.
 
+## Step 82
+- Added runtime closure status snapshot script:
+  - new script: `tools/release/runtime_closure_status.ps1`,
+  - emits machine-readable closure state JSON (`build/runtime-smoke/closure-status.json`) including:
+    - runtime smoke evidence counts,
+    - environment readiness (`adb`, online Android devices, macOS/iOS host),
+    - pending closure blockers.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1` passed.
+  - status generated: `build\\runtime-smoke\\closure-status.json`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -799,3 +814,4 @@ This document records the practical migration increments after the initial rever
 - Android runtime smoke now has a dedicated GitHub Actions entry for device-enabled runners.
 - Runtime smoke outputs now support one-command summary aggregation for audit and handoff.
 - Runtime smoke summary output now handles both schema-v1 and schema-v2 artifact manifests.
+- Closure progress now has a machine-readable status snapshot with explicit pending blockers.

@@ -83,3 +83,9 @@ Optional smoke summary:
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1
 ```
+
+Current closure status snapshot:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1
+```

@@ -118,3 +118,9 @@ Runtime smoke summary helper:
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1
 ```
+
+Runtime closure status snapshot:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/runtime_closure_status.ps1
+```
