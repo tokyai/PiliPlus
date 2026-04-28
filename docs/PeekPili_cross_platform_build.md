@@ -114,6 +114,14 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
   - gate is enforced at workflow tail; closure/report artifacts are still uploaded for diagnosis
   - workflow run summary now includes reverse completion `overallReady`, blocker category counts, pending blockers, and next actions
 
+### GitHub Actions runtime confirmation (iOS)
+
+- workflow: `.github/workflows/runtime_confirmation_ios.yml`
+- trigger: `workflow_dispatch` on `macos-latest`
+- outputs: `ios-runtime-closure-status`, `ios-reverse-completion-report`, `ios-reverse-completion-report-json`
+- outputs: `ios-environment-readiness-status`, `ios-environment-readiness-report`
+- optional input: `fail_on_not_ready=true|false` controls iOS-profile readiness strictness
+
 ## Notes
 
 - On non-macOS hosts, iOS build is skipped with a clear message.

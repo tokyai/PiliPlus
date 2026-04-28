@@ -1240,6 +1240,21 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
   - latest JSON report confirms Android blocker removal.
 
+## Step 117
+- Added dedicated iOS runtime-confirmation workflow for macOS runners:
+  - new workflow: `.github/workflows/runtime_confirmation_ios.yml`,
+  - workflow performs:
+    - iOS no-codesign build via `build_all.ps1`,
+    - reverse completion report generation (iOS-specific output paths),
+    - iOS-profile environment readiness check (`SkipAdbRequirement` + `SkipAndroidDeviceRequirement`),
+    - summary + artifacts upload for closure/reverse/environment evidence.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; yaml.safe_load(pathlib.Path('.github/workflows/runtime_confirmation_ios.yml').read_text(encoding='utf-8'))"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1351,3 +1366,4 @@ This document records the practical migration increments after the initial rever
 - Runtime smoke summary now consolidates reverse completion and environment readiness evidence in one report.
 - Android device runtime smoke no longer fails on debug package suffix mismatch during launch.
 - Android runtime closure blockers are now cleared on connected adb device; remaining blocker is iOS runtime environment validation on macOS.
+- A dedicated macOS iOS runtime-confirmation workflow is now available to close the final blocker in CI.

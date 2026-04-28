@@ -103,6 +103,9 @@ On macOS for iOS:
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -NoCodesign
 ```
 
+CI alternative for iOS host validation:
+- workflow: `.github/workflows/runtime_confirmation_ios.yml`
+
 Acceptance:
 - target build exits successfully
 - generated artifacts install and launch

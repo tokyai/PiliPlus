@@ -1,0 +1,154 @@
+name: Runtime Confirmation iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Build mode
+        required: false
+        default: debug
+        type: choice
+        options:
+          - debug
+          - profile
+          - release
+      fail_on_not_ready:
+        description: Fail workflow if iOS environment profile is not ready
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  runtime-confirmation-ios:
+    name: Build + Runtime Confirmation (iOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+
+      - name: Apply Patch
+        shell: pwsh
+        run: lib/scripts/patch.ps1 ios
+        continue-on-error: true
+
+      - name: Build iOS (no codesign)
+        shell: pwsh
+        run: >
+          powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1
+          -Targets ios
+          -Mode ${{ github.event.inputs.mode || 'debug' }}
+          -NoCodesign
+          -EmitRuntimeClosureStatus
+          -RuntimeClosureStatusPath build/runtime-smoke/ios-closure-status.json
+          -RunReverseCompletionCheck
+          -ReverseCompletionReportPath build/runtime-smoke/ios-reverse-completion-report.md
+          -ReverseCompletionJsonReportPath build/runtime-smoke/ios-reverse-completion-report.json
+          -ReverseMinWindowsSmokeReports 0
+          -ReverseMinAndroidSmokeLogs 0
+
+      - name: Run iOS-profile environment readiness check
+        id: env_readiness
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $command = @(
+            "powershell", "-ExecutionPolicy", "Bypass", "-File", "tools/release/runtime_environment_readiness.ps1",
+            "-StatusOutputPath", "build/runtime-smoke/ios-environment-readiness-status.json",
+            "-ReportOutputPath", "build/runtime-smoke/ios-environment-readiness-report.json",
+            "-SkipAdbRequirement",
+            "-SkipAndroidDeviceRequirement"
+          )
+          if ("${{ github.event.inputs.fail_on_not_ready || 'true' }}" -eq "true") {
+            $command += "-FailIfNotReady"
+          }
+          & $command[0] @($command[1..($command.Length - 1)])
+          $envExitCode = $LASTEXITCODE
+          "env_exit_code=$envExitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          if ($envExitCode -ne 0) {
+            Write-Warning "runtime_environment_readiness exited with code $envExitCode"
+          }
+
+      - name: Append iOS runtime summary
+        if: always()
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "## iOS Runtime Confirmation"
+          $reversePath = "build/runtime-smoke/ios-reverse-completion-report.json"
+          if (Test-Path $reversePath) {
+            $reverse = Get-Content -Raw $reversePath | ConvertFrom-Json
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- reverse overallReady: `{0}`" -f $reverse.overallReady)
+            if ($reverse.pending -and $reverse.pending.Count -gt 0) {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- reverse pending: `{0}`" -f (@($reverse.pending) -join ", "))
+            } else {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- reverse pending: none"
+            }
+          } else {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- reverse report: missing"
+          }
+
+          $envPath = "build/runtime-smoke/ios-environment-readiness-report.json"
+          if (Test-Path $envPath) {
+            $env = Get-Content -Raw $envPath | ConvertFrom-Json
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- environment ready: `{0}`" -f $env.ready)
+            if ($env.failedChecks -and $env.failedChecks.Count -gt 0) {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- environment failedChecks: `{0}`" -f (@($env.failedChecks) -join ", "))
+            } else {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- environment failedChecks: none"
+            }
+          } else {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- environment report: missing"
+          }
+
+      - name: Upload reverse completion report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          if-no-files-found: ignore
+          name: ios-reverse-completion-report
+          path: build/runtime-smoke/ios-reverse-completion-report.md
+
+      - name: Upload reverse completion report JSON
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          if-no-files-found: ignore
+          name: ios-reverse-completion-report-json
+          path: build/runtime-smoke/ios-reverse-completion-report.json
+
+      - name: Upload iOS closure status
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          if-no-files-found: ignore
+          name: ios-runtime-closure-status
+          path: build/runtime-smoke/ios-closure-status.json
+
+      - name: Upload iOS environment readiness status
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          if-no-files-found: ignore
+          name: ios-environment-readiness-status
+          path: build/runtime-smoke/ios-environment-readiness-status.json
+
+      - name: Upload iOS environment readiness report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          if-no-files-found: ignore
+          name: ios-environment-readiness-report
+          path: build/runtime-smoke/ios-environment-readiness-report.json
