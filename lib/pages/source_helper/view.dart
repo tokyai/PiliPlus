@@ -121,6 +121,7 @@ class _SourceHelperToolPageState extends State<SourceHelperToolPage> {
   late final TextEditingController _payloadCtr;
   SourceRuntimeResult? _lastResult;
   bool _isLoading = false;
+  bool _executeAsCode = false;
 
   @override
   void initState() {
@@ -167,6 +168,18 @@ class _SourceHelperToolPageState extends State<SourceHelperToolPage> {
               labelText: 'Payload',
               border: OutlineInputBorder(),
             ),
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Execute As Code'),
+            subtitle: const Text(
+              'Off: payload echo test. On: run payload as runtime code.',
+            ),
+            value: _executeAsCode,
+            onChanged: _isLoading
+                ? null
+                : (value) => setState(() => _executeAsCode = value),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -262,7 +275,10 @@ class _SourceHelperToolPageState extends State<SourceHelperToolPage> {
     final result = await _runtimeService.execute(
       engine: widget.engine,
       payload: _payloadCtr.text.trim(),
-      options: <String, dynamic>{'route': widget.routeName},
+      options: <String, dynamic>{
+        'route': widget.routeName,
+        'executeAsCode': _executeAsCode,
+      },
     );
     if (!mounted) return;
     setState(() {

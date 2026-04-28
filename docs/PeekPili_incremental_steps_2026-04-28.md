@@ -121,6 +121,14 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `flutter analyze` on updated thunder/source-helper files passed.
 
+## Step 21
+- Added `Execute As Code` toggle to `SourceHelperToolPage`:
+  - Off: payload echo mode (safe runtime availability probe),
+  - On: direct code execution path for Python/Node/PHP adapters.
+- `sourceRuntimeExecute` now receives `options.executeAsCode` from UI for practical migration debugging.
+- Verified by check:
+  - `flutter analyze lib/pages/source_helper/view.dart` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -137,3 +145,4 @@ This document records the practical migration increments after the initial rever
 - Android Jar helper now supports `Main-Class` auto-discovery for runnable jars.
 - Android now has a callable Thunder fallback bridge and test page.
 - Thunder parse/play-url fallback now works on non-Android too (local parser path).
+- Source Helper generic tool now supports switching between echo-probe and real code-exec modes.
