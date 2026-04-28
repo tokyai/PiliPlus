@@ -38,6 +38,14 @@ on:
         options:
           - "false"
           - "true"
+      fail_if_environment_not_ready:
+        description: Fail workflow when environment blockers remain
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
       min_windows_smoke_reports:
         description: Minimum windows runtime-smoke report count for validation
         required: false
@@ -216,16 +224,26 @@ jobs:
         run: |
           $failOnPending = "${{ github.event.inputs.fail_on_pending || 'false' }}"
           $failOnRuntimeValidation = "${{ github.event.inputs.fail_on_runtime_validation_pending || 'false' }}"
+          $failOnEnvironment = "${{ github.event.inputs.fail_if_environment_not_ready || 'false' }}"
           $closureExitCode = "${{ steps.closure_status.outputs.closure_exit_code }}"
-          if ($failOnRuntimeValidation -eq "true") {
-            $jsonPath = "build/runtime-smoke/reverse-completion-report.json"
+          $payload = $null
+          $jsonPath = "build/runtime-smoke/reverse-completion-report.json"
+          if (($failOnRuntimeValidation -eq "true" -or $failOnEnvironment -eq "true")) {
             if (-not (Test-Path $jsonPath)) {
-              throw "runtime-validation gate enabled but reverse completion json report is missing"
+              throw "reverse completion json report is missing for selected gate mode"
             }
             $payload = Get-Content -Raw $jsonPath | ConvertFrom-Json
+          }
+          if ($failOnRuntimeValidation -eq "true") {
             $runtimeValidationCount = [int]$payload.blockerCounts.runtimeValidation
             if ($runtimeValidationCount -gt 0) {
               throw "runtime-validation gate failed (runtimeValidation blockers: $runtimeValidationCount)"
+            }
+          }
+          if ($failOnEnvironment -eq "true") {
+            $environmentCount = [int]$payload.blockerCounts.environment
+            if ($environmentCount -gt 0) {
+              throw "environment gate failed (environment blockers: $environmentCount)"
             }
           }
           if ($failOnPending -eq "true" -and $closureExitCode -ne "" -and $closureExitCode -ne "0") {

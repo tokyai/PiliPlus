@@ -1145,6 +1145,19 @@ This document records the practical migration increments after the initial rever
     - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/runtime_environment_readiness.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
   - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_environment_readiness.ps1` passed.
 
+## Step 111
+- Added environment-readiness gate input in runtime-smoke workflows:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - new input: `fail_if_environment_not_ready` (`false/true`),
+  - final gate step now can fail specifically on `blockerCounts.environment > 0`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1250,3 +1263,4 @@ This document records the practical migration increments after the initial rever
 - Reverse completion JSON now provides repo-relative path metadata for portable automation.
 - Reverse inventory snapshot now includes blocker category counts aligned with machine-readable closure output.
 - Environment readiness now has a dedicated quick-check script for pre-flight validation.
+- Runtime-smoke workflows now support an explicit environment-readiness gate option.
