@@ -72,3 +72,4 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - `adb` discovery sources: `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `local.properties`, `android/local.properties`, then PATH.
 - Default launch package is `com.example.piliplus`; override by `-AndroidApplicationId`.
 - Set `-ArtifactManifestPath` to export build metadata and artifact file paths in JSON.
+- Manifest `schemaVersion=2` includes both `artifacts` and `artifactDetails` (`path/sizeBytes/sha256`).

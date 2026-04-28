@@ -271,6 +271,22 @@ function Start-AndroidApp {
     }
 }
 
+function Get-ArtifactMetadata {
+    param(
+        [string]$ArtifactPath
+    )
+    if (-not (Test-Path $ArtifactPath)) {
+        return $null
+    }
+    $fileItem = Get-Item $ArtifactPath
+    $sha256 = (Get-FileHash -Algorithm SHA256 -Path $ArtifactPath).Hash
+    return [ordered]@{
+        path = $ArtifactPath
+        sizeBytes = $fileItem.Length
+        sha256 = $sha256
+    }
+}
+
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..\")
 Set-Location $root
 Ensure-NuGetCli -RepositoryRoot $root
@@ -322,6 +338,7 @@ if ($ArtifactManifestPath.Trim()) {
         New-Item -ItemType Directory -Path $manifestDir -Force | Out-Null
     }
     $manifestPayload = [ordered]@{
+        schemaVersion = 2
         generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
         mode = $Mode
         targets = $normalizedTargets
@@ -329,6 +346,11 @@ if ($ArtifactManifestPath.Trim()) {
         launchAndroidAfterInstall = [bool]$LaunchAndroidAfterInstall
         androidApplicationId = $AndroidApplicationId
         artifacts = @($script:BuildArtifacts | Select-Object -Unique)
+        artifactDetails = @(
+            @($script:BuildArtifacts | Select-Object -Unique) |
+            ForEach-Object { Get-ArtifactMetadata -ArtifactPath $_ } |
+            Where-Object { $_ -ne $null }
+        )
         host = [ordered]@{
             isWindows = $isWindowsHost
             isMacOs = $isMacOsHost

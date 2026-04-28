@@ -644,6 +644,15 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -SkipPubGet -ArtifactManifestPath build/artifacts/windows-debug-manifest.json` passed.
   - manifest generated: `build\\artifacts\\windows-debug-manifest.json`.
 
+## Step 74
+- Upgraded artifact-manifest schema for release integrity:
+  - manifest now includes `schemaVersion=2`,
+  - added `artifactDetails` entries with `path/sizeBytes/sha256` for each built artifact.
+- Verified by checks:
+  - PowerShell script syntax parse passed.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -SkipPubGet -ArtifactManifestPath build/artifacts/android-debug-manifest.json` passed.
+  - manifest generated: `build\\artifacts\\android-debug-manifest.json` with `artifactDetails.sha256`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -712,3 +721,4 @@ This document records the practical migration increments after the initial rever
 - Unified build flow now supports optional Android auto-install with robust adb discovery and graceful no-device skip.
 - Unified build flow now also supports optional Android app auto-launch after install.
 - Unified build flow now can emit machine-readable artifact manifests for release tracking/CI integration.
+- Artifact manifests now include checksum/size metadata for integrity verification.
