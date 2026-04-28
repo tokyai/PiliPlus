@@ -853,6 +853,20 @@ This document records the practical migration increments after the initial rever
     - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/reverse_completion_check.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
   - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
 
+## Step 91
+- Improved strict closure-gate workflow behavior for better diagnostics:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - `closure_status` step now captures exit code output and uses `continue-on-error`,
+  - artifact/report uploads now run with `if: always()`,
+  - final `Enforce closure gate` step fails workflow tail when `fail_on_pending=true` and closure exit code is non-zero.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -938,3 +952,4 @@ This document records the practical migration increments after the initial rever
 - Runtime smoke workflows now also publish reverse completion report artifacts for each run.
 - Reverse inventory now contains a dated machine-assisted closure snapshot and concrete blocker list.
 - Reverse completion report now includes blocker-to-action guidance for direct next-step execution.
+- Strict closure gating now preserves diagnostic artifacts before failing workflow result.

@@ -81,6 +81,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - outputs: runtime smoke reports + `windows-runtime-closure-status` artifact
 - outputs: `windows-reverse-completion-report` artifact (`build/runtime-smoke/reverse-completion-report.md`)
 - optional input: `fail_on_pending=true` enables closure gate failure mode
+  - gate is enforced at workflow tail; closure/report artifacts are still uploaded for diagnosis
 
 ### GitHub Actions runtime smoke (Android)
 
@@ -89,6 +90,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - outputs: runtime smoke logs + `android-runtime-closure-status` artifact
 - outputs: `android-reverse-completion-report` artifact (`build/runtime-smoke/reverse-completion-report.md`)
 - optional input: `fail_on_pending=true` enables closure gate failure mode
+  - gate is enforced at workflow tail; closure/report artifacts are still uploaded for diagnosis
 
 ## Notes
 

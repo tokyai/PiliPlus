@@ -70,7 +70,9 @@ jobs:
           -ArtifactManifestPath build/artifacts/android-runtime-smoke-manifest.json
 
       - name: Emit runtime closure status snapshot
+        id: closure_status
         shell: pwsh
+        continue-on-error: true
         run: |
           $command = @(
             "powershell", "-ExecutionPolicy", "Bypass", "-File", "tools/release/runtime_closure_status.ps1",
@@ -80,17 +82,21 @@ jobs:
             $command += "-FailOnPending"
           }
           & $command[0] @($command[1..($command.Length - 1)])
-          if ($LASTEXITCODE -ne 0) {
-            throw "runtime_closure_status failed with exit code $LASTEXITCODE"
+          $closureExitCode = $LASTEXITCODE
+          "closure_exit_code=$closureExitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          if ($closureExitCode -ne 0) {
+            Write-Warning "runtime_closure_status exited with code $closureExitCode"
           }
 
       - name: Generate reverse completion report
+        if: always()
         shell: pwsh
         run: >
           powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1
           -SkipStatus
 
       - name: Upload runtime smoke reports
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           archive: false
@@ -99,30 +105,47 @@ jobs:
           path: build/runtime-smoke/*.log
 
       - name: Upload closure status snapshot
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           archive: false
+          if-no-files-found: ignore
           name: android-runtime-closure-status
           path: build/runtime-smoke/android-closure-status.json
 
       - name: Upload reverse completion report
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           archive: false
+          if-no-files-found: ignore
           name: android-reverse-completion-report
           path: build/runtime-smoke/reverse-completion-report.md
 
       - name: Upload build artifact manifest
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           archive: false
+          if-no-files-found: ignore
           name: android-runtime-smoke-manifest
           path: build/artifacts/android-runtime-smoke-manifest.json
 
       - name: Upload built APK
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           archive: false
           if-no-files-found: ignore
           name: android-runtime-smoke-apk
           path: build/app/outputs/flutter-apk/app-*.apk
+
+      - name: Enforce closure gate
+        if: always()
+        shell: pwsh
+        run: |
+          $failOnPending = "${{ github.event.inputs.fail_on_pending || 'false' }}"
+          $closureExitCode = "${{ steps.closure_status.outputs.closure_exit_code }}"
+          if ($failOnPending -eq "true" -and $closureExitCode -ne "" -and $closureExitCode -ne "0") {
+            throw "closure gate failed (exit code: $closureExitCode)"
+          }

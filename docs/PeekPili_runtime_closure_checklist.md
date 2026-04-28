@@ -116,3 +116,4 @@ CI artifact snapshots:
 - Windows workflow uploads `windows-reverse-completion-report`.
 - Android workflow uploads `android-reverse-completion-report`.
 - Both workflows support `fail_on_pending=true` to fail run when blockers remain.
+- Gate failure is deferred to final step so closure/report artifacts remain available for troubleshooting.
