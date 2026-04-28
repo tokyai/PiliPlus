@@ -369,18 +369,15 @@ class MainActivity : AudioServiceActivity() {
         val options = withEngineRuntimeOptions(engine, optionsRaw)
 
         if (engine == "goproxy") {
+            val state = getGoProxyRuntimeState()
             return mapOf(
-                "success" to true,
-                "stdout" to "",
+                "success" to (state["success"] == true),
+                "stdout" to formatGoProxyRuntimeStateSnapshot(state),
                 "stderr" to "",
                 "elapsedMs" to 0,
                 "exitCode" to 0,
                 "isStub" to false,
-                "message" to if (isGoProxyRunning()) {
-                    "GoProxy process is running."
-                } else {
-                    "GoProxy process is not running."
-                }
+                "message" to (state["message"]?.toString() ?: "GoProxy runtime probe finished.")
             )
         }
 
@@ -444,12 +441,51 @@ class MainActivity : AudioServiceActivity() {
         val options = withEngineRuntimeOptions(engine, optionsRaw)
         val useCodeMode = (options["executeAsCode"] as? Boolean) == true
 
-        if (engine == "jar" || engine == "goproxy") {
+        if (engine == "jar") {
             return sourceRuntimeFailure(
                 message = "Engine=$engine uses dedicated bridge. Use /jarTest or /goProxyTest.",
                 error = "dedicated_bridge_required",
                 isStub = true
             )
+        }
+
+        if (engine == "goproxy") {
+            val action = options["action"]?.toString()?.trim()?.lowercase().orEmpty().ifEmpty { "status" }
+            return when (action) {
+                "status", "state", "runtime", "probe" -> {
+                    val state = getGoProxyRuntimeState()
+                    mapOf(
+                        "success" to (state["success"] == true),
+                        "stdout" to formatGoProxyRuntimeStateSnapshot(state),
+                        "stderr" to "",
+                        "elapsedMs" to 0,
+                        "exitCode" to 0,
+                        "isStub" to false,
+                        "message" to (state["message"]?.toString()
+                            ?: "GoProxy runtime state collected.")
+                    )
+                }
+
+                "stop" -> {
+                    val result = stopGoProxy()
+                    val success = result["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatGoProxyOperationResult(result),
+                        "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (result["message"]?.toString() ?: "GoProxy stop finished.")
+                    )
+                }
+
+                else -> sourceRuntimeFailure(
+                    message = "Unsupported goproxy action=$action. Supported: status, stop.",
+                    error = "unsupported_action",
+                    isStub = true
+                )
+            }
         }
 
         val command = resolveRuntimeCommand(engine, options)
@@ -571,6 +607,44 @@ class MainActivity : AudioServiceActivity() {
                 elapsedMs = System.currentTimeMillis() - startedAt
             )
         }
+    }
+
+    private fun formatGoProxyRuntimeStateSnapshot(state: Map<String, Any?>): String {
+        val lines = mutableListOf<String>()
+        lines += "running=${state["running"]}"
+        lines += "proxyUrl=${state["proxyUrl"]}"
+        lines += "port=${state["port"]}"
+        lines += "pid=${state["pid"]}"
+        lines += "startedAtMs=${state["startedAtMs"]}"
+        lines += "uptimeMs=${state["uptimeMs"]}"
+        lines += "foregroundServiceRunning=${state["foregroundServiceRunning"]}"
+        lines += "foregroundWakeLockHeld=${state["foregroundWakeLockHeld"]}"
+        lines += "foregroundWifiLockHeld=${state["foregroundWifiLockHeld"]}"
+        lines += "foregroundTrackedPid=${state["foregroundTrackedPid"]}"
+        lines += "lastExitCode=${state["lastExitCode"]}"
+        lines += "lastExitedAtMs=${state["lastExitedAtMs"]}"
+        lines += "lastCommand=${state["lastCommand"]}"
+        lines += "lastArgs=${state["lastArgs"]}"
+        lines += "lastWorkingDirectory=${state["lastWorkingDirectory"]}"
+        lines += "danmuDir=${state["danmuDir"]}"
+        lines += "lastError=${state["lastError"]}"
+        lines += "foregroundServiceError=${state["foregroundServiceError"]}"
+        return lines.joinToString("\n")
+    }
+
+    private fun formatGoProxyOperationResult(result: Map<String, Any?>): String {
+        val lines = mutableListOf<String>()
+        lines += "success=${result["success"]}"
+        lines += "running=${result["running"]}"
+        lines += "proxyUrl=${result["proxyUrl"]}"
+        lines += "message=${result["message"]}"
+        lines += "error=${result["error"]}"
+        lines += "foregroundServiceRunning=${result["foregroundServiceRunning"]}"
+        lines += "foregroundWakeLockHeld=${result["foregroundWakeLockHeld"]}"
+        lines += "foregroundWifiLockHeld=${result["foregroundWifiLockHeld"]}"
+        lines += "foregroundTrackedPid=${result["foregroundTrackedPid"]}"
+        lines += "foregroundServiceError=${result["foregroundServiceError"]}"
+        return lines.joinToString("\n")
     }
 
     private fun withEngineRuntimeOptions(engine: String, options: Map<*, *>): Map<Any?, Any?> {

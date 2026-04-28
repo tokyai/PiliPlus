@@ -503,6 +503,15 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/go_proxy_service.dart lib/pages/source_helper/view.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 56
+- Improved generic Source Runtime path for GoProxy:
+  - `sourceRuntimeProbe(engine=goproxy)` now returns detailed runtime snapshot text,
+  - `sourceRuntimeExecute(engine=goproxy)` now supports `options.action=status|stop`,
+  - this removes previous hard block where GoProxy was only usable via dedicated helper route.
+- This reduces bridge fragmentation and enables script-level runtime control for migration diagnostics.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -554,3 +563,4 @@ This document records the practical migration increments after the initial rever
 - Thunder parse now also emits `infoHash` for canonical ed2k links.
 - GoProxy runtime now auto-reconciles process/service state to reduce stale-running markers.
 - GoProxy runtime diagnostics now include last exit code/time snapshot fields.
+- Source Runtime generic bridge now supports GoProxy runtime `status/stop` actions.
