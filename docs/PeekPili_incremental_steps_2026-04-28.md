@@ -484,6 +484,15 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/thunder_service.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 54
+- Added GoProxy runtime state auto-reconciliation:
+  - `isGoProxyRunning/getGoProxyRuntimeState` now reconcile process/service consistency,
+  - when process has exited, bridge auto-clears stale process state and stops foreground service,
+  - when process is alive but foreground service is missing, bridge auto-attempts foreground service recovery.
+- This reduces stale-runtime drift between process liveness and service status under edge-case lifecycle changes.
+- Verified by checks:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -533,3 +542,4 @@ This document records the practical migration increments after the initial rever
 - GoProxy notification stop path now includes tracked child-pid termination attempt with runtime pid visibility.
 - Thunder parse-media snapshot now covers both magnet and canonical ed2k file links.
 - Thunder parse now also emits `infoHash` for canonical ed2k links.
+- GoProxy runtime now auto-reconciles process/service state to reduce stale-running markers.

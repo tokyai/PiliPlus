@@ -679,7 +679,7 @@ class MainActivity : AudioServiceActivity() {
         startActivity(intent)
     }
 
-    private fun isGoProxyRunning(): Boolean = goProxyProcess?.isAlive == true
+    private fun isGoProxyRunning(): Boolean = reconcileGoProxyRuntimeState()
 
     private fun startGoProxy(call: MethodCall): Map<String, Any?> {
         if (isGoProxyRunning()) {
@@ -846,8 +846,8 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun getGoProxyRuntimeState(): Map<String, Any?> {
+        val running = reconcileGoProxyRuntimeState()
         val process = goProxyProcess
-        val running = process?.isAlive == true
         val now = System.currentTimeMillis()
         val startedAt = if (running) goProxyStartedAtMs else 0L
         val uptimeMs = if (running && startedAt > 0L) {
@@ -876,6 +876,48 @@ class MainActivity : AudioServiceActivity() {
             "message" to "GoProxy runtime state snapshot loaded.",
             "error" to ""
         )
+    }
+
+    private fun reconcileGoProxyRuntimeState(): Boolean {
+        val process = goProxyProcess
+        val running = process?.isAlive == true
+        if (!running) {
+            if (process != null) {
+                goProxyProcess = null
+                if (goProxyLastError.isEmpty()) {
+                    goProxyLastError = "GoProxy process exited."
+                }
+            }
+            goProxyStartedAtMs = 0L
+            if (GoProxyForegroundService.isRunning()) {
+                val fgError = stopGoProxyForegroundService()
+                if (fgError.isNotEmpty()) {
+                    goProxyForegroundLastError = fgError
+                }
+            }
+            return false
+        }
+
+        if (!GoProxyForegroundService.isRunning()) {
+            val trackedPid = getProcessPidCompat(process)?.toInt() ?: -1
+            goProxyForegroundLastError = startGoProxyForegroundService(
+                proxyUrl = goProxyUrl,
+                commandLine = buildGoProxyCommandLine(),
+                processPid = trackedPid
+            )
+        }
+        return true
+    }
+
+    private fun buildGoProxyCommandLine(): String {
+        if (goProxyLastCommand.isEmpty()) return ""
+        return buildString {
+            append(goProxyLastCommand)
+            if (goProxyLastArgs.isNotEmpty()) {
+                append(' ')
+                append(goProxyLastArgs.joinToString(" "))
+            }
+        }
     }
 
     private fun startGoProxyForegroundService(
