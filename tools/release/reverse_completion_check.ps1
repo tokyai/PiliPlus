@@ -2,6 +2,7 @@ param(
     [string]$SummaryPath = "build/runtime-smoke/summary.md",
     [string]$StatusPath = "build/runtime-smoke/closure-status.json",
     [string]$ReportPath = "build/runtime-smoke/reverse-completion-report.md",
+    [string]$JsonReportPath = "build/runtime-smoke/reverse-completion-report.json",
     [int]$SummaryMaxItems = 10,
     [int]$MinWindowsSmokeReports = 1,
     [int]$MinAndroidSmokeLogs = 1,
@@ -35,6 +36,7 @@ Set-Location $root
 $resolvedSummaryPath = Resolve-PathRelativeToRoot -Root $root -PathInput $SummaryPath
 $resolvedStatusPath = Resolve-PathRelativeToRoot -Root $root -PathInput $StatusPath
 $resolvedReportPath = Resolve-PathRelativeToRoot -Root $root -PathInput $ReportPath
+$resolvedJsonReportPath = Resolve-PathRelativeToRoot -Root $root -PathInput $JsonReportPath
 
 $summaryScript = Join-Path $root "tools/release/runtime_smoke_summary.ps1"
 $statusScript = Join-Path $root "tools/release/runtime_closure_status.ps1"
@@ -115,7 +117,24 @@ if ($reportDir -and -not (Test-Path $reportDir)) {
 }
 $reportLines | Set-Content -Encoding UTF8 $resolvedReportPath
 
+$jsonReportDir = Split-Path -Parent $resolvedJsonReportPath
+if ($jsonReportDir -and -not (Test-Path $jsonReportDir)) {
+    New-Item -ItemType Directory -Path $jsonReportDir -Force | Out-Null
+}
+$jsonPayload = [ordered]@{
+    schemaVersion = 1
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+    overallReady = $overallReady
+    summaryPath = $resolvedSummaryPath
+    statusPath = $resolvedStatusPath
+    markdownReportPath = $resolvedReportPath
+    pending = @($pending)
+    nextActions = @($nextActions)
+}
+($jsonPayload | ConvertTo-Json -Depth 6) | Set-Content -Encoding UTF8 $resolvedJsonReportPath
+
 Write-Step ("Report written: " + $resolvedReportPath)
+Write-Step ("JSON report written: " + $resolvedJsonReportPath)
 if ($overallReady) {
     Write-Step "Reverse runtime closure status: complete."
 } else {

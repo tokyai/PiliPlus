@@ -169,3 +169,4 @@ The generated report includes:
 - completion decision (`Overall ready`)
 - pending blockers
 - actionable next-step suggestions derived from blocker codes
+- machine-readable JSON output (`build/runtime-smoke/reverse-completion-report.json`)

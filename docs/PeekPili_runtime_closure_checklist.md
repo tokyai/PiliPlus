@@ -115,6 +115,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.
 ```
 
 Report output now includes blocker-oriented next-action suggestions.
+Report output also includes machine-readable JSON (`reverse-completion-report.json`).
 
 CI artifact snapshots:
 - Windows workflow uploads `windows-runtime-closure-status`.
