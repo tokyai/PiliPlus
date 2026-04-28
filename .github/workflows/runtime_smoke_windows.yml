@@ -107,6 +107,15 @@ jobs:
           name: windows-reverse-completion-report
           path: build/runtime-smoke/reverse-completion-report.md
 
+      - name: Upload runtime smoke summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          if-no-files-found: ignore
+          name: windows-runtime-smoke-summary
+          path: build/runtime-smoke/summary.md
+
       - name: Upload build artifact manifest
         if: always()
         uses: actions/upload-artifact@v7

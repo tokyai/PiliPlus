@@ -121,5 +121,7 @@ CI artifact snapshots:
 - Android workflow uploads `android-runtime-closure-status`.
 - Windows workflow uploads `windows-reverse-completion-report`.
 - Android workflow uploads `android-reverse-completion-report`.
+- Windows workflow uploads `windows-runtime-smoke-summary`.
+- Android workflow uploads `android-runtime-smoke-summary`.
 - Both workflows support `fail_on_pending=true` to fail run when blockers remain.
 - Gate failure is deferred to final step so closure/report artifacts remain available for troubleshooting.

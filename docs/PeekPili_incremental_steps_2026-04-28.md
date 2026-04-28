@@ -884,6 +884,18 @@ This document records the practical migration increments after the initial rever
   - Dry execution passed:
     - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -EmitRuntimeClosureStatus -RunReverseCompletionCheck`.
 
+## Step 93
+- Added runtime smoke summary artifact publishing to CI workflows:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - both now upload `build/runtime-smoke/summary.md` as dedicated artifacts.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -971,3 +983,4 @@ This document records the practical migration increments after the initial rever
 - Reverse completion report now includes blocker-to-action guidance for direct next-step execution.
 - Strict closure gating now preserves diagnostic artifacts before failing workflow result.
 - Unified build flow now can optionally emit reverse completion report (and strict-fail by closure state) in one run.
+- Runtime smoke CI workflows now publish summary/report/status artifacts as a full closure evidence set.
