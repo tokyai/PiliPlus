@@ -803,6 +803,8 @@ class ThunderService {
       if (xt.toLowerCase().startsWith('urn:btih:')) {
         infoHash = xt.substring('urn:btih:'.length).trim();
       }
+    } else if (protocol == 'ed2k') {
+      infoHash = _extractEd2kInfoHash(input);
     }
     return _ParsedThunderUrl(
       protocol: protocol,
@@ -810,6 +812,18 @@ class ThunderService {
       normalizedUrl: input,
       infoHash: infoHash,
     );
+  }
+
+  String _extractEd2kInfoHash(String url) {
+    final prefixIndex = url.indexOf('://');
+    final payload = prefixIndex >= 0 ? url.substring(prefixIndex + 3) : url;
+    final trimmed = payload.replaceFirst(RegExp(r'^/+'), '');
+    if (trimmed.isEmpty) return '';
+    final segments = trimmed.split('|');
+    if (segments.length < 5 || segments.first.toLowerCase() != 'file') {
+      return '';
+    }
+    return segments[3].trim().toUpperCase();
   }
 
   String? _decodeThunderFamilyPayload(String encoded) {

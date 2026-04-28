@@ -3386,10 +3386,10 @@ class MainActivity : AudioServiceActivity() {
             input.startsWith("https://", ignoreCase = true)
         ) {
             val protocol = input.substringBefore(':').lowercase()
-            val infoHash = if (protocol == "magnet") {
-                extractMagnetInfoHash(input)
-            } else {
-                ""
+            val infoHash = when (protocol) {
+                "magnet" -> extractMagnetInfoHash(input)
+                "ed2k" -> extractEd2kInfoHash(input)
+                else -> ""
             }
             return ThunderParsedResult(
                 protocol = protocol,
@@ -3445,6 +3445,15 @@ class MainActivity : AudioServiceActivity() {
         } catch (_: Exception) {
             ""
         }
+    }
+
+    private fun extractEd2kInfoHash(url: String): String {
+        val payload = url.substringAfter("://", "").trimStart('/')
+        if (payload.isEmpty()) return ""
+        val segments = payload.split('|')
+        if (segments.size < 5) return ""
+        if (!segments[0].equals("file", ignoreCase = true)) return ""
+        return segments[3].trim().uppercase()
     }
 
     private data class ThunderParsedResult(

@@ -475,6 +475,15 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze lib/services/source_runtime/thunder_service.dart` passed.
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 53
+- Improved Thunder `ed2k` hash parity:
+  - Android parser now extracts `ed2k` file hash into `infoHash`,
+  - fallback parser now mirrors the same `ed2k` `infoHash` extraction.
+- This aligns task/result hash observability across `magnet` and `ed2k`.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/thunder_service.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -523,3 +532,4 @@ This document records the practical migration increments after the initial rever
 - GoProxy foreground-service runtime now includes wake/wifi lock baseline with state visibility.
 - GoProxy notification stop path now includes tracked child-pid termination attempt with runtime pid visibility.
 - Thunder parse-media snapshot now covers both magnet and canonical ed2k file links.
+- Thunder parse now also emits `infoHash` for canonical ed2k links.
