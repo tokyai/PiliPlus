@@ -1072,6 +1072,21 @@ This document records the practical migration increments after the initial rever
   - Dry execution passed:
     - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -EmitRuntimeClosureStatus -RunReverseCompletionCheck -StrictReverseCompletionRuntimeOnly -ReverseMinAndroidSmokeLogs 0 -ReverseMinWindowsSmokeReports 0`.
 
+## Step 106
+- Added runtime-smoke threshold inputs to CI workflows and aligned closure/reverse checks:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - new inputs:
+    - `min_windows_smoke_reports`,
+    - `min_android_smoke_logs`,
+  - closure status and reverse completion steps now consume the same threshold inputs for consistent gating.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1172,3 +1187,4 @@ This document records the practical migration increments after the initial rever
 - Runtime-smoke CI workflows now support runtime-validation-only gate input for practical non-macOS/non-device runners.
 - Runtime smoke summary now directly surfaces reverse completion snapshot for human audit.
 - Unified build flow now supports reverse-check threshold tuning without leaving build script context.
+- Runtime-smoke workflows now allow threshold tuning with consistent closure/reverse evaluation logic.

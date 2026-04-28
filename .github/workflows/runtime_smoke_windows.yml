@@ -33,6 +33,16 @@ on:
         options:
           - "false"
           - "true"
+      min_windows_smoke_reports:
+        description: Minimum windows runtime-smoke report count for validation
+        required: false
+        default: "1"
+        type: string
+      min_android_smoke_logs:
+        description: Minimum android runtime-smoke log count for validation
+        required: false
+        default: "1"
+        type: string
 
 jobs:
   runtime-smoke-windows:
@@ -70,7 +80,9 @@ jobs:
         run: |
           $command = @(
             "powershell", "-ExecutionPolicy", "Bypass", "-File", "tools/release/runtime_closure_status.ps1",
-            "-OutputPath", "build/runtime-smoke/windows-closure-status.json"
+            "-OutputPath", "build/runtime-smoke/windows-closure-status.json",
+            "-MinWindowsSmokeReports", "${{ github.event.inputs.min_windows_smoke_reports || '1' }}",
+            "-MinAndroidSmokeLogs", "${{ github.event.inputs.min_android_smoke_logs || '1' }}"
           )
           if ("${{ github.event.inputs.fail_on_pending || 'false' }}" -eq "true") {
             $command += "-FailOnPending"
@@ -85,9 +97,11 @@ jobs:
       - name: Generate reverse completion report
         if: always()
         shell: pwsh
-        run: >
-          powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1
-          -SkipStatus
+        run: |
+          powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1 `
+            -SkipStatus `
+            -MinWindowsSmokeReports "${{ github.event.inputs.min_windows_smoke_reports || '1' }}" `
+            -MinAndroidSmokeLogs "${{ github.event.inputs.min_android_smoke_logs || '1' }}"
 
       - name: Append closure summary
         if: always()

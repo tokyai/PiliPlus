@@ -89,7 +89,8 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - outputs: `windows-reverse-completion-report-json` artifact (`build/runtime-smoke/reverse-completion-report.json`)
 - outputs: `windows-runtime-smoke-summary` artifact (`build/runtime-smoke/summary.md`)
 - optional input: `fail_on_pending=true` enables closure gate failure mode
-  - optional input: `fail_on_runtime_validation_pending=true` enables runtime-validation-only gate mode
+- optional input: `fail_on_runtime_validation_pending=true` enables runtime-validation-only gate mode
+- optional inputs: `min_windows_smoke_reports` / `min_android_smoke_logs` adjust closure validation thresholds
   - gate is enforced at workflow tail; closure/report artifacts are still uploaded for diagnosis
   - workflow run summary now includes reverse completion `overallReady`, blocker category counts, and pending blocker list
 
@@ -102,7 +103,8 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - outputs: `android-reverse-completion-report-json` artifact (`build/runtime-smoke/reverse-completion-report.json`)
 - outputs: `android-runtime-smoke-summary` artifact (`build/runtime-smoke/summary.md`)
 - optional input: `fail_on_pending=true` enables closure gate failure mode
-  - optional input: `fail_on_runtime_validation_pending=true` enables runtime-validation-only gate mode
+- optional input: `fail_on_runtime_validation_pending=true` enables runtime-validation-only gate mode
+- optional inputs: `min_windows_smoke_reports` / `min_android_smoke_logs` adjust closure validation thresholds
   - gate is enforced at workflow tail; closure/report artifacts are still uploaded for diagnosis
   - workflow run summary now includes reverse completion `overallReady`, blocker category counts, and pending blocker list
 
