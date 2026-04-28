@@ -600,6 +600,16 @@ This document records the practical migration increments after the initial rever
 - iOS host-skip behavior verification on Windows:
   - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -NoCodesign` passed with expected skip output (`host is not macOS`).
 
+## Step 68
+- Windows release packaging smoke verification:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode release -SkipPubGet` passed,
+  - artifact produced: `build\\windows\\x64\\runner\\Release\\piliplus.exe`.
+
+## Step 69
+- Android release packaging smoke verification:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode release -SkipPubGet` passed,
+  - artifact produced: `build\\app\\outputs\\flutter-apk\\app-release.apk`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -663,3 +673,4 @@ This document records the practical migration increments after the initial rever
 - Windows local packaging flow has been smoke-validated via the unified build script.
 - Android local packaging flow has been smoke-validated via the unified build script.
 - iOS non-macOS skip path has been validated to be explicit and non-failing.
+- Windows and Android release-mode packaging flows have been smoke-validated.
