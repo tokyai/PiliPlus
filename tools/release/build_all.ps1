@@ -5,7 +5,9 @@ param(
     [switch]$SkipPubGet,
     [switch]$BuildAab,
     [switch]$NoCodesign,
-    [switch]$InstallAndroidApk
+    [switch]$InstallAndroidApk,
+    [switch]$LaunchAndroidAfterInstall,
+    [string]$AndroidApplicationId = "com.example.piliplus"
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,7 +56,9 @@ function Build-Android {
         [string]$BuildMode,
         [switch]$NeedAab,
         [switch]$NeedInstall,
-        [string]$RepositoryRoot
+        [switch]$NeedLaunch,
+        [string]$RepositoryRoot,
+        [string]$ApplicationId
     )
     Write-Step "Building Android APK..."
     Invoke-CommandChecked -Command ($FlutterCommand + @("build", "apk", "--$BuildMode"))
@@ -62,8 +66,18 @@ function Build-Android {
         Write-Step "Building Android App Bundle..."
         Invoke-CommandChecked -Command ($FlutterCommand + @("build", "appbundle", "--$BuildMode"))
     }
+    $installedDevices = @()
     if ($NeedInstall) {
-        Install-AndroidApk -RepositoryRoot $RepositoryRoot -BuildMode $BuildMode
+        $installedDevices = @(Install-AndroidApk -RepositoryRoot $RepositoryRoot -BuildMode $BuildMode)
+    }
+    if ($NeedLaunch) {
+        if ($installedDevices.Count -eq 0) {
+            Write-Step "Skip Android launch: no installed target devices."
+        } else {
+            foreach ($deviceId in $installedDevices) {
+                Start-AndroidApp -RepositoryRoot $RepositoryRoot -DeviceId $deviceId -ApplicationId $ApplicationId
+            }
+        }
     }
 }
 
@@ -183,18 +197,18 @@ function Install-AndroidApk {
     $adb = Find-AdbCommand -RepositoryRoot $RepositoryRoot
     if (-not $adb) {
         Write-Step "Skip Android APK install: adb not found."
-        return
+        return @()
     }
     $apkPath = Get-AndroidApkPath -RepositoryRoot $RepositoryRoot -BuildMode $BuildMode
     if (-not (Test-Path $apkPath)) {
         Write-Step ("Skip Android APK install: apk not found at " + $apkPath)
-        return
+        return @()
     }
     Write-Step ("Detect Android devices via: " + $adb)
     $deviceLines = & $adb "devices"
     if ($LASTEXITCODE -ne 0) {
         Write-Step "Skip Android APK install: adb devices failed."
-        return
+        return @()
     }
     $deviceIds = @()
     foreach ($line in $deviceLines) {
@@ -204,7 +218,7 @@ function Install-AndroidApk {
     }
     if ($deviceIds.Count -eq 0) {
         Write-Step "Skip Android APK install: no online Android devices."
-        return
+        return @()
     }
     foreach ($deviceId in $deviceIds) {
         Write-Step ("Installing APK to device: " + $deviceId)
@@ -212,6 +226,25 @@ function Install-AndroidApk {
         if ($LASTEXITCODE -ne 0) {
             throw ("adb install failed for device {0}" -f $deviceId)
         }
+    }
+    return $deviceIds
+}
+
+function Start-AndroidApp {
+    param(
+        [string]$RepositoryRoot,
+        [string]$DeviceId,
+        [string]$ApplicationId
+    )
+    $adb = Find-AdbCommand -RepositoryRoot $RepositoryRoot
+    if (-not $adb) {
+        Write-Step "Skip Android launch: adb not found."
+        return
+    }
+    Write-Step ("Launching app on {0}: {1}" -f $DeviceId, $ApplicationId)
+    & $adb "-s" $DeviceId "shell" "monkey" "-p" $ApplicationId "-c" "android.intent.category.LAUNCHER" "1"
+    if ($LASTEXITCODE -ne 0) {
+        throw ("adb launch failed for device {0}" -f $DeviceId)
     }
 }
 
@@ -241,7 +274,7 @@ if (-not $SkipPubGet) {
 foreach ($target in $normalizedTargets) {
     switch ($target) {
         "android" {
-            Build-Android -FlutterCommand $flutterCommand -BuildMode $Mode -NeedAab:$BuildAab -NeedInstall:$InstallAndroidApk -RepositoryRoot $root
+            Build-Android -FlutterCommand $flutterCommand -BuildMode $Mode -NeedAab:$BuildAab -NeedInstall:$InstallAndroidApk -NeedLaunch:$LaunchAndroidAfterInstall -RepositoryRoot $root -ApplicationId $AndroidApplicationId
         }
         "ios" {
             Build-Ios -FlutterCommand $flutterCommand -BuildMode $Mode -DisableCodesign:$NoCodesign

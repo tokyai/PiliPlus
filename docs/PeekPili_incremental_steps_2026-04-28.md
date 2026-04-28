@@ -627,6 +627,14 @@ This document records the practical migration increments after the initial rever
   - PowerShell script syntax parse passed.
   - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -SkipPubGet -InstallAndroidApk` passed (detected adb, skipped install due no online devices).
 
+## Step 72
+- Extended Android post-build automation with optional app launch:
+  - new flag: `-LaunchAndroidAfterInstall`,
+  - launch defaults to package `com.example.piliplus`, configurable via `-AndroidApplicationId`.
+- Verified by checks:
+  - PowerShell script syntax parse passed.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -SkipPubGet -InstallAndroidApk -LaunchAndroidAfterInstall` passed (no online device -> install/launch skipped explicitly).
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -693,3 +701,4 @@ This document records the practical migration increments after the initial rever
 - Windows and Android release-mode packaging flows have been smoke-validated.
 - Toolchain is ready (`flutter doctor` clean), but mobile runtime closure still depends on Android device/emulator and macOS iOS runtime validation environment.
 - Unified build flow now supports optional Android auto-install with robust adb discovery and graceful no-device skip.
+- Unified build flow now also supports optional Android app auto-launch after install.

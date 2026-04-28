@@ -38,6 +38,12 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets an
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -InstallAndroidApk
 ```
 
+### Android: build, install, and auto-launch app
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -InstallAndroidApk -LaunchAndroidAfterInstall
+```
+
 ### iOS: disable codesign for CI-like validation
 
 ```powershell
@@ -58,3 +64,4 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -SkipPubGet
 - On Windows, script auto-prepares `tools/nuget/nuget.exe` if missing (required by some Windows plugins).
 - `-InstallAndroidApk` is best-effort: if `adb` or online devices are not available, script logs skip and still succeeds.
 - `adb` discovery sources: `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `local.properties`, `android/local.properties`, then PATH.
+- Default launch package is `com.example.piliplus`; override by `-AndroidApplicationId`.
