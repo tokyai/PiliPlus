@@ -337,6 +337,7 @@ class _JarTestPageState extends State<JarTestPage> {
   JarLifecycleActionResult? _lifecycleResult;
   JarSpiderCrashStateResult? _crashStateResult;
   JarSpiderCrashCountResult? _crashCountResult;
+  JarRuntimeStateResult? _runtimeStateResult;
   JarDataResult? _spiderDataResult;
   bool _loading = false;
 
@@ -505,6 +506,11 @@ class _JarTestPageState extends State<JarTestPage> {
                 onPressed: _loading ? null : _clearAllSpiders,
                 icon: const Icon(Icons.layers_clear_outlined),
                 label: const Text('Clear All'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _getRuntimeState,
+                icon: const Icon(Icons.storage_outlined),
+                label: const Text('Runtime State'),
               ),
             ],
           ),
@@ -737,6 +743,75 @@ class _JarTestPageState extends State<JarTestPage> {
               ),
             ),
           const SizedBox(height: 8),
+          if (_runtimeStateResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _runtimeStateResult!.success
+                                ? 'RUNTIME OK'
+                                : 'RUNTIME FAIL',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'loaded=${_runtimeStateResult!.loadedCount}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'crashed=${_runtimeStateResult!.crashedCount}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'context=${_runtimeStateResult!.contextCount}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            'recent=${_runtimeStateResult!.recentCount}',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('message: ${_runtimeStateResult!.message}'),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'loadedIds: ${_runtimeStateResult!.loadedIds.join(', ')}',
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'contextIds: ${_runtimeStateResult!.contextIds.join(', ')}',
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'crashedIds: ${_runtimeStateResult!.crashedIds.join(', ')}',
+                    ),
+                    if (_runtimeStateResult!.recentItems.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'recent: ${_runtimeStateResult!.recentItems.map((item) => '${item.key}@${item.jarPath}').join(' | ')}',
+                      ),
+                    ],
+                    if (_runtimeStateResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_runtimeStateResult!.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
           if (_spiderDataResult != null)
             Card(
               child: Padding(
@@ -883,6 +958,16 @@ class _JarTestPageState extends State<JarTestPage> {
     setState(() {
       _loading = false;
       _lifecycleResult = result;
+    });
+  }
+
+  Future<void> _getRuntimeState() async {
+    setState(() => _loading = true);
+    final result = await _jarLoaderService.getRuntimeState();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _runtimeStateResult = result;
     });
   }
 

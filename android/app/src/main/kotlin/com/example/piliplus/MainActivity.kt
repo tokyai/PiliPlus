@@ -283,6 +283,9 @@ class MainActivity : AudioServiceActivity() {
                 "clearAll" -> {
                     result.success(clearAllJarSpiders())
                 }
+                "getJarRuntimeState" -> {
+                    result.success(getJarRuntimeState())
+                }
                 "homeContent" -> {
                     result.success(homeContent(call))
                 }
@@ -1723,6 +1726,37 @@ class MainActivity : AudioServiceActivity() {
             "message" to "All spiders cleared (lifecycle invoked: $lifecycleCount)",
             "error" to lifecycleErrors.joinToString(" | "),
             "lifecycleInvoked" to lifecycleCount
+        )
+    }
+
+    private fun getJarRuntimeState(): Map<String, Any?> {
+        val loadedIds: List<String>
+        val crashedIds: List<String>
+        val contextIds: List<String>
+        val recentItems: List<Map<String, String>>
+        synchronized(jarRuntimeLock) {
+            loadedIds = loadedJarSpiders.keys.toList()
+            crashedIds = crashedJarSpiders.toList()
+            contextIds = jarSpiderContexts.keys.toList()
+            recentItems = recentJarSpiders.entries.map { entry ->
+                mapOf(
+                    "jarPath" to entry.key,
+                    "key" to (entry.value ?: "")
+                )
+            }
+        }
+        return mapOf(
+            "success" to true,
+            "loadedCount" to loadedIds.size,
+            "crashedCount" to crashedIds.size,
+            "contextCount" to contextIds.size,
+            "recentCount" to recentItems.size,
+            "loadedIds" to loadedIds,
+            "crashedIds" to crashedIds,
+            "contextIds" to contextIds,
+            "recentItems" to recentItems,
+            "message" to "Jar runtime state snapshot loaded.",
+            "error" to ""
         )
     }
 

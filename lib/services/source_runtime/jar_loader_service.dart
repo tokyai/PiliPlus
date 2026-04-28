@@ -236,6 +236,112 @@ class JarDataResult {
   }
 }
 
+class JarRuntimeRecentItem {
+  const JarRuntimeRecentItem({
+    required this.jarPath,
+    required this.key,
+  });
+
+  final String jarPath;
+  final String key;
+
+  static JarRuntimeRecentItem fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const JarRuntimeRecentItem(jarPath: '', key: '');
+    }
+    return JarRuntimeRecentItem(
+      jarPath: (map['jarPath'] ?? '').toString(),
+      key: (map['key'] ?? '').toString(),
+    );
+  }
+}
+
+class JarRuntimeStateResult {
+  const JarRuntimeStateResult({
+    required this.success,
+    required this.loadedCount,
+    required this.crashedCount,
+    required this.contextCount,
+    required this.recentCount,
+    required this.loadedIds,
+    required this.crashedIds,
+    required this.contextIds,
+    required this.recentItems,
+    required this.message,
+    required this.error,
+  });
+
+  final bool success;
+  final int loadedCount;
+  final int crashedCount;
+  final int contextCount;
+  final int recentCount;
+  final List<String> loadedIds;
+  final List<String> crashedIds;
+  final List<String> contextIds;
+  final List<JarRuntimeRecentItem> recentItems;
+  final String message;
+  final String error;
+
+  static JarRuntimeStateResult fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const JarRuntimeStateResult(
+        success: false,
+        loadedCount: 0,
+        crashedCount: 0,
+        contextCount: 0,
+        recentCount: 0,
+        loadedIds: <String>[],
+        crashedIds: <String>[],
+        contextIds: <String>[],
+        recentItems: <JarRuntimeRecentItem>[],
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+    int parseIntValue(Object? value) => switch (value) {
+      int item => item,
+      num item => item.toInt(),
+      String item => int.tryParse(item) ?? 0,
+      _ => 0,
+    };
+
+    List<String> parseStringList(Object? value) {
+      final list = value is List ? value : const <dynamic>[];
+      return list.map((item) => item.toString()).toList();
+    }
+
+    List<JarRuntimeRecentItem> parseRecentItems(Object? value) {
+      final list = value is List ? value : const <dynamic>[];
+      return list.map((item) {
+        if (item is Map<Object?, Object?>) {
+          return JarRuntimeRecentItem.fromMap(item);
+        }
+        if (item is Map) {
+          return JarRuntimeRecentItem.fromMap(
+            item.map(MapEntry.new),
+          );
+        }
+        return const JarRuntimeRecentItem(jarPath: '', key: '');
+      }).toList();
+    }
+
+    return JarRuntimeStateResult(
+      success: map['success'] == true,
+      loadedCount: parseIntValue(map['loadedCount']),
+      crashedCount: parseIntValue(map['crashedCount']),
+      contextCount: parseIntValue(map['contextCount']),
+      recentCount: parseIntValue(map['recentCount']),
+      loadedIds: parseStringList(map['loadedIds']),
+      crashedIds: parseStringList(map['crashedIds']),
+      contextIds: parseStringList(map['contextIds']),
+      recentItems: parseRecentItems(map['recentItems']),
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+    );
+  }
+}
+
 class JarLoaderService {
   JarLoaderService({
     MethodChannel? channel,
@@ -540,6 +646,59 @@ class JarLoaderService {
       return JarLifecycleActionResult(
         success: false,
         message: 'clearAll not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<JarRuntimeStateResult> getRuntimeState() async {
+    if (!Platform.isAndroid) {
+      return const JarRuntimeStateResult(
+        success: false,
+        loadedCount: 0,
+        crashedCount: 0,
+        contextCount: 0,
+        recentCount: 0,
+        loadedIds: <String>[],
+        crashedIds: <String>[],
+        contextIds: <String>[],
+        recentItems: <JarRuntimeRecentItem>[],
+        message:
+            'Jar native lifecycle bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'getJarRuntimeState',
+      );
+      return JarRuntimeStateResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return JarRuntimeStateResult(
+        success: false,
+        loadedCount: 0,
+        crashedCount: 0,
+        contextCount: 0,
+        recentCount: 0,
+        loadedIds: const <String>[],
+        crashedIds: const <String>[],
+        contextIds: const <String>[],
+        recentItems: const <JarRuntimeRecentItem>[],
+        message: 'getJarRuntimeState platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return JarRuntimeStateResult(
+        success: false,
+        loadedCount: 0,
+        crashedCount: 0,
+        contextCount: 0,
+        recentCount: 0,
+        loadedIds: const <String>[],
+        crashedIds: const <String>[],
+        contextIds: const <String>[],
+        recentItems: const <JarRuntimeRecentItem>[],
+        message: 'getJarRuntimeState not implemented',
         error: error.toString(),
       );
     }

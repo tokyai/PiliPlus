@@ -280,6 +280,16 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 34
+- Added Jar runtime-state snapshot bridge for migration diagnostics:
+  - Android method `getJarRuntimeState` now exposes loaded/crashed/context/recent spider snapshots,
+  - Flutter `JarLoaderService` adds typed `JarRuntimeStateResult`,
+  - `/jarTest` adds `Runtime State` action and result card for direct runtime inspection.
+- This improves reverse validation efficiency for lifecycle/context reuse regressions.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/jar_loader_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -309,3 +319,4 @@ This document records the practical migration increments after the initial rever
 - Android generic source runtime path for PHP now shares bridge-aligned env/working-directory defaults, reducing behavior drift between debug entry routes.
 - Thunder fallback parser now accepts `thunder/qqdl/flashget` family links with normalized decode behavior on Android and non-Android fallback path.
 - Android Jar lifecycle bridge now triggers common plugin lifecycle methods (`destroy/release/close`) during destroy/clear flows when available.
+- Jar runtime snapshot diagnostics are now available in bridge and `/jarTest` for loaded/crashed/context state checks.
