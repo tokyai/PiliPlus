@@ -216,6 +216,7 @@ class Routes {
         engine: SourceEngine.php,
       ),
     ),
+    GetPage(name: '/phpBridgeTest', page: () => const PhpBridgeTestPage()),
     GetPage(name: '/jarTest', page: () => const JarTestPage()),
     GetPage(name: '/goProxyTest', page: () => const GoProxyTestPage()),
     GetPage(name: '/thunderTest', page: () => const ThunderTestPage()),

@@ -219,6 +219,24 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 29
+- Added Android PHP bridge baseline method surface in `MainActivity` (reverse plugin-aligned names):
+  - `startServer` / `stopServer` / `isServerRunning` / `getServerPort`
+  - `installPhp` / `isInstalled` / `getVersion` / `getExtensions`
+  - `getScriptsDir` / `getPhpDir` / `executeCode`
+  - `getDefaultDownloadUrl`
+- Added Flutter-side `PhpBridgeService` with typed models:
+  - `PhpServerStatus`
+  - `PhpCommandResult`
+  - `PhpExecutionResult`
+- Added Source Helper diagnostics:
+  - new route tile `/phpBridgeTest`
+  - new page `PHP Bridge Test` for install/probe/start/stop/extensions/execute workflows.
+- Registered service in app bootstrap (`Get.lazyPut(PhpBridgeService.new)`).
+- Verified by checks:
+  - `flutter analyze` on updated Dart files passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -243,3 +261,4 @@ This document records the practical migration increments after the initial rever
 - Jar business API baseline now has an integrated UI validation entry in Source Helper (`/jarTest`).
 - Source Helper now includes direct `PHP Test` route for runtime/migration verification.
 - Android Jar business API now reuses per-spider runtime context/instance baseline instead of always re-instantiating.
+- PHP plugin-equivalent baseline bridge and debug UI are now available for migration validation on Android.

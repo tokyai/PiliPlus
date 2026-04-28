@@ -36,6 +36,11 @@ class MainActivity : AudioServiceActivity() {
     private var goProxyProcess: Process? = null
     private var goProxyUrl: String = "http://127.0.0.1:9978"
     private var goProxyLastError: String = ""
+    private val phpServerProcesses = mutableListOf<Process>()
+    private val phpServerPorts = mutableListOf<Int>()
+    private var phpServerRunning: Boolean = false
+    private var phpServerPort: Int = 9980
+    private var phpServerDocumentRoot: String = ""
     private val jarRuntimeLock = Any()
     private val loadedJarSpiders = linkedMapOf<String, JarSpiderRuntime>()
     private val crashedJarSpiders = linkedSetOf<String>()
@@ -212,6 +217,42 @@ class MainActivity : AudioServiceActivity() {
                 }
                 "prepareGoProxyBinary" -> {
                     result.success(prepareGoProxyBinary(call))
+                }
+                "startServer" -> {
+                    result.success(phpStartServer(call))
+                }
+                "stopServer" -> {
+                    result.success(phpStopServer())
+                }
+                "isServerRunning" -> {
+                    result.success(phpIsServerRunning())
+                }
+                "getServerPort" -> {
+                    result.success(phpServerPort)
+                }
+                "installPhp" -> {
+                    result.success(phpInstall(call))
+                }
+                "isInstalled" -> {
+                    result.success(phpIsInstalled())
+                }
+                "getVersion" -> {
+                    result.success(phpGetVersion())
+                }
+                "getExtensions" -> {
+                    result.success(phpGetExtensions())
+                }
+                "getScriptsDir" -> {
+                    result.success(phpGetScriptsDir())
+                }
+                "executeCode" -> {
+                    result.success(phpExecuteCode(call))
+                }
+                "getPhpDir" -> {
+                    result.success(phpGetPhpDir())
+                }
+                "getDefaultDownloadUrl" -> {
+                    result.success("https://raw.githubusercontent.com/ingriddaleusag-dotcom/PeekPiliRelease/main/php/php-android-arm64.tar.gz")
                 }
                 "probeJarFile" -> {
                     result.success(probeJarFile(call))
@@ -829,6 +870,329 @@ class MainActivity : AudioServiceActivity() {
             }
         }
         return null
+    }
+
+    private fun phpStartServer(call: MethodCall): Map<String, Any?> {
+        if (phpIsServerRunning()) {
+            return mapOf(
+                "success" to true,
+                "running" to true,
+                "port" to phpServerPort,
+                "ports" to phpServerPorts.toList(),
+                "documentRoot" to phpServerDocumentRoot,
+                "message" to "PHP server is already running.",
+                "error" to ""
+            )
+        }
+        val runtimeOptions = buildPhpRuntimeOptions(call)
+        val command = resolvePhpCommand(runtimeOptions)
+            ?: return mapOf(
+                "success" to false,
+                "running" to false,
+                "port" to 0,
+                "ports" to emptyList<Int>(),
+                "documentRoot" to "",
+                "message" to "PHP command not found.",
+                "error" to "command_not_found"
+            )
+        val port = (call.argument<Int>("port") ?: 9980).coerceIn(1, 65500)
+        val instances = (call.argument<Int>("instances") ?: 1).coerceIn(1, 8)
+        val documentRoot = call.argument<String>("documentRoot")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: phpGetScriptsDir()
+        val rootFile = File(documentRoot).apply { mkdirs() }
+        val startedProcesses = mutableListOf<Process>()
+        val startedPorts = mutableListOf<Int>()
+        for (index in 0 until instances) {
+            val currentPort = port + index
+            try {
+                val processBuilder = ProcessBuilder(
+                    command,
+                    "-S",
+                    "0.0.0.0:$currentPort",
+                    "-t",
+                    rootFile.absolutePath
+                ).directory(rootFile)
+                val environment = parseStringMap(call.argument<Map<*, *>>("environment"))
+                if (environment.isNotEmpty()) {
+                    processBuilder.environment().putAll(environment)
+                }
+                val process = processBuilder.start()
+                startedProcesses.add(process)
+                startedPorts.add(currentPort)
+            } catch (_: Exception) {
+            }
+        }
+        if (startedProcesses.isEmpty()) {
+            return mapOf(
+                "success" to false,
+                "running" to false,
+                "port" to port,
+                "ports" to emptyList<Int>(),
+                "documentRoot" to rootFile.absolutePath,
+                "message" to "Failed to start PHP server instances.",
+                "error" to "start_failed"
+            )
+        }
+        phpServerProcesses.clear()
+        phpServerProcesses.addAll(startedProcesses)
+        phpServerPorts.clear()
+        phpServerPorts.addAll(startedPorts)
+        phpServerPort = startedPorts.first()
+        phpServerDocumentRoot = rootFile.absolutePath
+        phpServerRunning = true
+        return mapOf(
+            "success" to true,
+            "running" to true,
+            "port" to phpServerPort,
+            "ports" to phpServerPorts.toList(),
+            "documentRoot" to phpServerDocumentRoot,
+            "message" to "PHP server started.",
+            "error" to ""
+        )
+    }
+
+    private fun phpStopServer(): Map<String, Any?> {
+        if (phpServerProcesses.isEmpty()) {
+            phpServerRunning = false
+            phpServerPorts.clear()
+            return mapOf(
+                "success" to true,
+                "running" to false,
+                "port" to phpServerPort,
+                "ports" to emptyList<Int>(),
+                "documentRoot" to phpServerDocumentRoot,
+                "message" to "PHP server is not running.",
+                "error" to ""
+            )
+        }
+        for (process in phpServerProcesses) {
+            try {
+                process.destroy()
+                process.waitFor(800, TimeUnit.MILLISECONDS)
+                if (process.isAlive) {
+                    process.destroyForcibly()
+                }
+            } catch (_: Exception) {
+            }
+        }
+        phpServerProcesses.clear()
+        phpServerPorts.clear()
+        phpServerRunning = false
+        return mapOf(
+            "success" to true,
+            "running" to false,
+            "port" to phpServerPort,
+            "ports" to emptyList<Int>(),
+            "documentRoot" to phpServerDocumentRoot,
+            "message" to "PHP server stopped.",
+            "error" to ""
+        )
+    }
+
+    private fun phpIsServerRunning(): Boolean {
+        val running = phpServerProcesses.any { it.isAlive }
+        if (!running) {
+            phpServerProcesses.clear()
+            phpServerPorts.clear()
+            phpServerRunning = false
+        } else {
+            phpServerRunning = true
+        }
+        return running
+    }
+
+    private fun phpInstall(call: MethodCall): Map<String, Any?> {
+        if (phpIsInstalled()) {
+            return mapOf(
+                "success" to true,
+                "message" to "PHP runtime already installed.",
+                "error" to "",
+                "command" to (resolvePhpCommand() ?: ""),
+                "preparedFromAsset" to false
+            )
+        }
+        val targetRelativePath = call.argument<String>("targetRelativePath")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "tools/php/php"
+        val appRoot = filesDir.canonicalFile
+        val targetFile = File(appRoot, targetRelativePath).canonicalFile
+        if (!targetFile.absolutePath.startsWith(appRoot.absolutePath)) {
+            return mapOf(
+                "success" to false,
+                "message" to "Invalid targetRelativePath.",
+                "error" to "invalid_target_path",
+                "command" to "",
+                "preparedFromAsset" to false
+            )
+        }
+        val assetCandidates = call.argument<List<String>>("assetCandidates")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?: listOf("assets/runtime/php", "assets/php/php", "php")
+        val errors = mutableListOf<String>()
+        for (candidate in assetCandidates) {
+            val assetPath = candidate.removePrefix("/")
+            try {
+                targetFile.parentFile?.mkdirs()
+                assets.open(assetPath).use { input ->
+                    targetFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                targetFile.setExecutable(true, false)
+                return mapOf(
+                    "success" to true,
+                    "message" to "PHP runtime prepared from asset: $assetPath",
+                    "error" to "",
+                    "command" to targetFile.absolutePath,
+                    "preparedFromAsset" to true
+                )
+            } catch (e: Exception) {
+                errors.add("$assetPath: ${e.message ?: e.toString()}")
+            }
+        }
+        return mapOf(
+            "success" to false,
+            "message" to "Failed to prepare PHP runtime from assets.",
+            "error" to errors.joinToString(" | "),
+            "command" to "",
+            "preparedFromAsset" to false
+        )
+    }
+
+    private fun phpIsInstalled(): Boolean {
+        val command = resolvePhpCommand() ?: return false
+        val result = runRuntimeCommand(
+            command = command,
+            args = listOf("--version"),
+            timeoutMs = 5000L,
+            options = emptyMap<Any?, Any?>(),
+            engine = "php",
+            action = "version"
+        )
+        return result["success"] == true
+    }
+
+    private fun phpGetVersion(): String {
+        val command = resolvePhpCommand() ?: return ""
+        val result = runRuntimeCommand(
+            command = command,
+            args = listOf("--version"),
+            timeoutMs = 5000L,
+            options = emptyMap<Any?, Any?>(),
+            engine = "php",
+            action = "version"
+        )
+        if (result["success"] != true) {
+            return ""
+        }
+        return result["stdout"]?.toString()?.lineSequence()?.firstOrNull()?.trim().orEmpty()
+    }
+
+    private fun phpGetExtensions(): List<String> {
+        val command = resolvePhpCommand() ?: return emptyList()
+        val result = runRuntimeCommand(
+            command = command,
+            args = listOf("-m"),
+            timeoutMs = 8000L,
+            options = emptyMap<Any?, Any?>(),
+            engine = "php",
+            action = "extensions"
+        )
+        if (result["success"] != true) {
+            return emptyList()
+        }
+        val raw = result["stdout"]?.toString().orEmpty()
+        return raw.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .filter { !it.startsWith("[") }
+            .toList()
+    }
+
+    private fun phpGetScriptsDir(): String {
+        val directory = File(filesDir, "php/scripts")
+        directory.mkdirs()
+        return directory.absolutePath
+    }
+
+    private fun phpGetPhpDir(): String {
+        val command = resolvePhpCommand() ?: return File(filesDir, "tools/php").absolutePath
+        if (!command.startsWith("/")) {
+            return command
+        }
+        return try {
+            File(command).parentFile?.absolutePath ?: command
+        } catch (_: Exception) {
+            command
+        }
+    }
+
+    private fun phpExecuteCode(call: MethodCall): Map<String, Any?> {
+        val code = call.argument<String>("code")?.trim().orEmpty()
+        if (code.isEmpty()) {
+            return mapOf(
+                "success" to false,
+                "textOutputOrError" to "Code is empty.",
+                "message" to "executeCode failed",
+                "error" to "empty_code"
+            )
+        }
+        val runtimeOptions = buildPhpRuntimeOptions(call)
+        val command = resolvePhpCommand(runtimeOptions)
+            ?: return mapOf(
+                "success" to false,
+                "textOutputOrError" to "PHP command not found.",
+                "message" to "executeCode failed",
+                "error" to "command_not_found"
+            )
+        val result = runRuntimeCommand(
+            command = command,
+            args = listOf("-r", code),
+            timeoutMs = (call.argument<Int>("timeoutMs") ?: 15000).toLong().coerceIn(500L, 120000L),
+            options = runtimeOptions,
+            engine = "php",
+            action = "executeCode"
+        )
+        return mapOf(
+            "success" to (result["success"] == true),
+            "textOutputOrError" to buildString {
+                append(result["stdout"]?.toString().orEmpty())
+                append(result["stderr"]?.toString().orEmpty())
+            }.trim(),
+            "message" to (result["message"]?.toString() ?: ""),
+            "error" to if (result["success"] == true) "" else (result["stderr"]?.toString() ?: "")
+        )
+    }
+
+    private fun resolvePhpCommand(options: Map<*, *> = emptyMap<Any?, Any?>()): String? {
+        return resolveRuntimeCommand("php", options)
+    }
+
+    private fun buildPhpRuntimeOptions(call: MethodCall?): Map<String, Any> {
+        val options = mutableMapOf<String, Any>()
+        if (call == null) {
+            return options
+        }
+        call.argument<String>("command")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { options["command"] = it }
+        call.argument<List<String>>("commandCandidates")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { options["commandCandidates"] = it }
+        call.argument<String>("workingDirectory")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { options["workingDirectory"] = it }
+        call.argument<Map<*, *>>("environment")
+            ?.let { options["environment"] = it }
+        return options
     }
 
     private fun probeJarFile(call: MethodCall): Map<String, Any?> {
@@ -1876,6 +2240,7 @@ class MainActivity : AudioServiceActivity() {
 
     override fun onDestroy() {
         stopGoProxy()
+        phpStopServer()
         thunderRelease()
         stopService(Intent(this, com.ryanheise.audioservice.AudioService::class.java))
         super.onDestroy()

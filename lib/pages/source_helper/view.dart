@@ -5,6 +5,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:PiliPlus/services/source_runtime/go_proxy_service.dart';
 import 'package:PiliPlus/services/source_runtime/jar_loader_service.dart';
+import 'package:PiliPlus/services/source_runtime/php_bridge_service.dart';
 import 'package:PiliPlus/services/source_runtime/source_engine.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_models.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
@@ -54,6 +55,12 @@ class SourceHelperSettingPage extends StatelessWidget {
             subtitle: '/phpTest',
             route: '/phpTest',
             icon: Icons.php_outlined,
+          ),
+          _HelperRouteTile(
+            title: 'PHP Bridge Test',
+            subtitle: '/phpBridgeTest',
+            route: '/phpBridgeTest',
+            icon: Icons.developer_board_outlined,
           ),
           _HelperRouteTile(
             title: 'Jar Test',
@@ -1031,6 +1038,453 @@ class _JarTestPageState extends State<JarTestPage> {
     if (needToast) {
       SmartDialog.showToast('Jar preset saved');
     }
+  }
+}
+
+class PhpBridgeTestPage extends StatefulWidget {
+  const PhpBridgeTestPage({super.key});
+
+  @override
+  State<PhpBridgeTestPage> createState() => _PhpBridgeTestPageState();
+}
+
+class _PhpBridgeTestPageState extends State<PhpBridgeTestPage> {
+  late final PhpBridgeService _phpBridgeService;
+  late final TextEditingController _commandCtr;
+  late final TextEditingController _candidatesCtr;
+  late final TextEditingController _documentRootCtr;
+  late final TextEditingController _portCtr;
+  late final TextEditingController _instancesCtr;
+  late final TextEditingController _timeoutCtr;
+  late final TextEditingController _codeCtr;
+
+  bool _loading = false;
+  bool _installed = false;
+  bool _running = false;
+  int _serverPort = 0;
+  String _version = '';
+  String _phpDir = '';
+  String _scriptsDir = '';
+  String _defaultDownloadUrl = '';
+  List<String> _extensions = const <String>[];
+
+  PhpServerStatus? _serverStatus;
+  PhpCommandResult? _commandResult;
+  PhpExecutionResult? _executionResult;
+
+  @override
+  void initState() {
+    super.initState();
+    _phpBridgeService = Get.find<PhpBridgeService>();
+    _commandCtr = TextEditingController(text: 'php');
+    _candidatesCtr = TextEditingController(text: 'tools/php/php,php');
+    _documentRootCtr = TextEditingController();
+    _portCtr = TextEditingController(text: '9980');
+    _instancesCtr = TextEditingController(text: '1');
+    _timeoutCtr = TextEditingController(text: '15000');
+    _codeCtr = TextEditingController(text: 'echo "php bridge ok\\n";');
+    _refreshBasics();
+  }
+
+  @override
+  void dispose() {
+    _commandCtr.dispose();
+    _candidatesCtr.dispose();
+    _documentRootCtr.dispose();
+    _portCtr.dispose();
+    _instancesCtr.dispose();
+    _timeoutCtr.dispose();
+    _codeCtr.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('PHP Bridge Test')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Android PHP Bridge'),
+            subtitle: Text('installed=$_installed | running=$_running'),
+          ),
+          TextField(
+            controller: _commandCtr,
+            decoration: const InputDecoration(
+              labelText: 'Command',
+              hintText: '/data/user/0/<pkg>/files/tools/php/php',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _candidatesCtr,
+            decoration: const InputDecoration(
+              labelText: 'Command Candidates (comma separated)',
+              hintText: 'tools/php/php,php',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _portCtr,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Port',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _instancesCtr,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Instances',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _documentRootCtr,
+            decoration: const InputDecoration(
+              labelText: 'Document Root (optional)',
+              hintText: '/sdcard/Download/php-www',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _timeoutCtr,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Execute Timeout (ms)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _codeCtr,
+            minLines: 3,
+            maxLines: 8,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontFamily: 'monospace',
+            ),
+            decoration: const InputDecoration(
+              labelText: 'PHP Code',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.icon(
+                onPressed: _loading ? null : _refreshBasics,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh Basics'),
+              ),
+              FilledButton.icon(
+                onPressed: _loading ? null : _installPhp,
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: const Text('Install PHP'),
+              ),
+              FilledButton.icon(
+                onPressed: _loading ? null : _startServer,
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Start Server'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: _loading ? null : _stopServer,
+                icon: const Icon(Icons.stop),
+                label: const Text('Stop Server'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _fetchExtensions,
+                icon: const Icon(Icons.extension_outlined),
+                label: const Text('Get Extensions'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _executeCode,
+                icon: const Icon(Icons.code_outlined),
+                label: const Text('Execute Code'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Chip(label: Text('installed=$_installed')),
+                      Chip(label: Text('running=$_running')),
+                      Chip(label: Text('port=$_serverPort')),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    'version: ${_version.isEmpty ? '(empty)' : _version}',
+                  ),
+                  const SizedBox(height: 4),
+                  SelectableText(
+                    'phpDir: ${_phpDir.isEmpty ? '(empty)' : _phpDir}',
+                  ),
+                  const SizedBox(height: 4),
+                  SelectableText(
+                    'scriptsDir: ${_scriptsDir.isEmpty ? '(empty)' : _scriptsDir}',
+                  ),
+                  const SizedBox(height: 4),
+                  SelectableText(
+                    'downloadUrl: ${_defaultDownloadUrl.isEmpty ? '(empty)' : _defaultDownloadUrl}',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_extensions.isNotEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Chip(label: Text('extensions=${_extensions.length}')),
+                    const SizedBox(height: 8),
+                    SelectableText(_extensions.join(', ')),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          if (_commandResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _commandResult!.success
+                                ? 'INSTALL OK'
+                                : 'INSTALL FAIL',
+                          ),
+                        ),
+                        if (_commandResult!.preparedFromAsset)
+                          const Chip(label: Text('FROM ASSET')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('command: ${_commandResult!.command}'),
+                    const SizedBox(height: 4),
+                    SelectableText('message: ${_commandResult!.message}'),
+                    if (_commandResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_commandResult!.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          if (_serverStatus != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _serverStatus!.success
+                                ? 'SERVER OK'
+                                : 'SERVER FAIL',
+                          ),
+                        ),
+                        Chip(label: Text('running=${_serverStatus!.running}')),
+                        Chip(label: Text('port=${_serverStatus!.port}')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('ports: ${_serverStatus!.ports.join(', ')}'),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'documentRoot: ${_serverStatus!.documentRoot}',
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText('message: ${_serverStatus!.message}'),
+                    if (_serverStatus!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_serverStatus!.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          if (_executionResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Chip(
+                      label: Text(
+                        _executionResult!.success
+                            ? 'EXECUTE OK'
+                            : 'EXECUTE FAIL',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('message: ${_executionResult!.message}'),
+                    if (_executionResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_executionResult!.error}'),
+                    ],
+                    const Divider(height: 16),
+                    SelectableText(
+                      _executionResult!.textOutputOrError,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _refreshBasics() async {
+    setState(() => _loading = true);
+    final installed = await _phpBridgeService.isInstalled();
+    final running = await _phpBridgeService.isServerRunning();
+    final serverPort = await _phpBridgeService.getServerPort();
+    final version = await _phpBridgeService.getVersion();
+    final phpDir = await _phpBridgeService.getPhpDir();
+    final scriptsDir = await _phpBridgeService.getScriptsDir();
+    final downloadUrl = await _phpBridgeService.getDefaultDownloadUrl();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _installed = installed;
+      _running = running;
+      _serverPort = serverPort;
+      _version = version;
+      _phpDir = phpDir;
+      _scriptsDir = scriptsDir;
+      _defaultDownloadUrl = downloadUrl;
+    });
+  }
+
+  Future<void> _installPhp() async {
+    setState(() => _loading = true);
+    final result = await _phpBridgeService.installPhp(
+      downloadUrl: _defaultDownloadUrl.isEmpty ? null : _defaultDownloadUrl,
+      assetCandidates: _parseCsv(_candidatesCtr.text),
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _commandResult = result;
+    });
+    await _refreshBasics();
+  }
+
+  Future<void> _startServer() async {
+    setState(() => _loading = true);
+    final status = await _phpBridgeService.startServer(
+      port: int.tryParse(_portCtr.text.trim()) ?? 9980,
+      instances: int.tryParse(_instancesCtr.text.trim()) ?? 1,
+      command: _commandCtr.text.trim(),
+      commandCandidates: _parseCsv(_candidatesCtr.text),
+      documentRoot: _documentRootCtr.text.trim().isEmpty
+          ? null
+          : _documentRootCtr.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _serverStatus = status;
+      _running = status.running;
+      _serverPort = status.port;
+    });
+  }
+
+  Future<void> _stopServer() async {
+    setState(() => _loading = true);
+    final status = await _phpBridgeService.stopServer();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _serverStatus = status;
+      _running = status.running;
+      _serverPort = status.port;
+    });
+  }
+
+  Future<void> _fetchExtensions() async {
+    setState(() => _loading = true);
+    final extensions = await _phpBridgeService.getExtensions();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _extensions = extensions;
+    });
+  }
+
+  Future<void> _executeCode() async {
+    setState(() => _loading = true);
+    final result = await _phpBridgeService.executeCode(
+      _codeCtr.text.trim(),
+      timeoutMs: int.tryParse(_timeoutCtr.text.trim()) ?? 15000,
+      command: _commandCtr.text.trim(),
+      commandCandidates: _parseCsv(_candidatesCtr.text),
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _executionResult = result;
+    });
+  }
+
+  List<String> _parseCsv(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return const <String>[];
+    return text
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 }
 
