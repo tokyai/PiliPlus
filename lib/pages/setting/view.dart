@@ -210,7 +210,7 @@ class _SettingPageState extends State<SettingPage> {
           onTap: () => Get.toNamed('/sourceHelperSetting'),
           title: Text('Source Helper', style: titleStyle),
           subtitle: Text(
-            '/pythonTest /catJsTest /nodeJsTest /goProxyTest',
+            '/pythonTest /catJsTest /nodeJsTest /jarTest /goProxyTest',
             style: subTitleStyle,
           ),
         ),

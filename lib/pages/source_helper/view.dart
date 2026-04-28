@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:PiliPlus/services/source_runtime/go_proxy_service.dart';
+import 'package:PiliPlus/services/source_runtime/jar_loader_service.dart';
 import 'package:PiliPlus/services/source_runtime/source_engine.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_models.dart';
 import 'package:PiliPlus/services/source_runtime/source_runtime_service.dart';
@@ -37,6 +38,12 @@ class SourceHelperSettingPage extends StatelessWidget {
             subtitle: '/nodeJsTest',
             route: '/nodeJsTest',
             icon: Icons.terminal_outlined,
+          ),
+          _HelperRouteTile(
+            title: 'Jar Test',
+            subtitle: '/jarTest',
+            route: '/jarTest',
+            icon: Icons.data_array_outlined,
           ),
           _HelperRouteTile(
             title: 'GoProxy Test',
@@ -242,6 +249,233 @@ class _SourceHelperToolPageState extends State<SourceHelperToolPage> {
       _isLoading = false;
       _lastResult = result;
     });
+  }
+}
+
+class JarTestPage extends StatefulWidget {
+  const JarTestPage({super.key});
+
+  @override
+  State<JarTestPage> createState() => _JarTestPageState();
+}
+
+class _JarTestPageState extends State<JarTestPage> {
+  late final JarLoaderService _jarLoaderService;
+  late final TextEditingController _jarPathCtr;
+  late final TextEditingController _entryClassCtr;
+  late final TextEditingController _methodCtr;
+  late final TextEditingController _argsCtr;
+
+  JarProbeResult? _probeResult;
+  JarInvokeResult? _invokeResult;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _jarLoaderService = Get.find<JarLoaderService>();
+    _jarPathCtr = TextEditingController();
+    _entryClassCtr = TextEditingController();
+    _methodCtr = TextEditingController();
+    _argsCtr = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _jarPathCtr.dispose();
+    _entryClassCtr.dispose();
+    _methodCtr.dispose();
+    _argsCtr.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Jar Test')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _jarPathCtr,
+            decoration: const InputDecoration(
+              labelText: 'Jar Path',
+              hintText: '/sdcard/Download/plugin.jar',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _entryClassCtr,
+                  decoration: const InputDecoration(
+                    labelText: 'Entry Class',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _methodCtr,
+                  decoration: const InputDecoration(
+                    labelText: 'Method',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _argsCtr,
+            decoration: const InputDecoration(
+              labelText: 'Args (comma separated)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: _loading ? null : _probe,
+                icon: const Icon(Icons.search),
+                label: const Text('Probe Jar'),
+              ),
+              FilledButton.icon(
+                onPressed: _loading ? null : _invoke,
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Load Jar'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _invokeResult == null
+                    ? null
+                    : () => Utils.copyText(
+                        _invokeResult!.mergedOutput,
+                        toastText: 'Output copied',
+                      ),
+                icon: const Icon(Icons.copy_all_outlined),
+                label: const Text('Copy Output'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_probeResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _probeResult!.success ? 'PROBE OK' : 'PROBE FAIL',
+                          ),
+                        ),
+                        Chip(label: Text('exists=${_probeResult!.exists}')),
+                        Chip(label: Text('readable=${_probeResult!.readable}')),
+                        Chip(label: Text('size=${_probeResult!.size}')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('path: ${_probeResult!.path}'),
+                    const SizedBox(height: 4),
+                    SelectableText('message: ${_probeResult!.message}'),
+                    if (_probeResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_probeResult!.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          if (_invokeResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _invokeResult!.success ? 'LOAD OK' : 'LOAD FAIL',
+                          ),
+                        ),
+                        Chip(label: Text('exit=${_invokeResult!.exitCode}')),
+                        if (_invokeResult!.isStub)
+                          const Chip(label: Text('STUB')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(_invokeResult!.message),
+                    if (_invokeResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_invokeResult!.error}'),
+                    ],
+                    const Divider(height: 16),
+                    SelectableText(
+                      _invokeResult!.mergedOutput,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _probe() async {
+    setState(() => _loading = true);
+    final result = await _jarLoaderService.probeJarFile(
+      _jarPathCtr.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _probeResult = result;
+    });
+  }
+
+  Future<void> _invoke() async {
+    setState(() => _loading = true);
+    final result = await _jarLoaderService.loadJar(
+      jarPath: _jarPathCtr.text.trim(),
+      entryClass: _entryClassCtr.text.trim(),
+      methodName: _methodCtr.text.trim(),
+      args: _parseCsv(_argsCtr.text),
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _invokeResult = result;
+    });
+  }
+
+  List<String> _parseCsv(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return const <String>[];
+    return text
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 }
 

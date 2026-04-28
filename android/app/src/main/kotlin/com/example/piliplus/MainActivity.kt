@@ -224,6 +224,12 @@ class MainActivity : AudioServiceActivity() {
                 "prepareGoProxyBinary" -> {
                     result.success(prepareGoProxyBinary(call))
                 }
+                "probeJarFile" -> {
+                    result.success(probeJarFile(call))
+                }
+                "loadJar" -> {
+                    result.success(loadJar(call))
+                }
 
                 else -> result.notImplemented()
             }
@@ -473,6 +479,98 @@ class MainActivity : AudioServiceActivity() {
             }
         }
         return null
+    }
+
+    private fun probeJarFile(call: MethodCall): Map<String, Any?> {
+        val jarPath = call.argument<String>("jarPath")?.trim().orEmpty()
+        if (jarPath.isEmpty()) {
+            return mapOf(
+                "success" to false,
+                "exists" to false,
+                "readable" to false,
+                "size" to 0,
+                "path" to "",
+                "message" to "Jar path is empty.",
+                "error" to "empty_jar_path"
+            )
+        }
+        return probeJarFileInternal(jarPath)
+    }
+
+    private fun probeJarFileInternal(jarPath: String): Map<String, Any?> {
+        return try {
+            val file = File(jarPath)
+            val exists = file.exists()
+            val readable = exists && file.canRead()
+            val size = if (exists) file.length() else 0L
+            val success = exists && readable && size > 0
+            mapOf(
+                "success" to success,
+                "exists" to exists,
+                "readable" to readable,
+                "size" to size,
+                "path" to file.absolutePath,
+                "message" to if (success) "Jar file is available." else "Jar file check failed.",
+                "error" to if (success) "" else "jar_unavailable"
+            )
+        } catch (e: Exception) {
+            mapOf(
+                "success" to false,
+                "exists" to false,
+                "readable" to false,
+                "size" to 0,
+                "path" to jarPath,
+                "message" to "Jar file check failed.",
+                "error" to (e.message ?: e.toString())
+            )
+        }
+    }
+
+    private fun loadJar(call: MethodCall): Map<String, Any?> {
+        val jarPath = call.argument<String>("jarPath")?.trim().orEmpty()
+        val entryClass = call.argument<String>("entryClass")?.trim().orEmpty()
+        val methodName = call.argument<String>("methodName")?.trim().orEmpty()
+        val args = call.argument<List<String>>("args") ?: emptyList()
+        if (jarPath.isEmpty()) {
+            return mapOf(
+                "success" to false,
+                "stdout" to "",
+                "stderr" to "",
+                "exitCode" to -1,
+                "message" to "Jar path is empty.",
+                "error" to "empty_jar_path",
+                "isStub" to true
+            )
+        }
+        val probe = probeJarFileInternal(jarPath)
+        val probeSuccess = probe["success"] == true
+        if (!probeSuccess) {
+            return mapOf(
+                "success" to false,
+                "stdout" to "",
+                "stderr" to "",
+                "exitCode" to -1,
+                "message" to "Jar file check failed.",
+                "error" to (probe["error"]?.toString() ?: "jar_unavailable"),
+                "isStub" to true
+            )
+        }
+
+        val stdout = buildString {
+            appendLine("jarPath=$jarPath")
+            appendLine("entryClass=$entryClass")
+            appendLine("methodName=$methodName")
+            appendLine("args=${args.joinToString(",")}")
+        }.trim()
+        return mapOf(
+            "success" to true,
+            "stdout" to stdout,
+            "stderr" to "",
+            "exitCode" to 0,
+            "message" to "Jar loader bridge placeholder. File validated, execution not wired yet.",
+            "error" to "",
+            "isStub" to true
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

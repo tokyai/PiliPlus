@@ -50,6 +50,7 @@
 - 进行中：Android `MainActivity` 已预留 `sourceRuntimeProbe` / `sourceRuntimeExecute` 通道占位返回，便于后续接入真实 Jar/GoProxy/Thunder 逻辑。
 - 进行中：已落地 GoProxy 首条桥接链路（`startGoProxy` / `stopGoProxy` / `isGoProxyRunning` / `getProxyUrl`）以及 `/goProxyTest` 联调页。
 - 进行中：已新增 GoProxy 自动命令探测与资源下发（`detectGoProxyCommand` / `prepareGoProxyBinary`），`/goProxyTest` 可一键 Detect/Prepare。
+- 进行中：已新增 Jar 桥接骨架（`probeJarFile` / `loadJar`）与 `/jarTest` 联调页，当前为“文件校验 + 执行占位”模式。
 - 未完成：配置驱动首页/底栏映射、真实业务脚本执行链路。
 
 ### Phase 3（P1）Android 平台能力迁移
