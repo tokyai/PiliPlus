@@ -333,6 +333,9 @@ class MainActivity : AudioServiceActivity() {
                 "thunderRelease" -> {
                     result.success(thunderRelease())
                 }
+                "getThunderRuntimeState" -> {
+                    result.success(getThunderRuntimeState())
+                }
 
                 else -> result.notImplemented()
             }
@@ -2551,6 +2554,34 @@ class MainActivity : AudioServiceActivity() {
             "success" to true,
             "activeTaskCount" to 0,
             "message" to "Thunder bridge released. Cleared $clearedCount tasks.",
+            "error" to ""
+        )
+    }
+
+    private fun getThunderRuntimeState(): Map<String, Any?> {
+        val now = System.currentTimeMillis()
+        val tasks = synchronized(thunderRuntimeLock) {
+            thunderActiveTasks.values
+                .sortedBy { it.createdAt }
+                .map { task ->
+                    mapOf(
+                        "taskId" to task.taskId,
+                        "protocol" to task.protocol,
+                        "originalUrl" to task.originalUrl,
+                        "playUrl" to task.playUrl,
+                        "infoHash" to task.infoHash,
+                        "index" to task.index,
+                        "createdAtMs" to task.createdAt,
+                        "ageMs" to (now - task.createdAt).coerceAtLeast(0L)
+                    )
+                }
+        }
+        return mapOf(
+            "success" to true,
+            "activeTaskCount" to tasks.size,
+            "taskSequence" to thunderTaskSequence,
+            "tasks" to tasks,
+            "message" to "Thunder runtime state snapshot loaded.",
             "error" to ""
         )
     }

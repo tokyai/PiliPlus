@@ -1943,6 +1943,7 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
   ThunderParseResult? _parseResult;
   ThunderPlayUrlResult? _playResult;
   ThunderStatusResult? _statusResult;
+  ThunderRuntimeStateResult? _runtimeStateResult;
 
   @override
   void initState() {
@@ -2022,6 +2023,11 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
                 icon: const Icon(Icons.power_settings_new_outlined),
                 label: const Text('Release'),
               ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _getRuntimeState,
+                icon: const Icon(Icons.storage_outlined),
+                label: const Text('Runtime State'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -2030,6 +2036,9 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
           if (_playResult != null) _buildPlayCard(context, _playResult!),
           const SizedBox(height: 8),
           if (_statusResult != null) _buildStatusCard(context, _statusResult!),
+          const SizedBox(height: 8),
+          if (_runtimeStateResult != null)
+            _buildRuntimeStateCard(context, _runtimeStateResult!),
         ],
       ),
     );
@@ -2131,6 +2140,53 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
     );
   }
 
+  Widget _buildRuntimeStateCard(
+    BuildContext context,
+    ThunderRuntimeStateResult result,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(
+                  label: Text(result.success ? 'RUNTIME OK' : 'RUNTIME FAIL'),
+                ),
+                Chip(label: Text('active=${result.activeTaskCount}')),
+                Chip(label: Text('seq=${result.taskSequence}')),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SelectableText('message: ${result.message}'),
+            if (result.error.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              SelectableText('error: ${result.error}'),
+            ],
+            if (result.tasks.isNotEmpty) ...[
+              const Divider(height: 16),
+              SelectableText(
+                result.tasks
+                    .map(
+                      (item) =>
+                          '${item.taskId} [${item.protocol}] age=${item.ageMs}ms play=${item.playUrl}',
+                    )
+                    .join('\n'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _checkSupported() async {
     setState(() => _loading = true);
     final supported = await _thunderService.isSupported();
@@ -2178,6 +2234,16 @@ class _ThunderTestPageState extends State<ThunderTestPage> {
     setState(() {
       _loading = false;
       _statusResult = result;
+    });
+  }
+
+  Future<void> _getRuntimeState() async {
+    setState(() => _loading = true);
+    final result = await _thunderService.getRuntimeState();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _runtimeStateResult = result;
     });
   }
 }

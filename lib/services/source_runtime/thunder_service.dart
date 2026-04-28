@@ -141,6 +141,127 @@ class ThunderStatusResult {
   }
 }
 
+class ThunderTaskSnapshot {
+  const ThunderTaskSnapshot({
+    required this.taskId,
+    required this.protocol,
+    required this.originalUrl,
+    required this.playUrl,
+    required this.infoHash,
+    required this.index,
+    required this.createdAtMs,
+    required this.ageMs,
+  });
+
+  final String taskId;
+  final String protocol;
+  final String originalUrl;
+  final String playUrl;
+  final String infoHash;
+  final int index;
+  final int createdAtMs;
+  final int ageMs;
+
+  static ThunderTaskSnapshot fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const ThunderTaskSnapshot(
+        taskId: '',
+        protocol: '',
+        originalUrl: '',
+        playUrl: '',
+        infoHash: '',
+        index: 0,
+        createdAtMs: 0,
+        ageMs: 0,
+      );
+    }
+    int parseInt(Object? value) => switch (value) {
+      int item => item,
+      num item => item.toInt(),
+      String item => int.tryParse(item) ?? 0,
+      _ => 0,
+    };
+    return ThunderTaskSnapshot(
+      taskId: (map['taskId'] ?? '').toString(),
+      protocol: (map['protocol'] ?? '').toString(),
+      originalUrl: (map['originalUrl'] ?? '').toString(),
+      playUrl: (map['playUrl'] ?? '').toString(),
+      infoHash: (map['infoHash'] ?? '').toString(),
+      index: parseInt(map['index']),
+      createdAtMs: parseInt(map['createdAtMs']),
+      ageMs: parseInt(map['ageMs']),
+    );
+  }
+}
+
+class ThunderRuntimeStateResult {
+  const ThunderRuntimeStateResult({
+    required this.success,
+    required this.activeTaskCount,
+    required this.taskSequence,
+    required this.tasks,
+    required this.message,
+    required this.error,
+  });
+
+  final bool success;
+  final int activeTaskCount;
+  final int taskSequence;
+  final List<ThunderTaskSnapshot> tasks;
+  final String message;
+  final String error;
+
+  static ThunderRuntimeStateResult fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const ThunderRuntimeStateResult(
+        success: false,
+        activeTaskCount: 0,
+        taskSequence: 0,
+        tasks: <ThunderTaskSnapshot>[],
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+    int parseInt(Object? value) => switch (value) {
+      int item => item,
+      num item => item.toInt(),
+      String item => int.tryParse(item) ?? 0,
+      _ => 0,
+    };
+    final rawTasks = map['tasks'];
+    final tasks = rawTasks is List
+        ? rawTasks.map((item) {
+            if (item is Map<Object?, Object?>) {
+              return ThunderTaskSnapshot.fromMap(item);
+            }
+            if (item is Map) {
+              return ThunderTaskSnapshot.fromMap(
+                item.map(MapEntry.new),
+              );
+            }
+            return const ThunderTaskSnapshot(
+              taskId: '',
+              protocol: '',
+              originalUrl: '',
+              playUrl: '',
+              infoHash: '',
+              index: 0,
+              createdAtMs: 0,
+              ageMs: 0,
+            );
+          }).toList()
+        : const <ThunderTaskSnapshot>[];
+    return ThunderRuntimeStateResult(
+      success: map['success'] == true,
+      activeTaskCount: parseInt(map['activeTaskCount']),
+      taskSequence: parseInt(map['taskSequence']),
+      tasks: tasks,
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+    );
+  }
+}
+
 class ThunderService {
   ThunderService({
     MethodChannel? channel,
@@ -148,6 +269,7 @@ class ThunderService {
 
   final MethodChannel _channel;
   final Map<String, String> _fallbackTasks = <String, String>{};
+  final Map<String, int> _fallbackTaskCreatedAt = <String, int>{};
   int _fallbackTaskCounter = 0;
 
   Future<bool> isSupported() async {
@@ -264,6 +386,7 @@ class ThunderService {
         );
       }
       final removed = _fallbackTasks.remove(normalized);
+      _fallbackTaskCreatedAt.remove(normalized);
       return ThunderStatusResult(
         success: removed != null,
         taskId: normalized,
@@ -303,6 +426,7 @@ class ThunderService {
     if (!Platform.isAndroid) {
       final cleared = _fallbackTasks.length;
       _fallbackTasks.clear();
+      _fallbackTaskCreatedAt.clear();
       return ThunderStatusResult(
         success: true,
         taskId: '',
@@ -335,10 +459,65 @@ class ThunderService {
     }
   }
 
+  Future<ThunderRuntimeStateResult> getRuntimeState() async {
+    if (!Platform.isAndroid) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final tasks = _fallbackTasks.entries.map((entry) {
+        final parsed = _parseThunderLikeUrl(entry.value);
+        final createdAtMs = _fallbackTaskCreatedAt[entry.key] ?? 0;
+        return ThunderTaskSnapshot(
+          taskId: entry.key,
+          protocol: parsed?.protocol ?? '',
+          originalUrl: parsed?.originalUrl ?? '',
+          playUrl: entry.value,
+          infoHash: parsed?.infoHash ?? '',
+          index: 0,
+          createdAtMs: createdAtMs,
+          ageMs: createdAtMs > 0
+              ? (now - createdAtMs).clamp(0, 1 << 31).toInt()
+              : 0,
+        );
+      }).toList();
+      return ThunderRuntimeStateResult(
+        success: true,
+        activeTaskCount: _fallbackTasks.length,
+        taskSequence: _fallbackTaskCounter,
+        tasks: tasks,
+        message: 'Thunder fallback runtime state snapshot loaded.',
+        error: '',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'getThunderRuntimeState',
+      );
+      return ThunderRuntimeStateResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return ThunderRuntimeStateResult(
+        success: false,
+        activeTaskCount: 0,
+        taskSequence: 0,
+        tasks: const <ThunderTaskSnapshot>[],
+        message: 'getThunderRuntimeState platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return ThunderRuntimeStateResult(
+        success: false,
+        activeTaskCount: 0,
+        taskSequence: 0,
+        tasks: const <ThunderTaskSnapshot>[],
+        message: 'getThunderRuntimeState not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
   String _createFallbackTask(String playUrl) {
     _fallbackTaskCounter += 1;
     final taskId = 'fallback_$_fallbackTaskCounter';
     _fallbackTasks[taskId] = playUrl;
+    _fallbackTaskCreatedAt[taskId] = DateTime.now().millisecondsSinceEpoch;
     return taskId;
   }
 

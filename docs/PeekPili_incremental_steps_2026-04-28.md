@@ -308,6 +308,16 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 37
+- Added Thunder runtime-state snapshot bridge and diagnostics:
+  - Android bridge adds `getThunderRuntimeState` with active tasks snapshot (`taskId/protocol/url/infoHash/index/ageMs`),
+  - Flutter `ThunderService` adds typed `ThunderRuntimeStateResult`,
+  - `/thunderTest` adds `Runtime State` action and snapshot card display.
+- This improves runtime verification visibility for thunder task lifecycle closure during reverse migration.
+- Verified by checks:
+  - `flutter analyze lib/services/source_runtime/thunder_service.dart lib/pages/source_helper/view.dart` passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -340,3 +350,4 @@ This document records the practical migration increments after the initial rever
 - Jar runtime snapshot diagnostics are now available in bridge and `/jarTest` for loaded/crashed/context state checks.
 - PHP install diagnostics now expose download/extract/archive details in typed bridge model and test UI.
 - Jar crash markers now auto-synchronize with business invoke success/failure and reload lifecycle.
+- Thunder runtime snapshot diagnostics are now available in bridge and `/thunderTest` for active-task state checks.
