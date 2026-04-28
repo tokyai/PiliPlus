@@ -677,6 +677,15 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/windows_runtime_smoke.ps1 -LaunchWaitSeconds 3` passed.
   - report generated: `build\\runtime-smoke\\windows_runtime_smoke_*.json`.
 
+## Step 77
+- Integrated runtime smoke automation into unified build script:
+  - new flags: `-RunRuntimeSmoke` and `-RuntimeSmokeWaitSeconds`,
+  - when enabled, build flow auto-invokes target smoke scripts (`android_runtime_smoke.ps1` / `windows_runtime_smoke.ps1`) after successful build.
+- Verified by checks:
+  - PowerShell script syntax parse passed.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -SkipPubGet -RunRuntimeSmoke -RuntimeSmokeWaitSeconds 2` passed.
+  - runtime smoke report generated via integrated flow: `build\\runtime-smoke\\windows_runtime_smoke_*.json`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -748,3 +757,4 @@ This document records the practical migration increments after the initial rever
 - Artifact manifests now include checksum/size metadata for integrity verification.
 - Android runtime closure now has an executable smoke script entrypoint ready for device-connected validation.
 - Windows runtime closure now has an executable smoke script entrypoint ready for packaged-app launch validation.
+- Unified build flow can now directly execute post-build runtime smoke for supported targets.

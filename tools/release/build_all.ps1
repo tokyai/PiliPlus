@@ -8,7 +8,9 @@ param(
     [switch]$InstallAndroidApk,
     [switch]$LaunchAndroidAfterInstall,
     [string]$AndroidApplicationId = "com.example.piliplus",
-    [string]$ArtifactManifestPath = ""
+    [string]$ArtifactManifestPath = "",
+    [switch]$RunRuntimeSmoke,
+    [int]$RuntimeSmokeWaitSeconds = 8
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,6 +61,8 @@ function Build-Android {
         [switch]$NeedAab,
         [switch]$NeedInstall,
         [switch]$NeedLaunch,
+        [switch]$NeedRuntimeSmoke,
+        [int]$RuntimeWaitSeconds,
         [string]$RepositoryRoot,
         [string]$ApplicationId
     )
@@ -89,6 +93,13 @@ function Build-Android {
             }
         }
     }
+    if ($NeedRuntimeSmoke) {
+        Invoke-RuntimeSmokeScript -RepositoryRoot $RepositoryRoot -ScriptPath "tools/release/android_runtime_smoke.ps1" -Arguments @(
+            "-ApkPath", $apkPath,
+            "-ApplicationId", $ApplicationId,
+            "-LaunchWaitSeconds", "$RuntimeWaitSeconds"
+        )
+    }
 }
 
 function Build-Ios {
@@ -116,7 +127,10 @@ function Build-Ios {
 function Build-Windows {
     param(
         [string[]]$FlutterCommand,
-        [string]$BuildMode
+        [string]$BuildMode,
+        [switch]$NeedRuntimeSmoke,
+        [int]$RuntimeWaitSeconds,
+        [string]$RepositoryRoot
     )
     if (-not $isWindowsHost) {
         Write-Step "Skip Windows build: host is not Windows."
@@ -124,14 +138,15 @@ function Build-Windows {
     }
     Write-Step "Building Windows..."
     Invoke-CommandChecked -Command ($FlutterCommand + @("build", "windows", "--$BuildMode"))
-    $windowsDirName = switch ($BuildMode) {
-        "debug" { "Debug" }
-        "profile" { "Profile" }
-        default { "Release" }
-    }
-    $windowsExePath = Join-Path $root ("build\windows\x64\runner\" + $windowsDirName + "\piliplus.exe")
+    $windowsExePath = Get-WindowsExePath -RepositoryRoot $RepositoryRoot -BuildMode $BuildMode
     if (Test-Path $windowsExePath) {
         $script:BuildArtifacts.Add($windowsExePath)
+    }
+    if ($NeedRuntimeSmoke) {
+        Invoke-RuntimeSmokeScript -RepositoryRoot $RepositoryRoot -ScriptPath "tools/release/windows_runtime_smoke.ps1" -Arguments @(
+            "-ExePath", $windowsExePath,
+            "-LaunchWaitSeconds", "$RuntimeWaitSeconds"
+        )
     }
 }
 
@@ -212,6 +227,19 @@ function Get-AndroidApkPath {
     return Join-Path $RepositoryRoot ("build\app\outputs\flutter-apk\" + $apkName)
 }
 
+function Get-WindowsExePath {
+    param(
+        [string]$RepositoryRoot,
+        [string]$BuildMode
+    )
+    $windowsDirName = switch ($BuildMode) {
+        "debug" { "Debug" }
+        "profile" { "Profile" }
+        default { "Release" }
+    }
+    return Join-Path $RepositoryRoot ("build\windows\x64\runner\" + $windowsDirName + "\piliplus.exe")
+}
+
 function Install-AndroidApk {
     param(
         [string]$RepositoryRoot,
@@ -271,6 +299,24 @@ function Start-AndroidApp {
     }
 }
 
+function Invoke-RuntimeSmokeScript {
+    param(
+        [string]$RepositoryRoot,
+        [string]$ScriptPath,
+        [string[]]$Arguments
+    )
+    $resolvedScriptPath = if ([System.IO.Path]::IsPathRooted($ScriptPath)) {
+        $ScriptPath
+    } else {
+        Join-Path $RepositoryRoot $ScriptPath
+    }
+    if (-not (Test-Path $resolvedScriptPath)) {
+        throw ("Runtime smoke script not found: " + $resolvedScriptPath)
+    }
+    $command = @("powershell", "-ExecutionPolicy", "Bypass", "-File", $resolvedScriptPath) + $Arguments
+    Invoke-CommandChecked -Command $command
+}
+
 function Get-ArtifactMetadata {
     param(
         [string]$ArtifactPath
@@ -313,13 +359,13 @@ if (-not $SkipPubGet) {
 foreach ($target in $normalizedTargets) {
     switch ($target) {
         "android" {
-            Build-Android -FlutterCommand $flutterCommand -BuildMode $Mode -NeedAab:$BuildAab -NeedInstall:$InstallAndroidApk -NeedLaunch:$LaunchAndroidAfterInstall -RepositoryRoot $root -ApplicationId $AndroidApplicationId
+            Build-Android -FlutterCommand $flutterCommand -BuildMode $Mode -NeedAab:$BuildAab -NeedInstall:$InstallAndroidApk -NeedLaunch:$LaunchAndroidAfterInstall -NeedRuntimeSmoke:$RunRuntimeSmoke -RuntimeWaitSeconds $RuntimeSmokeWaitSeconds -RepositoryRoot $root -ApplicationId $AndroidApplicationId
         }
         "ios" {
             Build-Ios -FlutterCommand $flutterCommand -BuildMode $Mode -DisableCodesign:$NoCodesign
         }
         "windows" {
-            Build-Windows -FlutterCommand $flutterCommand -BuildMode $Mode
+            Build-Windows -FlutterCommand $flutterCommand -BuildMode $Mode -NeedRuntimeSmoke:$RunRuntimeSmoke -RuntimeWaitSeconds $RuntimeSmokeWaitSeconds -RepositoryRoot $root
         }
         default {
             throw "Unhandled target: $target"

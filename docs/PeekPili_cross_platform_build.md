@@ -62,6 +62,12 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -SkipPubGet
 powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -ArtifactManifestPath build/artifacts/windows-debug-manifest.json
 ```
 
+### Build and run runtime smoke in one command
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke -RuntimeSmokeWaitSeconds 2
+```
+
 ## Notes
 
 - On non-macOS hosts, iOS build is skipped with a clear message.
@@ -73,6 +79,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - Default launch package is `com.example.piliplus`; override by `-AndroidApplicationId`.
 - Set `-ArtifactManifestPath` to export build metadata and artifact file paths in JSON.
 - Manifest `schemaVersion=2` includes both `artifacts` and `artifactDetails` (`path/sizeBytes/sha256`).
+- `-RunRuntimeSmoke` hooks target-specific smoke scripts (`android_runtime_smoke.ps1` / `windows_runtime_smoke.ps1`) into build flow.
 
 ## Runtime Smoke
 

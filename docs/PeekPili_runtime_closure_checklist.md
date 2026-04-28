@@ -50,6 +50,12 @@ Suggested automation entry:
 powershell -ExecutionPolicy Bypass -File tools/release/windows_runtime_smoke.ps1 -ExePath build/windows/x64/runner/Debug/piliplus.exe
 ```
 
+Unified flow alternative:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets windows -Mode debug -RunRuntimeSmoke
+```
+
 - Confirm thunder markers are UI-only and not backed by hidden local runtime bridge.
 - Confirm current migration behavior is consistent with packaged app expectations.
 
