@@ -73,3 +73,15 @@ powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets wi
 - Default launch package is `com.example.piliplus`; override by `-AndroidApplicationId`.
 - Set `-ArtifactManifestPath` to export build metadata and artifact file paths in JSON.
 - Manifest `schemaVersion=2` includes both `artifacts` and `artifactDetails` (`path/sizeBytes/sha256`).
+
+## Runtime Smoke
+
+Android runtime smoke helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/android_runtime_smoke.ps1 -ApkPath build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Behavior:
+- If no online device is connected, script prints skip and exits successfully.
+- If device exists, script performs install + launch + logcat capture.

@@ -4,6 +4,12 @@ This checklist defines the remaining validation work to close migration-grade re
 
 ## 1) Android Runtime Equivalence
 
+Suggested automation entry:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release/android_runtime_smoke.ps1 -ApkPath build/app/outputs/flutter-apk/app-debug.apk
+```
+
 ### GoProxy
 - Verify staged stop strategy under real workloads:
   - start proxy with real source config

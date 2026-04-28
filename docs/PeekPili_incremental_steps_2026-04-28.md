@@ -653,6 +653,18 @@ This document records the practical migration increments after the initial rever
   - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets android -Mode debug -SkipPubGet -ArtifactManifestPath build/artifacts/android-debug-manifest.json` passed.
   - manifest generated: `build\\artifacts\\android-debug-manifest.json` with `artifactDetails.sha256`.
 
+## Step 75
+- Added Android runtime smoke automation script:
+  - new script: `tools/release/android_runtime_smoke.ps1`,
+  - supports APK install, app launch, and per-device `logcat` capture when devices are online,
+  - no-device condition is explicit skip with success exit for CI-friendly preflight.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/android_runtime_smoke.ps1 -LaunchWaitSeconds 2` passed (skip due no online Android devices).
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -722,3 +734,4 @@ This document records the practical migration increments after the initial rever
 - Unified build flow now also supports optional Android app auto-launch after install.
 - Unified build flow now can emit machine-readable artifact manifests for release tracking/CI integration.
 - Artifact manifests now include checksum/size metadata for integrity verification.
+- Android runtime closure now has an executable smoke script entrypoint ready for device-connected validation.
