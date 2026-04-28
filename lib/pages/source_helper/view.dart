@@ -299,6 +299,7 @@ class _JarTestPageState extends State<JarTestPage> {
   late final JarLoaderService _jarLoaderService;
   late final TextEditingController _jarPathCtr;
   late final TextEditingController _entryClassCtr;
+  late final TextEditingController _spiderKeyCtr;
   late final TextEditingController _mainClassCtr;
   late final TextEditingController _methodCtr;
   late final TextEditingController _argsCtr;
@@ -306,6 +307,9 @@ class _JarTestPageState extends State<JarTestPage> {
 
   JarProbeResult? _probeResult;
   JarInvokeResult? _invokeResult;
+  JarLifecycleActionResult? _lifecycleResult;
+  JarSpiderCrashStateResult? _crashStateResult;
+  JarSpiderCrashCountResult? _crashCountResult;
   bool _loading = false;
 
   @override
@@ -314,6 +318,7 @@ class _JarTestPageState extends State<JarTestPage> {
     _jarLoaderService = Get.find<JarLoaderService>();
     _jarPathCtr = TextEditingController(text: Pref.jarTestPath);
     _entryClassCtr = TextEditingController(text: Pref.jarTestEntryClass);
+    _spiderKeyCtr = TextEditingController(text: Pref.jarTestEntryClass);
     _mainClassCtr = TextEditingController();
     _methodCtr = TextEditingController(text: Pref.jarTestMethod);
     _argsCtr = TextEditingController(text: Pref.jarTestArgs);
@@ -323,6 +328,7 @@ class _JarTestPageState extends State<JarTestPage> {
   void dispose() {
     _jarPathCtr.dispose();
     _entryClassCtr.dispose();
+    _spiderKeyCtr.dispose();
     _mainClassCtr.dispose();
     _methodCtr.dispose();
     _argsCtr.dispose();
@@ -395,6 +401,15 @@ class _JarTestPageState extends State<JarTestPage> {
             ),
           ),
           const SizedBox(height: 12),
+          TextField(
+            controller: _spiderKeyCtr,
+            decoration: const InputDecoration(
+              labelText: 'Spider Key (lifecycle)',
+              hintText: 'default uses Entry Class if empty',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -423,6 +438,43 @@ class _JarTestPageState extends State<JarTestPage> {
                       ),
                 icon: const Icon(Icons.copy_all_outlined),
                 label: const Text('Copy Output'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: _loading ? null : _markSpiderCrashed,
+                icon: const Icon(Icons.warning_amber_outlined),
+                label: const Text('Mark Crashed'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: _loading ? null : _isSpiderCrashed,
+                icon: const Icon(Icons.help_outline),
+                label: const Text('Is Crashed'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _destroySpider,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Destroy Spider'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _getCrashedSpiderCount,
+                icon: const Icon(Icons.numbers_outlined),
+                label: const Text('Crashed Count'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _clearCrashedSpiders,
+                icon: const Icon(Icons.cleaning_services_outlined),
+                label: const Text('Clear Crashed'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _clearAllSpiders,
+                icon: const Icon(Icons.layers_clear_outlined),
+                label: const Text('Clear All'),
               ),
             ],
           ),
@@ -499,6 +551,97 @@ class _JarTestPageState extends State<JarTestPage> {
                 ),
               ),
             ),
+          const SizedBox(height: 8),
+          if (_lifecycleResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Chip(
+                      label: Text(
+                        _lifecycleResult!.success
+                            ? 'LIFECYCLE OK'
+                            : 'LIFECYCLE FAIL',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('message: ${_lifecycleResult!.message}'),
+                    if (_lifecycleResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_lifecycleResult!.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          if (_crashStateResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _crashStateResult!.success
+                                ? 'CRASH STATE OK'
+                                : 'CRASH STATE FAIL',
+                          ),
+                        ),
+                        Chip(
+                          label: Text('crashed=${_crashStateResult!.crashed}'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('message: ${_crashStateResult!.message}'),
+                    if (_crashStateResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_crashStateResult!.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          if (_crashCountResult != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            _crashCountResult!.success
+                                ? 'COUNT OK'
+                                : 'COUNT FAIL',
+                          ),
+                        ),
+                        Chip(label: Text('count=${_crashCountResult!.count}')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText('message: ${_crashCountResult!.message}'),
+                    if (_crashCountResult!.error.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SelectableText('error: ${_crashCountResult!.error}'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -535,6 +678,81 @@ class _JarTestPageState extends State<JarTestPage> {
     });
   }
 
+  Future<void> _destroySpider() async {
+    final args = _resolveLifecycleArgs();
+    if (args == null) return;
+    setState(() => _loading = true);
+    final result = await _jarLoaderService.destroySpider(
+      key: args['key']!,
+      jarPath: args['jarPath']!,
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _lifecycleResult = result;
+    });
+  }
+
+  Future<void> _markSpiderCrashed() async {
+    final args = _resolveLifecycleArgs();
+    if (args == null) return;
+    setState(() => _loading = true);
+    final result = await _jarLoaderService.markSpiderCrashed(
+      key: args['key']!,
+      jarPath: args['jarPath']!,
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _lifecycleResult = result;
+    });
+  }
+
+  Future<void> _isSpiderCrashed() async {
+    final args = _resolveLifecycleArgs();
+    if (args == null) return;
+    setState(() => _loading = true);
+    final result = await _jarLoaderService.isSpiderCrashed(
+      key: args['key']!,
+      jarPath: args['jarPath']!,
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _crashStateResult = result;
+    });
+  }
+
+  Future<void> _getCrashedSpiderCount() async {
+    setState(() => _loading = true);
+    final result = await _jarLoaderService.getCrashedSpiderCount();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _crashCountResult = result;
+    });
+  }
+
+  Future<void> _clearCrashedSpiders() async {
+    setState(() => _loading = true);
+    final result = await _jarLoaderService.clearCrashedSpiders();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _lifecycleResult = result;
+    });
+  }
+
+  Future<void> _clearAllSpiders() async {
+    setState(() => _loading = true);
+    final result = await _jarLoaderService.clearAll();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _lifecycleResult = result;
+    });
+  }
+
   List<String> _parseCsv(String raw) {
     final text = raw.trim();
     if (text.isEmpty) return const <String>[];
@@ -543,6 +761,21 @@ class _JarTestPageState extends State<JarTestPage> {
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
         .toList();
+  }
+
+  Map<String, String>? _resolveLifecycleArgs() {
+    final jarPath = _jarPathCtr.text.trim();
+    final key = _spiderKeyCtr.text.trim().isNotEmpty
+        ? _spiderKeyCtr.text.trim()
+        : _entryClassCtr.text.trim();
+    if (jarPath.isEmpty || key.isEmpty) {
+      SmartDialog.showToast('Jar Path and Spider Key are required');
+      return null;
+    }
+    return <String, String>{
+      'jarPath': jarPath,
+      'key': key,
+    };
   }
 
   void _saveJarPreset({bool needToast = true}) {

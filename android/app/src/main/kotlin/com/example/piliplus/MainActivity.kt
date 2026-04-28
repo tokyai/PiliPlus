@@ -36,6 +36,9 @@ class MainActivity : AudioServiceActivity() {
     private var goProxyProcess: Process? = null
     private var goProxyUrl: String = "http://127.0.0.1:9978"
     private var goProxyLastError: String = ""
+    private val jarRuntimeLock = Any()
+    private val loadedJarSpiders = linkedMapOf<String, JarSpiderRuntime>()
+    private val crashedJarSpiders = linkedSetOf<String>()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -210,6 +213,24 @@ class MainActivity : AudioServiceActivity() {
                 }
                 "loadJar" -> {
                     result.success(loadJar(call))
+                }
+                "destroySpider" -> {
+                    result.success(destroySpider(call))
+                }
+                "markSpiderCrashed" -> {
+                    result.success(markSpiderCrashed(call))
+                }
+                "isSpiderCrashed" -> {
+                    result.success(isSpiderCrashed(call))
+                }
+                "getCrashedSpiderCount" -> {
+                    result.success(getCrashedSpiderCount())
+                }
+                "clearCrashedSpiders" -> {
+                    result.success(clearCrashedSpiders())
+                }
+                "clearAll" -> {
+                    result.success(clearAllJarSpiders())
                 }
                 "thunderIsSupported" -> {
                     result.success(
@@ -894,6 +915,15 @@ class MainActivity : AudioServiceActivity() {
             args = args,
             staticOnly = (options["staticOnly"] as? Boolean) == true
         )
+        if (invoke.success) {
+            val explicitKey = call.argument<String>("key")?.trim().orEmpty()
+            registerLoadedJarSpider(
+                jarPath = resolvedJarFile.absolutePath,
+                entryClass = resolvedEntryClass,
+                key = explicitKey.ifEmpty { resolvedEntryClass },
+                methodName = if (methodName.isEmpty()) "main" else methodName
+            )
+        }
         return mapOf(
             "success" to invoke.success,
             "stdout" to invoke.stdout,
@@ -902,6 +932,147 @@ class MainActivity : AudioServiceActivity() {
             "message" to invoke.message,
             "error" to invoke.error,
             "isStub" to false
+        )
+    }
+
+    private fun destroySpider(call: MethodCall): Map<String, Any?> {
+        val identity = resolveJarSpiderIdentity(call) ?: return jarLifecycleArgError(
+            message = "key and jar/jarPath are required for destroySpider.",
+            error = "missing_key_or_jar"
+        )
+        synchronized(jarRuntimeLock) {
+            loadedJarSpiders.remove(identity.id)
+            crashedJarSpiders.remove(identity.id)
+        }
+        return mapOf(
+            "success" to true,
+            "message" to "Spider destroyed",
+            "error" to ""
+        )
+    }
+
+    private fun markSpiderCrashed(call: MethodCall): Map<String, Any?> {
+        val identity = resolveJarSpiderIdentity(call) ?: return jarLifecycleArgError(
+            message = "key and jar/jarPath are required for markSpiderCrashed.",
+            error = "missing_key_or_jar"
+        )
+        synchronized(jarRuntimeLock) {
+            crashedJarSpiders.add(identity.id)
+        }
+        return mapOf(
+            "success" to true,
+            "message" to "Spider marked as crashed: ${identity.key}",
+            "error" to ""
+        )
+    }
+
+    private fun isSpiderCrashed(call: MethodCall): Map<String, Any?> {
+        val identity = resolveJarSpiderIdentity(call) ?: return jarLifecycleArgError(
+            message = "key and jar/jarPath are required for isSpiderCrashed.",
+            error = "missing_key_or_jar"
+        )
+        val crashed = synchronized(jarRuntimeLock) {
+            crashedJarSpiders.contains(identity.id)
+        }
+        return mapOf(
+            "success" to true,
+            "crashed" to crashed,
+            "message" to if (crashed) "Spider is marked crashed." else "Spider is not marked crashed.",
+            "error" to ""
+        )
+    }
+
+    private fun getCrashedSpiderCount(): Map<String, Any?> {
+        val count = synchronized(jarRuntimeLock) {
+            crashedJarSpiders.size
+        }
+        return mapOf(
+            "success" to true,
+            "count" to count,
+            "message" to "Crashed spider count loaded.",
+            "error" to ""
+        )
+    }
+
+    private fun clearCrashedSpiders(): Map<String, Any?> {
+        synchronized(jarRuntimeLock) {
+            crashedJarSpiders.clear()
+        }
+        return mapOf(
+            "success" to true,
+            "message" to "Crashed spiders cleared",
+            "error" to ""
+        )
+    }
+
+    private fun clearAllJarSpiders(): Map<String, Any?> {
+        synchronized(jarRuntimeLock) {
+            crashedJarSpiders.clear()
+            loadedJarSpiders.clear()
+        }
+        return mapOf(
+            "success" to true,
+            "message" to "All spiders cleared",
+            "error" to ""
+        )
+    }
+
+    private fun registerLoadedJarSpider(
+        jarPath: String,
+        entryClass: String,
+        key: String,
+        methodName: String
+    ) {
+        val aliases = linkedSetOf<String>()
+        if (key.isNotEmpty()) {
+            aliases.add(key)
+        }
+        if (entryClass.isNotEmpty()) {
+            aliases.add(entryClass)
+        }
+        synchronized(jarRuntimeLock) {
+            for (alias in aliases) {
+                val id = buildJarSpiderId(alias, jarPath)
+                loadedJarSpiders[id] = JarSpiderRuntime(
+                    key = alias,
+                    jarPath = jarPath,
+                    entryClass = entryClass,
+                    methodName = methodName,
+                    loadedAt = System.currentTimeMillis()
+                )
+            }
+        }
+    }
+
+    private fun resolveJarSpiderIdentity(call: MethodCall): JarSpiderIdentity? {
+        val key = sequenceOf(
+            call.argument<String>("key"),
+            call.argument<String>("entryClass")
+        ).mapNotNull { it?.trim() }.firstOrNull { it.isNotEmpty() } ?: return null
+        val rawJarPath = sequenceOf(
+            call.argument<String>("jar"),
+            call.argument<String>("jarPath")
+        ).mapNotNull { it?.trim() }.firstOrNull { it.isNotEmpty() } ?: return null
+        val jarPath = resolveRuntimePath(rawJarPath).absolutePath
+        return JarSpiderIdentity(
+            key = key,
+            jarPath = jarPath,
+            id = buildJarSpiderId(key, jarPath)
+        )
+    }
+
+    private fun buildJarSpiderId(key: String, jarPath: String): String {
+        return "${key.trim()}|${jarPath.trim()}"
+    }
+
+    private fun jarLifecycleArgError(
+        message: String,
+        error: String
+    ): Map<String, Any?> {
+        return mapOf(
+            "success" to false,
+            "message" to message,
+            "error" to error
         )
     }
 
@@ -1071,6 +1242,20 @@ class MainActivity : AudioServiceActivity() {
         val exitCode: Int,
         val message: String,
         val error: String
+    )
+
+    private data class JarSpiderRuntime(
+        val key: String,
+        val jarPath: String,
+        val entryClass: String,
+        val methodName: String,
+        val loadedAt: Long
+    )
+
+    private data class JarSpiderIdentity(
+        val key: String,
+        val jarPath: String,
+        val id: String
     )
 
     private fun thunderParseMagnet(call: MethodCall): Map<String, Any?> {

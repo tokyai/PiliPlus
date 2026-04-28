@@ -110,6 +110,101 @@ class JarInvokeResult {
   }
 }
 
+class JarLifecycleActionResult {
+  const JarLifecycleActionResult({
+    required this.success,
+    required this.message,
+    required this.error,
+  });
+
+  final bool success;
+  final String message;
+  final String error;
+
+  static JarLifecycleActionResult fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const JarLifecycleActionResult(
+        success: false,
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+    return JarLifecycleActionResult(
+      success: map['success'] == true,
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+    );
+  }
+}
+
+class JarSpiderCrashStateResult {
+  const JarSpiderCrashStateResult({
+    required this.success,
+    required this.crashed,
+    required this.message,
+    required this.error,
+  });
+
+  final bool success;
+  final bool crashed;
+  final String message;
+  final String error;
+
+  static JarSpiderCrashStateResult fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const JarSpiderCrashStateResult(
+        success: false,
+        crashed: false,
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+    return JarSpiderCrashStateResult(
+      success: map['success'] == true,
+      crashed: map['crashed'] == true,
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+    );
+  }
+}
+
+class JarSpiderCrashCountResult {
+  const JarSpiderCrashCountResult({
+    required this.success,
+    required this.count,
+    required this.message,
+    required this.error,
+  });
+
+  final bool success;
+  final int count;
+  final String message;
+  final String error;
+
+  static JarSpiderCrashCountResult fromMap(Map<Object?, Object?>? map) {
+    if (map == null) {
+      return const JarSpiderCrashCountResult(
+        success: false,
+        count: 0,
+        message: 'Empty platform response.',
+        error: 'empty_response',
+      );
+    }
+    final count = map['count'];
+    return JarSpiderCrashCountResult(
+      success: map['success'] == true,
+      count: switch (count) {
+        int value => value,
+        num value => value.toInt(),
+        String value => int.tryParse(value) ?? 0,
+        _ => 0,
+      },
+      message: (map['message'] ?? '').toString(),
+      error: (map['error'] ?? '').toString(),
+    );
+  }
+}
+
 class JarLoaderService {
   JarLoaderService({
     MethodChannel? channel,
@@ -211,6 +306,210 @@ class JarLoaderService {
         message: 'loadJar not implemented',
         error: error.toString(),
         isStub: true,
+      );
+    }
+  }
+
+  Future<JarLifecycleActionResult> destroySpider({
+    required String key,
+    required String jarPath,
+  }) async {
+    if (!Platform.isAndroid) {
+      return const JarLifecycleActionResult(
+        success: false,
+        message:
+            'Jar native lifecycle bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'destroySpider',
+        <String, dynamic>{
+          'key': key.trim(),
+          'jar': jarPath.trim(),
+          'jarPath': jarPath.trim(),
+        },
+      );
+      return JarLifecycleActionResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'destroySpider platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'destroySpider not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<JarLifecycleActionResult> markSpiderCrashed({
+    required String key,
+    required String jarPath,
+  }) async {
+    if (!Platform.isAndroid) {
+      return const JarLifecycleActionResult(
+        success: false,
+        message:
+            'Jar native lifecycle bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'markSpiderCrashed',
+        <String, dynamic>{
+          'key': key.trim(),
+          'jar': jarPath.trim(),
+          'jarPath': jarPath.trim(),
+        },
+      );
+      return JarLifecycleActionResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'markSpiderCrashed platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'markSpiderCrashed not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<JarSpiderCrashStateResult> isSpiderCrashed({
+    required String key,
+    required String jarPath,
+  }) async {
+    if (!Platform.isAndroid) {
+      return const JarSpiderCrashStateResult(
+        success: false,
+        crashed: false,
+        message:
+            'Jar native lifecycle bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'isSpiderCrashed',
+        <String, dynamic>{
+          'key': key.trim(),
+          'jar': jarPath.trim(),
+          'jarPath': jarPath.trim(),
+        },
+      );
+      return JarSpiderCrashStateResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return JarSpiderCrashStateResult(
+        success: false,
+        crashed: false,
+        message: 'isSpiderCrashed platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return JarSpiderCrashStateResult(
+        success: false,
+        crashed: false,
+        message: 'isSpiderCrashed not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<JarSpiderCrashCountResult> getCrashedSpiderCount() async {
+    if (!Platform.isAndroid) {
+      return const JarSpiderCrashCountResult(
+        success: false,
+        count: 0,
+        message:
+            'Jar native lifecycle bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'getCrashedSpiderCount',
+      );
+      return JarSpiderCrashCountResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return JarSpiderCrashCountResult(
+        success: false,
+        count: 0,
+        message: 'getCrashedSpiderCount platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return JarSpiderCrashCountResult(
+        success: false,
+        count: 0,
+        message: 'getCrashedSpiderCount not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<JarLifecycleActionResult> clearCrashedSpiders() async {
+    if (!Platform.isAndroid) {
+      return const JarLifecycleActionResult(
+        success: false,
+        message:
+            'Jar native lifecycle bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'clearCrashedSpiders',
+      );
+      return JarLifecycleActionResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'clearCrashedSpiders platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'clearCrashedSpiders not implemented',
+        error: error.toString(),
+      );
+    }
+  }
+
+  Future<JarLifecycleActionResult> clearAll() async {
+    if (!Platform.isAndroid) {
+      return const JarLifecycleActionResult(
+        success: false,
+        message:
+            'Jar native lifecycle bridge is only implemented on Android now.',
+        error: 'unsupported_platform',
+      );
+    }
+    try {
+      final map = await _channel.invokeMapMethod<Object?, Object?>(
+        'clearAll',
+      );
+      return JarLifecycleActionResult.fromMap(map);
+    } on PlatformException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'clearAll platform error',
+        error: error.message ?? error.code,
+      );
+    } on MissingPluginException catch (error) {
+      return JarLifecycleActionResult(
+        success: false,
+        message: 'clearAll not implemented',
+        error: error.toString(),
       );
     }
   }

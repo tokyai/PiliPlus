@@ -139,6 +139,24 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `flutter analyze` on updated jar/source-helper files passed.
 
+## Step 23
+- Added Android Jar lifecycle baseline bridge methods in `MainActivity`:
+  - `destroySpider`
+  - `markSpiderCrashed`
+  - `isSpiderCrashed`
+  - `getCrashedSpiderCount`
+  - `clearCrashedSpiders`
+  - `clearAll`
+- `loadJar` successful invoke now registers runtime spider state for lifecycle operations (key + jar path identity).
+- Extended Flutter `JarLoaderService` with typed lifecycle APIs and Android bridge calls for the same method surface.
+- Extended `/jarTest` page with lifecycle controls and result cards:
+  - mark/is/destroy
+  - crashed count
+  - clear crashed / clear all
+- Verified by checks:
+  - `flutter analyze` on updated jar/source-helper files passed.
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -157,3 +175,4 @@ This document records the practical migration increments after the initial rever
 - Thunder parse/play-url fallback now works on non-Android too (local parser path).
 - Source Helper generic tool now supports switching between echo-probe and real code-exec modes.
 - Jar Test now exposes advanced invoke controls for `mainClass/staticOnly`.
+- Android Jar lifecycle baseline method surface is now callable from Flutter (`destroy/mark/is/count/clear`), but deep spider API parity is still pending.
