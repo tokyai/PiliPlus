@@ -113,6 +113,14 @@ This document records the practical migration increments after the initial rever
   - `flutter analyze` on changed Dart files passed,
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 20
+- Extended `ThunderService` with cross-platform fallback parser:
+  - non-Android now supports local parse/getPlayUrl for `magnet/thunder/ed2k/http/https/ftp`,
+  - thunder URL decoding supports `AA...ZZ` unwrap and base64 decode.
+- Non-Android `stopTask/release` now return safe no-op success instead of unsupported.
+- Verified by check:
+  - `flutter analyze` on updated thunder/source-helper files passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -128,3 +136,4 @@ This document records the practical migration increments after the initial rever
 - Android Jar helper no longer file-check stub and now has real reflective invoke capability.
 - Android Jar helper now supports `Main-Class` auto-discovery for runnable jars.
 - Android now has a callable Thunder fallback bridge and test page.
+- Thunder parse/play-url fallback now works on non-Android too (local parser path).

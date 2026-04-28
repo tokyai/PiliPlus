@@ -269,7 +269,7 @@ Conclusion: documentation and binaries are not aligned for Android; migration sh
 - `PENDING (migration)` current project still contains implementation gaps:
   - Android `sourceRuntimeProbe/sourceRuntimeExecute` has moved from pure placeholder to command-bridge mode, but not yet equivalent to reverse package plugin depth.
   - Android `loadJar` has moved to `DexClassLoader + reflection` execution mode, but is not yet equivalent to reverse package `JarLoader` spider lifecycle API.
-  - Android has an initial thunder protocol fallback bridge (parse/playUrl route), but Thunder SDK-equivalent lifecycle and streaming capabilities are still not closed.
+  - Android has an initial thunder protocol fallback bridge (parse/playUrl route), and non-Android has local parser fallback, but Thunder SDK-equivalent lifecycle and streaming capabilities are still not closed.
 
 Checkpoint conclusion: reverse work is **not fully complete** for migration-grade certainty yet; static reverse is largely complete, but runtime confirmation and implementation closure are still required.
 
