@@ -176,3 +176,4 @@ The generated report includes:
 - pending blockers
 - actionable next-step suggestions derived from blocker codes
 - machine-readable JSON output (`build/runtime-smoke/reverse-completion-report.json`)
+- blocker category counts (`environment` vs `runtime_validation`)

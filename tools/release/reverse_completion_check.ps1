@@ -77,6 +77,12 @@ $pendingActionMap = @{
     "ios_runtime_environment_missing_macos" = "Run iOS runtime validation on macOS host and execute iOS-targeted build/smoke checks."
     "windows_runtime_validation_pending"   = "Run Windows runtime smoke: powershell -ExecutionPolicy Bypass -File tools/release/windows_runtime_smoke.ps1 -ExePath build/windows/x64/runner/Debug/piliplus.exe"
 }
+$pendingCategoryMap = @{
+    "android_runtime_validation_pending"    = "runtime_validation"
+    "windows_runtime_validation_pending"    = "runtime_validation"
+    "android_online_device_missing"         = "environment"
+    "ios_runtime_environment_missing_macos" = "environment"
+}
 $nextActions = [System.Collections.Generic.List[string]]::new()
 foreach ($item in $pending) {
     if ($pendingActionMap.ContainsKey($item)) {
@@ -84,6 +90,19 @@ foreach ($item in $pending) {
     }
 }
 $nextActions = @($nextActions | Select-Object -Unique)
+$pendingWithCategory = [System.Collections.Generic.List[object]]::new()
+foreach ($item in $pending) {
+    $category = "unknown"
+    if ($pendingCategoryMap.ContainsKey($item)) {
+        $category = $pendingCategoryMap[$item]
+    }
+    $pendingWithCategory.Add([ordered]@{
+        code = $item
+        category = $category
+    })
+}
+$environmentPendingCount = @($pendingWithCategory | Where-Object { $_.category -eq "environment" }).Count
+$runtimeValidationPendingCount = @($pendingWithCategory | Where-Object { $_.category -eq "runtime_validation" }).Count
 
 $reportLines = [System.Collections.Generic.List[string]]::new()
 $reportLines.Add("# Reverse Completion Check")
@@ -93,12 +112,16 @@ $reportLines.Add(("Overall ready: {0}" -f $overallReady))
 $reportLines.Add(("Summary path: {0}" -f $resolvedSummaryPath))
 $reportLines.Add(("Status path: {0}" -f $resolvedStatusPath))
 $reportLines.Add("")
+$reportLines.Add("## Blocker Categories")
+$reportLines.Add(("- environment: {0}" -f $environmentPendingCount))
+$reportLines.Add(("- runtime_validation: {0}" -f $runtimeValidationPendingCount))
+$reportLines.Add("")
 $reportLines.Add("## Pending Blockers")
 if ($pending.Count -eq 0) {
     $reportLines.Add("- none")
 } else {
-    foreach ($item in $pending) {
-        $reportLines.Add(("- " + $item))
+    foreach ($item in $pendingWithCategory) {
+        $reportLines.Add(("- {0} ({1})" -f $item.code, $item.category))
     }
 }
 $reportLines.Add("")
@@ -129,6 +152,11 @@ $jsonPayload = [ordered]@{
     statusPath = $resolvedStatusPath
     markdownReportPath = $resolvedReportPath
     pending = @($pending)
+    pendingWithCategory = @($pendingWithCategory)
+    blockerCounts = [ordered]@{
+        environment = $environmentPendingCount
+        runtimeValidation = $runtimeValidationPendingCount
+    }
     nextActions = @($nextActions)
 }
 ($jsonPayload | ConvertTo-Json -Depth 6) | Set-Content -Encoding UTF8 $resolvedJsonReportPath

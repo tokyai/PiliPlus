@@ -978,6 +978,20 @@ This document records the practical migration increments after the initial rever
     - `powershell -ExecutionPolicy Bypass -File tools/release/build_all.ps1 -Targets ios -Mode debug -SkipPubGet -EmitRuntimeClosureStatus -RunReverseCompletionCheck -ArtifactManifestPath build/artifacts/ios-closure-manifest.json`.
   - Manifest contains closure/report artifact entries.
 
+## Step 100
+- Enhanced reverse completion reports with blocker categorization:
+  - updated `tools/release/reverse_completion_check.ps1`,
+  - pending blockers now carry category labels (`environment` / `runtime_validation`),
+  - markdown/json outputs now include category counts and categorized blocker listing.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/reverse_completion_check.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
+  - JSON report contains `pendingWithCategory` and `blockerCounts`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1072,3 +1086,4 @@ This document records the practical migration increments after the initial rever
 - Reverse inventory snapshot now captures both human-readable and machine-readable closure artifacts.
 - Runtime-smoke workflow run summaries now directly expose closure readiness and pending blockers.
 - Unified build manifest now includes closure/report artifacts for end-to-end auditability.
+- Closure reports now separate environment blockers from runtime-validation blockers for clearer triage.
