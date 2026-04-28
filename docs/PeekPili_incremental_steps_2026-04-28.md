@@ -512,6 +512,14 @@ This document records the practical migration increments after the initial rever
 - Verified by check:
   - `android\\gradlew.bat :app:compileDebugKotlin` passed.
 
+## Step 57
+- Extended generic Source Runtime GoProxy actions:
+  - `sourceRuntimeExecute(engine=goproxy)` now additionally supports `options.action=start`,
+  - generic start path reuses the same internal GoProxy start logic as dedicated bridge (`command/args/port/proxyUrl/workingDirectory/danmuDir/environment`).
+- This reduces divergence risk between dedicated and generic GoProxy execution paths.
+- Verified by check:
+  - `android\\gradlew.bat :app:compileDebugKotlin` passed.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -564,3 +572,4 @@ This document records the practical migration increments after the initial rever
 - GoProxy runtime now auto-reconciles process/service state to reduce stale-running markers.
 - GoProxy runtime diagnostics now include last exit code/time snapshot fields.
 - Source Runtime generic bridge now supports GoProxy runtime `status/stop` actions.
+- Source Runtime generic bridge now supports full GoProxy `start/status/stop` action set.

@@ -480,8 +480,30 @@ class MainActivity : AudioServiceActivity() {
                     )
                 }
 
+                "start" -> {
+                    val result = startGoProxyInternal(
+                        commandInput = options["command"]?.toString(),
+                        rawArgs = parseStringList(options["args"]),
+                        port = parseIntValue(options["port"], 9978).coerceAtLeast(1),
+                        proxyUrl = options["proxyUrl"]?.toString(),
+                        workingDirectory = options["workingDirectory"]?.toString(),
+                        danmuDirInput = options["danmuDir"]?.toString().orEmpty(),
+                        environment = parseStringMap(options["environment"])
+                    )
+                    val success = result["success"] == true
+                    mapOf(
+                        "success" to success,
+                        "stdout" to formatGoProxyOperationResult(result),
+                        "stderr" to if (success) "" else (result["error"]?.toString().orEmpty()),
+                        "elapsedMs" to 0,
+                        "exitCode" to if (success) 0 else -1,
+                        "isStub" to false,
+                        "message" to (result["message"]?.toString() ?: "GoProxy start finished.")
+                    )
+                }
+
                 else -> sourceRuntimeFailure(
-                    message = "Unsupported goproxy action=$action. Supported: status, stop.",
+                    message = "Unsupported goproxy action=$action. Supported: status, start, stop.",
                     error = "unsupported_action",
                     isStub = true
                 )
@@ -732,6 +754,15 @@ class MainActivity : AudioServiceActivity() {
         }.toMap()
     }
 
+    private fun parseIntValue(value: Any?, fallback: Int = 0): Int {
+        return when (value) {
+            is Int -> value
+            is Number -> value.toInt()
+            is String -> value.trim().toIntOrNull() ?: fallback
+            else -> fallback
+        }
+    }
+
     private fun sourceRuntimeFailure(
         message: String,
         error: String,
@@ -772,9 +803,43 @@ class MainActivity : AudioServiceActivity() {
             )
         }
 
-        val commandInput = call.argument<String>("command")?.trim().orEmpty()
-        val command = if (commandInput.isNotEmpty()) {
-            commandInput
+        val commandInput = call.argument<String>("command")
+        val rawArgs = call.argument<List<String>>("args") ?: emptyList()
+        val port = call.argument<Int>("port") ?: 9978
+        val proxyUrl = call.argument<String>("proxyUrl")
+        val workingDirectory = call.argument<String>("workingDirectory")
+        val danmuDirInput = call.argument<String>("danmuDir").orEmpty()
+        val environment = (call.argument<Map<*, *>>("environment") ?: emptyMap<Any?, Any?>())
+            .mapNotNull { (key, value) ->
+                if (key is String && value is String) {
+                    key to value
+                } else {
+                    null
+                }
+            }.toMap()
+        return startGoProxyInternal(
+            commandInput = commandInput,
+            rawArgs = rawArgs,
+            port = port,
+            proxyUrl = proxyUrl,
+            workingDirectory = workingDirectory,
+            danmuDirInput = danmuDirInput,
+            environment = environment
+        )
+    }
+
+    private fun startGoProxyInternal(
+        commandInput: String?,
+        rawArgs: List<String>,
+        port: Int,
+        proxyUrl: String?,
+        workingDirectory: String?,
+        danmuDirInput: String,
+        environment: Map<String, String>
+    ): Map<String, Any?> {
+        val commandValue = commandInput?.trim().orEmpty()
+        val command = if (commandValue.isNotEmpty()) {
+            commandValue
         } else {
             resolveGoProxyCommand(emptyList())
         }
@@ -790,33 +855,22 @@ class MainActivity : AudioServiceActivity() {
             )
         }
 
-        val rawArgs = call.argument<List<String>>("args") ?: emptyList()
-        val port = call.argument<Int>("port") ?: 9978
-        val proxyUrl = call.argument<String>("proxyUrl")?.trim()
-        val workingDirectory = call.argument<String>("workingDirectory")?.trim()
-        val danmuDirInput = call.argument<String>("danmuDir")?.trim().orEmpty()
-        val environment = (call.argument<Map<*, *>>("environment") ?: emptyMap<Any?, Any?>())
-            .mapNotNull { (key, value) ->
-                if (key is String && value is String) {
-                    key to value
-                } else {
-                    null
-                }
-            }.toMap()
-        val fallbackDanmuDir = resolveGoProxyDanmuDir(danmuDirInput)
+        val resolvedProxyUrl = proxyUrl?.trim()
+        val resolvedWorkingDirectory = workingDirectory?.trim()
+        val fallbackDanmuDir = resolveGoProxyDanmuDir(danmuDirInput.trim())
         val argResolution = normalizeGoProxyArgs(rawArgs, port, fallbackDanmuDir)
         val args = argResolution.args
         goProxyLastCommand = command
         goProxyLastArgs = args.toList()
-        goProxyLastWorkingDirectory = workingDirectory.orEmpty()
+        goProxyLastWorkingDirectory = resolvedWorkingDirectory.orEmpty()
         goProxyLastPort = argResolution.port
         goProxyLastDanmuDir = argResolution.danmuDir
 
         return try {
             val commandLine = mutableListOf(command).apply { addAll(args) }
             val processBuilder = ProcessBuilder(commandLine).apply {
-                if (!workingDirectory.isNullOrEmpty()) {
-                    directory(File(workingDirectory))
+                if (!resolvedWorkingDirectory.isNullOrEmpty()) {
+                    directory(File(resolvedWorkingDirectory))
                 }
                 if (environment.isNotEmpty()) {
                     environment().putAll(environment)
@@ -824,8 +878,8 @@ class MainActivity : AudioServiceActivity() {
                 redirectErrorStream(false)
             }
             goProxyProcess = processBuilder.start()
-            goProxyUrl = if (!proxyUrl.isNullOrEmpty()) {
-                proxyUrl
+            goProxyUrl = if (!resolvedProxyUrl.isNullOrEmpty()) {
+                resolvedProxyUrl
             } else {
                 "http://127.0.0.1:${argResolution.port}"
             }
