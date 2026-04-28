@@ -1197,6 +1197,22 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 114
+- Enhanced runtime smoke summary with environment readiness snapshots:
+  - updated `tools/release/runtime_smoke_summary.ps1`,
+  - summary now includes `*environment-readiness-report.json` entries with:
+    - `ready`,
+    - requirement profile flags,
+    - failed check list.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - PowerShell script syntax parse passed:
+    - `powershell -NoProfile -Command '$tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile(''tools/release/runtime_smoke_summary.ps1'',[ref]$tokens,[ref]$errors); if($errors -and $errors.Count -gt 0){$errors | ForEach-Object { $_.Message }; exit 1}'`.
+  - `powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1 -MaxItems 5` passed.
+  - Summary contains `Environment Readiness Snapshots` section.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1305,3 +1321,4 @@ This document records the practical migration increments after the initial rever
 - Runtime-smoke workflows now support an explicit environment-readiness gate option.
 - Environment readiness checks now support profile-based requirements and machine-readable readiness reports.
 - Runtime-smoke workflows now execute and publish dedicated environment readiness evidence with profile-aware gate enforcement.
+- Runtime smoke summary now consolidates reverse completion and environment readiness evidence in one report.

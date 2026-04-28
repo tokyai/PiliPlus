@@ -166,6 +166,7 @@ powershell -ExecutionPolicy Bypass -File tools/release/runtime_smoke_summary.ps1
 ```
 
 Summary now includes reverse completion snapshot (overallReady + blocker counts + pending blockers) when JSON report exists.
+Summary now also includes environment readiness snapshots when `*environment-readiness-report.json` files exist.
 
 Runtime closure status snapshot:
 

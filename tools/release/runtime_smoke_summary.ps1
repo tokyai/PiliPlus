@@ -91,6 +91,39 @@ if (Test-Path $reverseCompletionJsonPath) {
 }
 $lines.Add("")
 
+$lines.Add("## Environment Readiness Snapshots")
+if (Test-Path $resolvedRuntimeSmokeDir) {
+    $readinessReports = @(Get-ChildItem -Path $resolvedRuntimeSmokeDir -Filter "*environment-readiness-report.json" -File | Sort-Object LastWriteTime -Descending | Select-Object -First $MaxItems)
+    if ($readinessReports.Count -eq 0) {
+        $lines.Add("- No environment readiness reports found.")
+    } else {
+        foreach ($reportFile in $readinessReports) {
+            $lines.Add(("### {0}" -f $reportFile.Name))
+            try {
+                $payload = Get-Content -Raw $reportFile.FullName | ConvertFrom-Json -ErrorAction Stop
+                $lines.Add(("- ready: {0}" -f $payload.ready))
+                if ($payload.requirements) {
+                    $lines.Add(("- requirements: adb={0}, androidDevice={1}, ios={2}" -f $payload.requirements.requireAdb, $payload.requirements.requireAndroidDevice, $payload.requirements.requireIosEnvironment))
+                }
+                if ($payload.failedChecks -and $payload.failedChecks.Count -gt 0) {
+                    $lines.Add("- failedChecks:")
+                    foreach ($item in $payload.failedChecks) {
+                        $lines.Add(("  - {0}" -f $item))
+                    }
+                } else {
+                    $lines.Add("- failedChecks: none")
+                }
+            } catch {
+                $lines.Add(("- parseError: {0}" -f $_.Exception.Message))
+            }
+            $lines.Add("")
+        }
+    }
+} else {
+    $lines.Add("- Runtime smoke directory not found.")
+}
+$lines.Add("")
+
 $lines.Add("## Artifact Manifests")
 if (Test-Path $resolvedArtifactsDir) {
     $manifestFiles = @(Get-ChildItem -Path $resolvedArtifactsDir -Filter *.json -File | Sort-Object LastWriteTime -Descending | Select-Object -First $MaxItems)
