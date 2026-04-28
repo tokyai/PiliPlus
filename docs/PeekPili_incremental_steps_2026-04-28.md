@@ -1087,6 +1087,18 @@ This document records the practical migration increments after the initial rever
   - workflow YAML parse check passed via:
     - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
 
+## Step 107
+- Extended runtime-smoke workflow job summaries with recommended next actions:
+  - updated `.github/workflows/runtime_smoke_windows.yml`,
+  - updated `.github/workflows/runtime_smoke_android.yml`,
+  - summary step now appends `nextActions` from `reverse-completion-report.json`.
+- Documentation linked in:
+  - `docs/PeekPili_cross_platform_build.md`,
+  - `docs/PeekPili_runtime_closure_checklist.md`.
+- Verified by checks:
+  - workflow YAML parse check passed via:
+    - `python -c "import pathlib, yaml; [yaml.safe_load(pathlib.Path(p).read_text(encoding='utf-8')) for p in ['.github/workflows/runtime_smoke_windows.yml','.github/workflows/runtime_smoke_android.yml']]"`.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1188,3 +1200,4 @@ This document records the practical migration increments after the initial rever
 - Runtime smoke summary now directly surfaces reverse completion snapshot for human audit.
 - Unified build flow now supports reverse-check threshold tuning without leaving build script context.
 - Runtime-smoke workflows now allow threshold tuning with consistent closure/reverse evaluation logic.
+- Runtime-smoke workflow summaries now directly include actionable next steps.

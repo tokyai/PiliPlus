@@ -151,5 +151,5 @@ CI artifact snapshots:
 - Both workflows support `fail_on_runtime_validation_pending=true` to fail only on runtime-validation blockers.
 - Both workflows support threshold inputs `min_windows_smoke_reports` and `min_android_smoke_logs`.
 - Gate failure is deferred to final step so closure/report artifacts remain available for troubleshooting.
-- Workflow job summary also shows reverse completion `overallReady`, blocker category counts, and pending blocker list.
+- Workflow job summary also shows reverse completion `overallReady`, blocker category counts, pending blockers, and next actions.
 - Unified build manifest (`-ArtifactManifestPath`) now also captures closure/reverse-check report artifacts when those steps are enabled.

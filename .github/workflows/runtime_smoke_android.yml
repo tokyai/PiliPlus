@@ -140,6 +140,12 @@ jobs:
           } else {
             Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- pending blockers: none"
           }
+          if ($payload.nextActions -and $payload.nextActions.Count -gt 0) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- next actions:"
+            foreach ($item in $payload.nextActions) {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("  - {0}" -f $item)
+            }
+          }
 
       - name: Upload runtime smoke reports
         if: always()
