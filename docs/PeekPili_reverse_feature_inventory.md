@@ -267,7 +267,7 @@ Conclusion: documentation and binaries are not aligned for Android; migration sh
 - `PENDING (runtime)` confirm whether iOS `/pythonTest` and related routes are strictly remote/proxy fallbacks at runtime.
 - `PENDING (runtime)` confirm whether thunder markers on iOS/Windows are UI-only with no hidden runtime bridge path.
 - `PENDING (runtime)` execution checklist is tracked in `docs/PeekPili_runtime_closure_checklist.md`.
-- `PENDING (runtime)` current environment is toolchain-ready but lacks Android runtime target + macOS iOS runtime host for final runtime-equivalence confirmation.
+- `PENDING (runtime)` current environment is toolchain-ready and Android runtime target is now validated on connected adb device, but still lacks macOS iOS runtime host for final runtime-equivalence confirmation.
 - `PENDING (migration)` current project still contains implementation gaps:
   - Android `sourceRuntimeProbe/sourceRuntimeExecute` now includes PHP bridge-aligned runtime env and working-directory defaults, plus GoProxy runtime start/status/stop, PHP runtime status/start/stop, Thunder runtime status/parse/play/stop/release, and Jar runtime status/crash_count/clear_marks/clear_all generic action paths; it still remains a generic command bridge (not full reverse plugin lifecycle parity for all engines).
   - Android GoProxy bridge now has start/stop/status/command-prepare, runtime-state diagnostics (including last-exit snapshot and last-stop-strategy), effective arg normalization baseline (`-port`/`-danmu-dir`), foreground-service notification baseline, wake/wifi lock baseline, staged stop signal escalation (`destroy/sigterm/sigkill/force`) with notification stop action pid-termination attempt, and runtime auto-reconciliation for process/service state drift; remaining gap is full reverse-equivalent behavior validation under real proxy workloads (long-run stability under production traffic).
@@ -288,12 +288,10 @@ powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.
 Result:
 - `overallReady=false` (runtime closure incomplete).
 - blockerCounts:
-  - `environment=2`
-  - `runtimeValidation=1`
+  - `environment=1`
+  - `runtimeValidation=0`
 - Pending blockers:
-  - `android_runtime_validation_pending`
   - `ios_runtime_environment_missing_macos`
-  - `android_online_device_missing`
 - Generated report:
   - `build/runtime-smoke/reverse-completion-report.md`
   - `build/runtime-smoke/reverse-completion-report.json`

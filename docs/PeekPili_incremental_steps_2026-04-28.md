@@ -1228,6 +1228,18 @@ This document records the practical migration increments after the initial rever
   - Reverse completion check now clears Android runtime blocker after device validation:
     - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1`.
 
+## Step 116
+- Synced reverse inventory closure snapshot to adb-validated state:
+  - updated `docs/PeekPili_reverse_feature_inventory.md`,
+  - latest snapshot now reflects:
+    - `blockerCounts.environment=1`,
+    - `blockerCounts.runtimeValidation=0`,
+    - only remaining blocker: `ios_runtime_environment_missing_macos`.
+  - updated runtime checklist narrative to indicate Android target is validated; remaining environment gap is macOS iOS host.
+- Verified by checks:
+  - `powershell -ExecutionPolicy Bypass -File tools/release/reverse_completion_check.ps1` passed.
+  - latest JSON report confirms Android blocker removal.
+
 ## Current Outcome
 - Config-driven migration has entered executable skeleton phase for both:
   - bottom navigation
@@ -1338,3 +1350,4 @@ This document records the practical migration increments after the initial rever
 - Runtime-smoke workflows now execute and publish dedicated environment readiness evidence with profile-aware gate enforcement.
 - Runtime smoke summary now consolidates reverse completion and environment readiness evidence in one report.
 - Android device runtime smoke no longer fails on debug package suffix mismatch during launch.
+- Android runtime closure blockers are now cleared on connected adb device; remaining blocker is iOS runtime environment validation on macOS.
